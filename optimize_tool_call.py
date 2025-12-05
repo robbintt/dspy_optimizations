@@ -14,9 +14,8 @@ zai_glm_4_6 = dspy.LM(
     cache=False,
 )
 
-# Use JSONAdapter to guide the model towards valid JSON output.
-# This adapter leverages a model's native JSON mode or function-calling capabilities if available.
-dspy.configure(lm=zai_glm_4_6, adapter=dspy.JSONAdapter(), experimental=True)
+# Use chat adapter to simulate real world conditions.
+dspy.configure(lm=zai_glm_4_6, adapter=dspy.ChatAdapter(), experimental=True)
 
 
 # --- 2. Schema Definition (Pydantic) ---
