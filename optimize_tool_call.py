@@ -186,7 +186,11 @@ if __name__ == "__main__":
 
     # Manually validate the live test output to confirm correctness.
     try:
-        ToolCall.model_validate_json(live_test.tool_call)
+        tool_call_output = live_test.tool_call
+        if isinstance(tool_call_output, BaseModel):
+            tool_call_output = tool_call_output.model_dump_json()
+
+        ToolCall.model_validate_json(tool_call_output)
         print("\nLive test output is VALID.")
     except Exception as e:
         print(f"\nLive test output is INVALID: {e}")
