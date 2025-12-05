@@ -58,11 +58,24 @@ Available tools:
 </tools>"""
 
 
+# --- Pydantic Schemas for the tavily_search tool ---
+class TavilySearchInput(BaseModel):
+    """Input schema for the tavily_search tool."""
+    query: str
+    max_results: int
+    search_depth: str = "advanced"
+
+class ToolCall(BaseModel):
+    """The general tool-calling JSON object."""
+    tool_name: str = Field(..., pattern="^tavily_search$")
+    tool_input: TavilySearchInput
+
+
 class ToolSignature(dspy.Signature):
     __doc__ = final_system_message
 
     query = dspy.InputField(desc="User's query asking for a tool call.")
-    tool_call: "ToolCall" = dspy.OutputField(desc="A valid JSON object representing a tool call.")
+    tool_call: ToolCall = dspy.OutputField(desc="A valid JSON object representing a tool call.")
 
 
 class ToolCaller(dspy.Module):
@@ -97,18 +110,6 @@ Assistant: I'm here to help. What is it?
 
         prediction = self.predictor(query=full_query)
         return prediction
-
-# --- Pydantic Schemas for the tavily_search tool ---
-class TavilySearchInput(BaseModel):
-    """Input schema for the tavily_search tool."""
-    query: str
-    max_results: int
-    search_depth: str = "advanced"
-
-class ToolCall(BaseModel):
-    """The general tool-calling JSON object."""
-    tool_name: str = Field(..., pattern="^tavily_search$")
-    tool_input: TavilySearchInput
 
 # --- Data ---
 train_data = [
