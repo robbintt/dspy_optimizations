@@ -90,19 +90,23 @@ if __name__ == "__main__":
     # Instantiate the program we want to optimize.
     unoptimized_program = SentimentClassifier()
 
+    # To view the prompt, we'll run the program with a dummy input.
+    # This will populate the LM's history with the generated prompt.
+    unoptimized_program(text="This is a test sentence.")
+
     print("\n--- Unoptimized Program's Prompt ---")
-    # A prompt consists of instructions and demonstrations.
     # The unoptimized prompt has instructions from the signature, but no demonstrations.
-    print("Instructions:", unoptimized_program.predictor.signature.instructions)
-    print("Demos:", unoptimized_program.predictor.demos)
+    print(zai_glm_4_6.history[0]['prompt'])
 
     # Compile the program. The optimizer will find the best prompt and demonstrations.
     optimized_program = optimizer.compile(unoptimized_program, trainset=trainset)
 
+    # To view the optimized prompt, we'll run it with a dummy input as well.
+    optimized_program(text="This is another test sentence.")
+
     print("\n--- Optimized Program's Prompt ---")
     # The optimized prompt has the same instructions, but now includes demonstrations.
-    print("Instructions:", optimized_program.predictor.signature.instructions)
-    print("Demos:", optimized_program.predictor.demos)
+    print(zai_glm_4_6.history[-1]['prompt'])
 
     print("\n--- Evaluating Optimized Program ---")
     # Evaluate the performance of the optimized program on the development set.
