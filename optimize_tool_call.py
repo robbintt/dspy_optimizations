@@ -2,6 +2,7 @@
 import dspy
 import os
 import json
+from datetime import datetime
 from pydantic import BaseModel, Field, ValidationError
 
 # --- Setup LM ---
@@ -237,9 +238,16 @@ if __name__ == "__main__":
     if len(zai_glm_4_6.history) > 1:
         final_prompt = zai_glm_4_6.history[-1]['messages'][-1]['content']
         print(final_prompt)
-        with open("optimized_tool_call_prompt.txt", "w") as f:
+
+        # Save prompt to a timestamped file to preserve each run's output.
+        PROMPTS_DIR = "prompts"
+        os.makedirs(PROMPTS_DIR, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_path = os.path.join(PROMPTS_DIR, f"optimized_tool_call_{timestamp}.txt")
+
+        with open(file_path, "w") as f:
             f.write(final_prompt)
-        print("\nFinal prompt saved to 'optimized_tool_call_prompt.txt'")
+        print(f"\nFinal prompt saved to '{file_path}'")
 
     print("\n--- Evaluating Optimized Program ---")
     evaluate = Evaluate(devset=devset, metric=validation_metric_with_feedback, num_threads=1, display_progress=True, display_table=display_table)
