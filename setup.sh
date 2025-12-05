@@ -27,11 +27,14 @@ else
 fi
 
 echo ""
+echo ""
+echo "--- Making run script executable ---"
+chmod +x run.sh
+
+echo ""
 echo "--- Setup complete ---"
 echo "Next steps:"
 echo "1. Edit the .env file with your ZAI and (optional) OpenAI credentials."
-echo "2. To run the scripts, use the following commands:"
-echo "   source venv/bin/activate"
-echo "   source .env"
-echo "   python optimize_prompt.py"
-echo "   python optimize_tool_call.py"
+echo "2. To run a script, use the run.sh helper. For example:"
+echo "   ./run.sh optimize_prompt.py"
+echo "   ./run.sh optimize_tool_call.py"
