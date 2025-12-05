@@ -61,9 +61,9 @@ class SentimentClassifier(dspy.Module):
         prediction = self.predictor(text=text)
 
         # Sample for a programmatic constraint:
-        # dspy.Assert enforces that a condition must be true.
-        # During optimization, if an assertion fails, DSPy can self-correct.
-        dspy.Assert(
+        # dspy.Suggest enforces that a condition must be true.
+        # During optimization, if the suggestion fails, DSPy can self-correct.
+        dspy.Suggest(
             prediction.sentiment in ["Positive", "Negative", "Neutral"],
             "The sentiment must be one of Positive, Negative, or Neutral."
         )
@@ -109,5 +109,5 @@ if __name__ == "__main__":
     from dspy.evaluate import Evaluate
 
     evaluate = Evaluate(devset=devset, metric=sentiment_metric, num_threads=1, display_progress=True, display_table=5)
-    score = evaluate(optimized_program)
-    print(f"\nFinal score on dev set: {score:.2f}")
+    eval_result = evaluate(optimized_program)
+    print(f"\nFinal score on dev set: {eval_result.score}")
