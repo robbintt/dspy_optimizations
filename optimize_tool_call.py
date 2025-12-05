@@ -92,6 +92,19 @@ dev_data = [
         query="how is the weather in new york city",
         tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=40.7128, longitude=-74.0060)).model_dump_json()
     ).with_inputs("query"),
+    # Add more varied examples to better test the model
+    dspy.Example(
+        query="I'm in Sydney, what's the weather like?",
+        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=-33.8688, longitude=151.2093)).model_dump_json()
+    ).with_inputs("query"),
+    dspy.Example(
+        query="give me the forecast for Paris",
+        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=48.8566, longitude=2.3522)).model_dump_json()
+    ).with_inputs("query"),
+    dspy.Example(
+        query="is it sunny in cairo",
+        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=30.0444, longitude=31.2357)).model_dump_json()
+    ).with_inputs("query"),
 ]
 
 trainset = [x.with_inputs('query') for x in train_data]
