@@ -12,6 +12,7 @@ zai_glm_4_6 = dspy.LM(
     api_key=os.getenv("ZAI_API_KEY", "your-api-key-here"),
     api_base=os.getenv("ZAI_API_BASE", "your-api-base-here"),
     cache=False,
+    disable_reasoning=True,
 )
 
 # Use chat adapter to simulate real world conditions.

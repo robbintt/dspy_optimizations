@@ -9,6 +9,7 @@ zai_glm_4_6 = dspy.LM(
     model='openai/zai-glm-4.6',
     api_key=os.getenv("ZAI_API_KEY", "your-api-key-here"),
     api_base=os.getenv("ZAI_API_BASE", "your-api-base-here"),
+    disable_reasoning=True,
     # Add any other necessary parameters for your model here.
 )
 
