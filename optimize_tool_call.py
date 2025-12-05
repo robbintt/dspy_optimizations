@@ -11,6 +11,7 @@ zai_glm_4_6 = dspy.LM(
     model='openai/zai-glm-4.6',
     api_key=os.getenv("ZAI_API_KEY", "your-api-key-here"),
     api_base=os.getenv("ZAI_API_BASE", "your-api-base-here"),
+    cache=False,
 )
 
 # Use JSONAdapter to guide the model towards valid JSON output.
@@ -174,7 +175,18 @@ optimizer = GEPA(
 
 # --- 7. Execution ---
 if __name__ == "__main__":
-    print("--- Starting Tool Call Optimization ---")
+    # Add a direct test call to diagnose connection issues.
+    print("--- Running a direct API call to test configuration ---")
+    try:
+        response = zai_glm_4_6("This is a test. Respond with OK.")
+        print(f"--- Direct API call successful. Response: {response} ---")
+    except Exception as e:
+        print(f"\n--- !!! Direct API call FAILED. This is why you see no API usage. !!! ---")
+        print(f"Error: {e}")
+        print("--- Please check your ZAI_API_KEY, ZAI_API_BASE, and network connection. ---")
+        exit()
+
+    print("\n--- Starting Tool Call Optimization ---")
 
     program_to_optimize = ToolCaller()
 
