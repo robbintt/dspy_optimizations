@@ -2,7 +2,7 @@
 import dspy
 import os
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import harness
 
 #GLM_46='openai/glm-4.6',
@@ -50,9 +50,9 @@ Available tools:
 <tools>
 [
   {
-    "name": "get_weather",
-    "description": "Get the weather for a given location",
-    "parameters": {"$schema":"http:\/\/json-schema.org\/draft-07\/schema#","required":["latitude","longitude"],"properties":{"longitude":{"type":"number"},"latitude":{"type":"number"}},"additionalProperties":false,"type":"object"}
+    "name": "tavily_search",
+    "description": "Search the web for a given query.",
+    "parameters": {"$schema":"http:\/\/json-schema.org\/draft-07\/schema#","required":["query","max_results"],"properties":{"query":{"type":"string"},"max_results":{"type":"integer"},"search_depth":{"default":"advanced","type":"string"}},"additionalProperties":false,"type":"object"}
   }
 ]
 </tools>"""
@@ -62,7 +62,7 @@ class ToolSignature(dspy.Signature):
     __doc__ = final_system_message
 
     query = dspy.InputField(desc="User's query asking for a tool call.")
-    tool_call: harness.ToolCall = dspy.OutputField(desc="A valid JSON object representing a tool call.")
+    tool_call: "ToolCall" = dspy.OutputField(desc="A valid JSON object representing a tool call.")
 
 
 class ToolCaller(dspy.Module):
@@ -98,17 +98,58 @@ Assistant: I'm here to help. What is it?
         prediction = self.predictor(query=full_query)
         return prediction
 
-trainset = [x.with_inputs('query') for x in harness.train_data]
-devset = [x.with_inputs('query') for x in harness.dev_data]
+# --- Pydantic Schemas for the tavily_search tool ---
+class TavilySearchInput(BaseModel):
+    """Input schema for the tavily_search tool."""
+    query: str
+    max_results: int
+    search_depth: str = "advanced"
+
+class ToolCall(BaseModel):
+    """The general tool-calling JSON object."""
+    tool_name: str = Field(..., pattern="^tavily_search$")
+    tool_input: TavilySearchInput
+
+# --- Data ---
+train_data = [
+    dspy.Example(
+        query="GLM 4.6 z.ai architecture limitations vulnerabilities research papers",
+        tool_call=ToolCall(tool_name="tavily_search", tool_input=TavilySearchInput(query="GLM 4.6 z.ai architecture limitations vulnerabilities research papers", max_results=10, search_depth="advanced")).model_dump_json()
+    ),
+    dspy.Example(
+        query="ASTRA framework automated jailbreak methodology arXiv:2511.02356",
+        tool_call=ToolCall(tool_name="tavily_search", tool_input=TavilySearchInput(query="ASTRA framework automated jailbreak methodology arXiv:2511.02356", max_results=5, search_depth="advanced")).model_dump_json()
+    ),
+]
+dev_data = [
+    dspy.Example(
+        query="Aider Gemini 2.5 Pro free tier coding workflow",
+        tool_call=ToolCall(tool_name="tavily_search", tool_input=TavilySearchInput(query="Aider Gemini 2.5 Pro free tier coding workflow", max_results=5, search_depth="advanced")).model_dump_json()
+    ),
+    dspy.Example(
+        query="loreblendr.ai iOS app",
+        tool_call=ToolCall(tool_name="tavily_search", tool_input=TavilySearchInput(query="loreblendr.ai iOS app", max_results=10, search_depth="advanced")).model_dump_json()
+    ),
+    dspy.Example(
+        query="site:z.ai -www",
+        tool_call=ToolCall(tool_name="tavily_search", tool_input=TavilySearchInput(query="site:z.ai -www", max_results=10, search_depth="advanced")).model_dump_json()
+    ),
+]
+
+trainset = [x.with_inputs('query') for x in train_data]
+devset = [x.with_inputs('query') for x in dev_data]
 
 
 # --- 3. Optimizer ---
 from dspy.teleprompt import GEPA
 
+# Create a validation metric for our specific ToolCall schema
+validation_metric = harness.create_validation_metric(ToolCall)
+
 # GEPA is a reflective optimizer that can use textual feedback from metrics
 # to generate improved prompts.
 optimizer = GEPA(
-    metric=harness.validation_metric_with_feedback,
+    metric=validation_metric,
     auto="light",
     track_stats=True,
     reflection_minibatch_size=1,
@@ -142,7 +183,7 @@ if __name__ == "__main__":
     program_to_optimize = ToolCaller()
 
     # View the unoptimized prompt by running it with a dummy input.
-    program_to_optimize(query="weather in paris")
+    program_to_optimize(query="search for the latest news on AI")
     print("\n--- Unoptimized Program's Prompt ---")
     if zai_glm_4_6.history:
         print(zai_glm_4_6.history[-1]['messages'][-1]['content'])
@@ -157,7 +198,7 @@ if __name__ == "__main__":
         print("`pandas` not installed. Skipping table display.")
         display_table = False
 
-    evaluate = Evaluate(devset=devset, metric=harness.validation_metric_with_feedback, num_threads=1, display_progress=True, display_table=display_table)
+    evaluate = Evaluate(devset=devset, metric=validation_metric, num_threads=1, display_progress=True, display_table=display_table)
     eval_result = evaluate(program_to_optimize)
     print(f"\nInitial score on dev set: {eval_result.score if eval_result else 'N/A'}")
 
@@ -171,7 +212,7 @@ if __name__ == "__main__":
     )
 
     # View the optimized prompt.
-    optimized_program(query="weather in berlin")
+    optimized_program(query="what is the capital of France?")
     print("\n--- Optimized Program's Prompt ---")
     if len(zai_glm_4_6.history) > 1:
         final_prompt = zai_glm_4_6.history[-1]['messages'][-1]['content']
@@ -188,14 +229,14 @@ if __name__ == "__main__":
         print(f"\nFinal prompt saved to '{file_path}'")
 
     print("\n--- Evaluating Optimized Program ---")
-    evaluate = Evaluate(devset=devset, metric=harness.validation_metric_with_feedback, num_threads=1, display_progress=True, display_table=display_table)
+    evaluate = Evaluate(devset=devset, metric=validation_metric, num_threads=1, display_progress=True, display_table=display_table)
     eval_result = evaluate(optimized_program)
     print(f"\nFinal score on dev set: {eval_result.score if eval_result else 'N/A'}")
 
     # Test with a live example to see the final output.
     print("\n--- Live Test ---")
-    live_test = optimized_program(query="weather in cairo")
-    print(f"Query: weather in cairo")
+    live_test = optimized_program(query="what is dspy-ai?")
+    print(f"Query: what is dspy-ai?")
     print(f"Output:\n{live_test.tool_call}")
 
     # Manually validate the live test output to confirm correctness.
@@ -204,7 +245,7 @@ if __name__ == "__main__":
         if isinstance(tool_call_output, BaseModel):
             tool_call_output = tool_call_output.model_dump_json()
 
-        harness.ToolCall.model_validate_json(tool_call_output)
+        ToolCall.model_validate_json(tool_call_output)
         print("\nLive test output is VALID.")
     except Exception as e:
         print(f"\nLive test output is INVALID: {e}")
