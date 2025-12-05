@@ -105,6 +105,26 @@ dev_data = [
         query="is it sunny in cairo",
         tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=30.0444, longitude=31.2357)).model_dump_json()
     ).with_inputs("query"),
+    dspy.Example(
+        query="What's the weather in Moscow?",
+        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=55.7558, longitude=37.6173)).model_dump_json()
+    ).with_inputs("query"),
+    dspy.Example(
+        query="Tell me about the weather in Rio de Janeiro",
+        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=-22.9068, longitude=-43.1729)).model_dump_json()
+    ).with_inputs("query"),
+    dspy.Example(
+        query="How's Beijing's weather?",
+        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=39.9042, longitude=116.4074)).model_dump_json()
+    ).with_inputs("query"),
+    dspy.Example(
+        query="I need the weather for Cape Town",
+        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=-33.9249, longitude=18.4241)).model_dump_json()
+    ).with_inputs("query"),
+    dspy.Example(
+        query="Mumbai weather forecast",
+        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=19.0760, longitude=72.8777)).model_dump_json()
+    ).with_inputs("query"),
 ]
 
 trainset = [x.with_inputs('query') for x in train_data]
