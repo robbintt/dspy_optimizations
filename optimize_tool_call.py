@@ -194,7 +194,7 @@ if __name__ == "__main__":
     program_to_optimize(query="weather in paris")
     print("\n--- Unoptimized Program's Prompt ---")
     if zai_glm_4_6.history:
-        print(zai_glm_4_6.history[0]['messages'][-1]['content'])
+        print(zai_glm_4_6.history[-1]['messages'][-1]['content'])
 
     # Compile the program to find an optimized prompt.
     optimized_program = optimizer.compile(
