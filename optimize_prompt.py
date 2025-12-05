@@ -91,14 +91,18 @@ if __name__ == "__main__":
     unoptimized_program = SentimentClassifier()
 
     print("\n--- Unoptimized Program's Prompt ---")
-    unoptimized_program.predictor.dump_state()
+    # A prompt consists of instructions and demonstrations.
+    # The unoptimized prompt has instructions from the signature, but no demonstrations.
+    print("Instructions:", unoptimized_program.predictor.signature.instructions)
+    print("Demos:", unoptimized_program.predictor.demos)
 
     # Compile the program. The optimizer will find the best prompt and demonstrations.
     optimized_program = optimizer.compile(unoptimized_program, trainset=trainset)
 
     print("\n--- Optimized Program's Prompt ---")
-    # Inspect the optimized prompt and demonstrations.
-    optimized_program.predictor.dump_state()
+    # The optimized prompt has the same instructions, but now includes demonstrations.
+    print("Instructions:", optimized_program.predictor.signature.instructions)
+    print("Demos:", optimized_program.predictor.demos)
 
     print("\n--- Evaluating Optimized Program ---")
     # Evaluate the performance of the optimized program on the development set.
