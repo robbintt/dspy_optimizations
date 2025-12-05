@@ -5,11 +5,13 @@ import json
 from datetime import datetime
 from pydantic import BaseModel, Field, ValidationError
 
+#GLM_46='openai/glm-4.6',
+GLM_46='openai/z-ai/glm-4.6'
+
 # --- Setup LM ---
 # Configure the language model and adapter.
-# The user mentioned 'zai-glm-4.6', which we will treat as an OpenAI-compatible model endpoint.
 zai_glm_4_6 = dspy.LM(
-    model='openai/zai-glm-4.6',
+    model=GLM_46,
     api_key=os.getenv("ZAI_API_KEY", "your-api-key-here"),
     api_base=os.getenv("ZAI_API_BASE", "your-api-base-here"),
     cache=False,
@@ -217,8 +219,11 @@ optimizer = GEPA(
     # A powerful model is recommended for the reflection step.
     # You can remove `reflection_lm` if you don't have access to a different model.
     reflection_lm=dspy.LM(
-        model='openai/gpt-4o',
-        api_key=os.getenv("OPENAI_API_KEY", "your-openai-key-here"),
+        model=GLM_46,
+        api_key=os.getenv("ZAI_API_KEY", "your-api-key-here"),
+        api_base=os.getenv("ZAI_API_BASE", "your-api-base-here"),
+        #cache=False,
+        #disable_reasoning=True,
     )
 )
 
