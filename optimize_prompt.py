@@ -60,13 +60,6 @@ class SentimentClassifier(dspy.Module):
     def forward(self, text):
         prediction = self.predictor(text=text)
 
-        # Sample for a programmatic constraint:
-        # dspy.Suggest enforces that a condition must be true.
-        # During optimization, if the suggestion fails, DSPy can self-correct.
-        dspy.Suggest(
-            prediction.sentiment in ["Positive", "Negative", "Neutral"],
-            "The sentiment must be one of Positive, Negative, or Neutral."
-        )
         return prediction
 
 
