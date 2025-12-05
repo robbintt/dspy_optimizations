@@ -13,7 +13,7 @@ zai_glm_4_6 = dspy.LM(
 )
 
 # Set the configured language model as the default for all dspy modules.
-dspy.configure(lm=zai_glm_4_6)
+dspy.configure(lm=zai_glm_4_6, adapter=dspy.ChatAdapter())
 
 
 # --- 2. Data ---
