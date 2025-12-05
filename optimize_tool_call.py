@@ -35,7 +35,8 @@ class ToolCall(BaseModel):
 # --- 3. Program Definition ---
 # The initial prompt, including the JSON schema, is placed in the signature's docstring.
 class ToolSignature(dspy.Signature):
-    """You have access to the following tools.
+    """You have access to a list of tools.
+Your task is to follow the user's query and call a tool if necessary.
 To use a tool, you MUST respond with a single JSON object exclusively in the following format (do not include ```json ... ``` or any other text):
 {
   "tool_name": "NAME_OF_THE_TOOL",
@@ -43,19 +44,9 @@ To use a tool, you MUST respond with a single JSON object exclusively in the fol
 }
 
 Do NOT include any other text, explanation, or conversational filler before or after the JSON object if you are calling a tool.
-If you are not calling a tool, respond to the user as a helpful assistant.
+If you are not calling a tool, respond to the user as a helpful assistant."""
 
-Available tools:
-<tools>
-[
-  {
-    "name": "get_weather",
-    "description": "Get the weather for a given location",
-    "parameters": {"$schema":"http://json-schema.org/draft-07/schema#","required":["latitude","longitude"],"properties":{"longitude":{"type":"number"},"latitude":{"type":"number"}},"additionalProperties":false,"type":"object"}
-  }
-]
-</tools>
-"""
+    tools = dspy.InputField(desc="The list of available tools in JSON format.")
     query = dspy.InputField(desc="User's query asking for a tool call.")
     tool_call: ToolCall = dspy.OutputField(desc="A valid JSON object representing a tool call.")
 
@@ -65,70 +56,91 @@ class ToolCaller(dspy.Module):
         super().__init__()
         self.predictor = dspy.Predict(ToolSignature)
 
-    def forward(self, query):
-        prediction = self.predictor(query=query)
+    def forward(self, query, tools):
+        prediction = self.predictor(query=query, tools=tools)
         return prediction
 
 
 # --- 4. Data ---
+# Define the tool schema that will be passed as input to the program.
+tools_schema_str = json.dumps([
+    {
+        "name": "get_weather",
+        "description": "Get the weather for a given location",
+        "parameters": GetWeatherInput.model_json_schema()
+    }
+], indent=2)
+
 # The "gold" standard for this task is a valid JSON string that conforms to the schema.
 train_data = [
     dspy.Example(
         query="what's the weather like in san francisco?",
+        tools=tools_schema_str,
         tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=37.7749, longitude=-122.4194)).model_dump_json()
-    ).with_inputs("query"),
+    ),
     dspy.Example(
         query="tell me the weather for tokyo",
+        tools=tools_schema_str,
         tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=35.6895, longitude=139.6917)).model_dump_json()
-    ).with_inputs("query"),
+    ),
 ]
 
 dev_data = [
     dspy.Example(
         query="weather in london please",
+        tools=tools_schema_str,
         tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=51.5072, longitude=-0.1276)).model_dump_json()
-    ).with_inputs("query"),
+    ),
     dspy.Example(
         query="how is the weather in new york city",
+        tools=tools_schema_str,
         tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=40.7128, longitude=-74.0060)).model_dump_json()
-    ).with_inputs("query"),
+    ),
     # Add more varied examples to better test the model
     dspy.Example(
         query="I'm in Sydney, what's the weather like?",
+        tools=tools_schema_str,
         tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=-33.8688, longitude=151.2093)).model_dump_json()
-    ).with_inputs("query"),
+    ),
     dspy.Example(
         query="give me the forecast for Paris",
+        tools=tools_schema_str,
         tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=48.8566, longitude=2.3522)).model_dump_json()
-    ).with_inputs("query"),
+    ),
     dspy.Example(
         query="is it sunny in cairo",
+        tools=tools_schema_str,
         tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=30.0444, longitude=31.2357)).model_dump_json()
-    ).with_inputs("query"),
+    ),
     dspy.Example(
         query="What's the weather in Moscow?",
+        tools=tools_schema_str,
         tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=55.7558, longitude=37.6173)).model_dump_json()
-    ).with_inputs("query"),
+    ),
     dspy.Example(
         query="Tell me about the weather in Rio de Janeiro",
+        tools=tools_schema_str,
         tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=-22.9068, longitude=-43.1729)).model_dump_json()
-    ).with_inputs("query"),
+    ),
     dspy.Example(
         query="How's Beijing's weather?",
+        tools=tools_schema_str,
         tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=39.9042, longitude=116.4074)).model_dump_json()
-    ).with_inputs("query"),
+    ),
     dspy.Example(
         query="I need the weather for Cape Town",
+        tools=tools_schema_str,
         tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=-33.9249, longitude=18.4241)).model_dump_json()
-    ).with_inputs("query"),
+    ),
     dspy.Example(
         query="Mumbai weather forecast",
+        tools=tools_schema_str,
         tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=19.0760, longitude=72.8777)).model_dump_json()
-    ).with_inputs("query"),
+    ),
 ]
 
-trainset = [x.with_inputs('query') for x in train_data]
-devset = [x.with_inputs('query') for x in dev_data]
+trainset = [x.with_inputs('query', 'tools') for x in train_data]
+devset = [x.with_inputs('query', 'tools') for x in dev_data]
 
 
 # --- 5. Metric Definition ---
@@ -190,29 +202,12 @@ if __name__ == "__main__":
     program_to_optimize = ToolCaller()
 
     # View the unoptimized prompt by running it with a dummy input.
-    program_to_optimize(query="weather in paris")
+    program_to_optimize(query="weather in paris", tools=tools_schema_str)
     print("\n--- Unoptimized Program's Prompt ---")
     if zai_glm_4_6.history:
         print(zai_glm_4_6.history[-1]['messages'][-1]['content'])
 
-    # Compile the program to find an optimized prompt.
-    optimized_program = optimizer.compile(
-        program_to_optimize,
-        trainset=trainset,
-        valset=devset,
-    )
-
-    # View the optimized prompt.
-    optimized_program(query="weather in berlin")
-    print("\n--- Optimized Program's Prompt ---")
-    if len(zai_glm_4_6.history) > 1:
-        final_prompt = zai_glm_4_6.history[-1]['messages'][-1]['content']
-        print(final_prompt)
-        with open("optimized_tool_call_prompt.txt", "w") as f:
-            f.write(final_prompt)
-        print("\nFinal prompt saved to 'optimized_tool_call_prompt.txt'")
-
-    print("\n--- Evaluating Optimized Program ---")
+    print("\n--- Evaluating Unoptimized Program ---")
     from dspy.evaluate import Evaluate
 
     try:
@@ -223,12 +218,36 @@ if __name__ == "__main__":
         display_table = False
 
     evaluate = Evaluate(devset=devset, metric=validation_metric_with_feedback, num_threads=1, display_progress=True, display_table=display_table)
+    eval_result = evaluate(program_to_optimize)
+    print(f"\nInitial score on dev set: {eval_result.score if eval_result else 'N/A'}")
+
+
+    # Compile the program to find an optimized prompt.
+    print("\n--- Compiling Program ---")
+    optimized_program = optimizer.compile(
+        program_to_optimize,
+        trainset=trainset,
+        valset=devset,
+    )
+
+    # View the optimized prompt.
+    optimized_program(query="weather in berlin", tools=tools_schema_str)
+    print("\n--- Optimized Program's Prompt ---")
+    if len(zai_glm_4_6.history) > 1:
+        final_prompt = zai_glm_4_6.history[-1]['messages'][-1]['content']
+        print(final_prompt)
+        with open("optimized_tool_call_prompt.txt", "w") as f:
+            f.write(final_prompt)
+        print("\nFinal prompt saved to 'optimized_tool_call_prompt.txt'")
+
+    print("\n--- Evaluating Optimized Program ---")
+    evaluate = Evaluate(devset=devset, metric=validation_metric_with_feedback, num_threads=1, display_progress=True, display_table=display_table)
     eval_result = evaluate(optimized_program)
     print(f"\nFinal score on dev set: {eval_result.score if eval_result else 'N/A'}")
 
     # Test with a live example to see the final output.
     print("\n--- Live Test ---")
-    live_test = optimized_program(query="weather in cairo")
+    live_test = optimized_program(query="weather in cairo", tools=tools_schema_str)
     print(f"Query: weather in cairo")
     print(f"Output:\n{live_test.tool_call}")
 
