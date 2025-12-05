@@ -5,8 +5,8 @@ import os
 # This section configures the language model.
 # Replace the placeholders with your actual model details and credentials.
 # The user mentioned 'zai-glm-4.6', which we will treat as an OpenAI-compatible model endpoint.
-zai_glm_4_6 = dspy.OpenAI(
-    model='zai-glm-4.6',
+zai_glm_4_6 = dspy.LM(
+    model='openai/zai-glm-4.6',
     api_key=os.getenv("ZAI_API_KEY", "your-api-key-here"),
     api_base=os.getenv("ZAI_API_BASE", "your-api-base-here"),
     # Add any other necessary parameters for your model here.
