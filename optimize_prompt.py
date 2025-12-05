@@ -13,7 +13,7 @@ zai_glm_4_6 = dspy.LM(
 )
 
 # Set the configured language model as the default for all dspy modules.
-dspy.configure(lm=zai_glm_4_6, adapter=dspy.ChatAdapter())
+dspy.configure(lm=zai_glm_4_6, adapter=dspy.ChatAdapter(), experimental=True)
 
 
 # --- 2. Data ---
@@ -73,14 +73,11 @@ def sentiment_metric(gold, pred, trace=None):
 
 # --- 5. Optimizer ---
 # This section configures the prompt optimizer (teleprompter).
-# We'll use BootstrapFewShot, which is effective for generating prompts with demonstrations.
-from dspy.teleprompt import BootstrapFewShot
-
-# Optimizer configuration
-config = dict(max_bootstrapped_demos=4, max_labeled_demos=4)
+# We'll use MIPROv2, which is recommended for DSPy v3.
+from dspy.teleprompt import MIPROv2
 
 # Instantiate the optimizer.
-optimizer = BootstrapFewShot(metric=sentiment_metric, **config)
+optimizer = MIPROv2(metric=sentiment_metric, auto="light")
 
 
 # --- 6. Execution ---
@@ -99,7 +96,12 @@ if __name__ == "__main__":
     print(zai_glm_4_6.history[0]['messages'][-1]['content'])
 
     # Compile the program. The optimizer will find the best prompt and demonstrations.
-    optimized_program = optimizer.compile(unoptimized_program, trainset=trainset)
+    optimized_program = optimizer.compile(
+        unoptimized_program,
+        trainset=trainset,
+        max_bootstrapped_demos=4,
+        max_labeled_demos=4
+    )
 
     # To view the optimized prompt, we'll run it with a dummy input as well.
     optimized_program(text="This is another test sentence.")
