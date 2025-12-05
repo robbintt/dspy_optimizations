@@ -207,7 +207,11 @@ if __name__ == "__main__":
     optimized_program(query="weather in berlin")
     print("\n--- Optimized Program's Prompt ---")
     if len(zai_glm_4_6.history) > 1:
-        print(zai_glm_4_6.history[-1]['messages'][-1]['content'])
+        final_prompt = zai_glm_4_6.history[-1]['messages'][-1]['content']
+        print(final_prompt)
+        with open("optimized_tool_call_prompt.txt", "w") as f:
+            f.write(final_prompt)
+        print("\nFinal prompt saved to 'optimized_tool_call_prompt.txt'")
 
     print("\n--- Evaluating Optimized Program ---")
     from dspy.evaluate import Evaluate
