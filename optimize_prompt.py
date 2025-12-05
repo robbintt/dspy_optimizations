@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
     print("\n--- Unoptimized Program's Prompt ---")
     # The unoptimized prompt has instructions from the signature, but no demonstrations.
-    print(zai_glm_4_6.history[0]['prompt'])
+    print(zai_glm_4_6.history[0]['messages'][-1]['content'])
 
     # Compile the program. The optimizer will find the best prompt and demonstrations.
     optimized_program = optimizer.compile(unoptimized_program, trainset=trainset)
@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
     print("\n--- Optimized Program's Prompt ---")
     # The optimized prompt has the same instructions, but now includes demonstrations.
-    print(zai_glm_4_6.history[-1]['prompt'])
+    print(zai_glm_4_6.history[-1]['messages'][-1]['content'])
 
     print("\n--- Evaluating Optimized Program ---")
     # Evaluate the performance of the optimized program on the development set.
