@@ -90,6 +90,9 @@ if __name__ == "__main__":
     # Instantiate the program we want to optimize.
     unoptimized_program = SentimentClassifier()
 
+    print("\n--- Unoptimized Program's Prompt ---")
+    unoptimized_program.predictor.dump_state()
+
     # Compile the program. The optimizer will find the best prompt and demonstrations.
     optimized_program = optimizer.compile(unoptimized_program, trainset=trainset)
 
