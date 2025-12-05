@@ -99,7 +99,7 @@ devset = [x.with_inputs('query') for x in dev_data]
 
 
 # --- 5. Metric Definition ---
-def validation_metric_with_feedback(gold, pred, trace=None):
+def validation_metric_with_feedback(gold, pred, trace=None, pred_name=None, pred_trace=None):
     """
     Validates the predicted tool_call JSON against the Pydantic schema.
     Returns a score of 1 if valid, 0 otherwise, and provides specific
