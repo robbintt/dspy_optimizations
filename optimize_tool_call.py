@@ -1,9 +1,9 @@
 # --- 1. Imports and Setup ---
 import dspy
 import os
-import json
 from datetime import datetime
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel
+import harness
 
 #GLM_46='openai/glm-4.6',
 GLM_46='openai/z-ai/glm-4.6'
@@ -22,73 +22,12 @@ zai_glm_4_6 = dspy.LM(
 dspy.configure(lm=zai_glm_4_6, adapter=dspy.ChatAdapter(), experimental=True)
 
 
-# --- 2. Schema Definition (Pydantic) ---
-# Define the expected JSON structure using Pydantic models.
-# This provides clear type hints (e.g., float) that DSPy uses to guide the LM.
-class GetWeatherInput(BaseModel):
-    """Input schema for the get_weather tool."""
-    longitude: float
-    latitude: float
-
-class ToolCall(BaseModel):
-    """The general tool-calling JSON object."""
-    tool_name: str = Field(..., pattern="^get_weather$")
-    tool_input: GetWeatherInput
-
-
-# --- 3. Data ---
-# Define the tool schema that will be passed as input to the program.
-tools_schema_str = json.dumps([
-    {
-        "name": "get_weather",
-        "description": "Get the weather for a given location",
-        "parameters": GetWeatherInput.model_json_schema()
-    }
-], indent=2)
-
-
-# --- 4. Program Definition ---
-# The system message is provided as a fixed preamble.
-final_system_message = """You are a helpful AI assistant. 
-***
-Description:
-Assistant is an AI assistant to memgrafter.
-***
-Persona:
-I am a 40 year old programmer. I am interested in text games, science fiction, and programming. I like to build code projects, woodworking and other fabrication, and read speculative nonfiction or harder science fiction.
-
-I am 6'2" and 205 lbs. My workouts are 90 minute zone 2 runs and olympic barbell.
-
-
-***
-
-You have access to the following tools.
-To use a tool, you MUST respond with a single JSON object exclusively in the following format (do not include ```json ... ``` or any other text):
-{
-  "tool_name": "NAME_OF_THE_TOOL",
-  "tool_input": { /* parameters for the tool as a JSON object, matching the schema provided for the tool */ }
-}
-
-Do NOT include any other text, explanation, or conversational filler before or after the JSON object if you are calling a tool.
-If you are not calling a tool, respond to the user as a helpful assistant.
-
-Available tools:
-<tools>
-[
-  {
-    "name": "get_weather",
-    "description": "Get the weather for a given location",
-    "parameters": {"$schema":"http:\/\/json-schema.org\/draft-07\/schema#","required":["latitude","longitude"],"properties":{"longitude":{"type":"number"},"latitude":{"type":"number"}},"additionalProperties":false,"type":"object"}
-  }
-]
-</tools>"""
-
-
+# --- 2. Program Definition ---
 class ToolSignature(dspy.Signature):
-    __doc__ = final_system_message
+    __doc__ = harness.final_system_message
 
     query = dspy.InputField(desc="User's query asking for a tool call.")
-    tool_call: ToolCall = dspy.OutputField(desc="A valid JSON object representing a tool call.")
+    tool_call: harness.ToolCall = dspy.OutputField(desc="A valid JSON object representing a tool call.")
 
 
 class ToolCaller(dspy.Module):
@@ -124,95 +63,17 @@ Assistant: I'm here to help. What is it?
         prediction = self.predictor(query=full_query)
         return prediction
 
-# The "gold" standard for this task is a valid JSON string that conforms to the schema.
-train_data = [
-    dspy.Example(
-        query="what's the weather like in san francisco?",
-        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=37.7749, longitude=-122.4194)).model_dump_json()
-    ),
-    dspy.Example(
-        query="tell me the weather for tokyo",
-        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=35.6895, longitude=139.6917)).model_dump_json()
-    ),
-]
-
-dev_data = [
-    dspy.Example(
-        query="weather in london please",
-        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=51.5072, longitude=-0.1276)).model_dump_json()
-    ),
-    dspy.Example(
-        query="how is the weather in new york city",
-        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=40.7128, longitude=-74.0060)).model_dump_json()
-    ),
-    # Add more varied examples to better test the model
-    dspy.Example(
-        query="I'm in Sydney, what's the weather like?",
-        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=-33.8688, longitude=151.2093)).model_dump_json()
-    ),
-    dspy.Example(
-        query="give me the forecast for Paris",
-        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=48.8566, longitude=2.3522)).model_dump_json()
-    ),
-    dspy.Example(
-        query="is it sunny in cairo",
-        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=30.0444, longitude=31.2357)).model_dump_json()
-    ),
-    dspy.Example(
-        query="What's the weather in Moscow?",
-        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=55.7558, longitude=37.6173)).model_dump_json()
-    ),
-    dspy.Example(
-        query="Tell me about the weather in Rio de Janeiro",
-        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=-22.9068, longitude=-43.1729)).model_dump_json()
-    ),
-    dspy.Example(
-        query="How's Beijing's weather?",
-        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=39.9042, longitude=116.4074)).model_dump_json()
-    ),
-    dspy.Example(
-        query="I need the weather for Cape Town",
-        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=-33.9249, longitude=18.4241)).model_dump_json()
-    ),
-    dspy.Example(
-        query="Mumbai weather forecast",
-        tool_call=ToolCall(tool_name="get_weather", tool_input=GetWeatherInput(latitude=19.0760, longitude=72.8777)).model_dump_json()
-    ),
-]
-
-trainset = [x.with_inputs('query') for x in train_data]
-devset = [x.with_inputs('query') for x in dev_data]
+trainset = [x.with_inputs('query') for x in harness.train_data]
+devset = [x.with_inputs('query') for x in harness.dev_data]
 
 
-# --- 5. Metric Definition ---
-def validation_metric_with_feedback(gold, pred, trace=None, pred_name=None, pred_trace=None):
-    """
-    Validates the predicted tool_call JSON against the Pydantic schema.
-    Returns a score of 1 if valid, 0 otherwise, and provides specific
-    feedback on validation errors for the GEPA optimizer.
-    """
-    raw_output = pred.tool_call
-    if isinstance(raw_output, BaseModel):
-        raw_output = raw_output.model_dump_json()
-
-    try:
-        ToolCall.model_validate_json(raw_output)
-        return dspy.Prediction(score=1.0, feedback="Correct format and types.")
-    except ValidationError as e:
-        feedback = f"JSON validation failed. Ensure all field types are correct (e.g., numbers are not strings). Error: {e}"
-        return dspy.Prediction(score=0.0, feedback=feedback)
-    except (json.JSONDecodeError, TypeError, Exception) as e:
-        feedback = f"Invalid JSON or unexpected error. Raw output: '{raw_output}'. Error: {e}"
-        return dspy.Prediction(score=0.0, feedback=feedback)
-
-
-# --- 6. Optimizer ---
+# --- 3. Optimizer ---
 from dspy.teleprompt import GEPA
 
 # GEPA is a reflective optimizer that can use textual feedback from metrics
 # to generate improved prompts.
 optimizer = GEPA(
-    metric=validation_metric_with_feedback,
+    metric=harness.validation_metric_with_feedback,
     auto="light",
     track_stats=True,
     reflection_minibatch_size=1,
@@ -228,7 +89,7 @@ optimizer = GEPA(
 )
 
 
-# --- 7. Execution ---
+# --- 4. Execution ---
 if __name__ == "__main__":
     # Add a direct test call to diagnose connection issues.
     print("--- Running a direct API call to test configuration ---")
@@ -261,7 +122,7 @@ if __name__ == "__main__":
         print("`pandas` not installed. Skipping table display.")
         display_table = False
 
-    evaluate = Evaluate(devset=devset, metric=validation_metric_with_feedback, num_threads=1, display_progress=True, display_table=display_table)
+    evaluate = Evaluate(devset=devset, metric=harness.validation_metric_with_feedback, num_threads=1, display_progress=True, display_table=display_table)
     eval_result = evaluate(program_to_optimize)
     print(f"\nInitial score on dev set: {eval_result.score if eval_result else 'N/A'}")
 
@@ -292,7 +153,7 @@ if __name__ == "__main__":
         print(f"\nFinal prompt saved to '{file_path}'")
 
     print("\n--- Evaluating Optimized Program ---")
-    evaluate = Evaluate(devset=devset, metric=validation_metric_with_feedback, num_threads=1, display_progress=True, display_table=display_table)
+    evaluate = Evaluate(devset=devset, metric=harness.validation_metric_with_feedback, num_threads=1, display_progress=True, display_table=display_table)
     eval_result = evaluate(optimized_program)
     print(f"\nFinal score on dev set: {eval_result.score if eval_result else 'N/A'}")
 
@@ -308,7 +169,7 @@ if __name__ == "__main__":
         if isinstance(tool_call_output, BaseModel):
             tool_call_output = tool_call_output.model_dump_json()
 
-        ToolCall.model_validate_json(tool_call_output)
+        harness.ToolCall.model_validate_json(tool_call_output)
         print("\nLive test output is VALID.")
     except Exception as e:
         print(f"\nLive test output is INVALID: {e}")
