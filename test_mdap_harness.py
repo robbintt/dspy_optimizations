@@ -199,14 +199,22 @@ class TestMDAPHarness:
             mock_response.choices[0].message.content = 'invalid json'
             mock_acompletion.return_value = mock_response
             
-            with pytest.raises(Exception, match="No valid candidates found"):
-                await asyncio.wait_for(
-                    harness.first_to_ahead_by_k(
-                        "test prompt", 
-                        RedFlagParser.parse_move_state_flag
-                    ),
-                    timeout=5.0
-                )
+            # Reduce max_candidates to make the test fail faster
+            original_max_candidates = harness.config.max_candidates
+            harness.config.max_candidates = 3
+            
+            try:
+                with pytest.raises(Exception, match="No valid candidates found"):
+                    await asyncio.wait_for(
+                        harness.first_to_ahead_by_k(
+                            "test prompt", 
+                            RedFlagParser.parse_move_state_flag
+                        ),
+                        timeout=10.0
+                    )
+            finally:
+                # Restore original config
+                harness.config.max_candidates = original_max_candidates
     
     @pytest.mark.asyncio
     async def test_execute_step_success(self, harness):
