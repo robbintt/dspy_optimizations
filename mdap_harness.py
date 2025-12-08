@@ -38,6 +38,19 @@ class MDAPConfig:
     max_retries: int = 3
     cost_threshold: Optional[float] = None
 
+    # --- Model Behavior Options ---
+    # Options to control model output, particularly for Cerebras/zai-glm-4.6
+    # See: https://inference-docs.cerebras.ai/resources/glm-migration#7-minimize-reasoning-when-not-needed
+
+    # Set appropriate max_completion_tokens limits. For focused responses, consider using lower values.
+    # Note: LiteLLM uses the 'max_tokens' parameter, which maps to 'max_completion_tokens' in the API.
+    max_tokens: int = int(os.getenv("MDAP_MAX_TOKENS", "100"))
+
+    # Disable Reasoning with the nonstandard disable_reasoning: True parameter.
+    # This is different from the 'thinking' parameter that Z.ai uses in their API.
+    # Set to None to omit the parameter from the API call.
+    disable_reasoning: Optional[bool] = os.getenv("MDAP_DISABLE_REASONING", "true").lower() == "true"
+
 class RedFlagParser:
     """Red-flagging parser to filter invalid responses before voting"""
     
