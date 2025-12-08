@@ -107,7 +107,7 @@ show_help() {
 
 # Function to run example
 run_example() {
-    local disks=${1:-3}
+    local disks=${1:-2}
     print_status "Running Hanoi example with $disks disks..."
     python example_hanoi.py
 }
