@@ -173,14 +173,16 @@ class MDAPHarness:
         """
         Execute a single atomic step with error correction
         """
+        last_exception = None
         for attempt in range(self.config.max_retries):
             try:
                 result = await self.first_to_ahead_by_k(step_prompt, response_parser)
                 return result
             except Exception as e:
+                last_exception = e
                 logger.error(f"Step execution attempt {attempt + 1} failed: {e}")
                 if attempt == self.config.max_retries - 1:
-                    raise
+                    break
         
         raise Exception(f"Step execution failed after {self.config.max_retries} attempts")
     
