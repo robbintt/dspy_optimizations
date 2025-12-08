@@ -317,3 +317,6 @@ class TestHanoiIntegration:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+# The test classes are already properly structured for pytest
+# No additional changes needed

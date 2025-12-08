@@ -108,3 +108,12 @@ if __name__ == "__main__":
     else:
         print("\n💥 Some tests failed!")
         sys.exit(1)
+
+# Add pytest test functions
+def test_hanoi_solver_sync():
+    """Synchronous wrapper for pytest"""
+    return asyncio.run(test_hanoi_solver())
+
+def test_benchmark_performance_sync():
+    """Synchronous wrapper for pytest"""
+    return asyncio.run(benchmark_performance())
