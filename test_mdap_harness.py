@@ -190,7 +190,6 @@ class TestMDAPHarness:
             assert result['to_peg'] == 'B'
     
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Test hangs - needs investigation of first_to_ahead_by_k implementation")
     async def test_first_to_ahead_by_k_no_valid_candidates(self, harness):
         """Test first-to-ahead-by-K when no valid candidates found"""
         with patch('mdap_harness.acompletion') as mock_acompletion:
@@ -206,12 +205,9 @@ class TestMDAPHarness:
             
             try:
                 with pytest.raises(Exception, match="No valid candidates found"):
-                    await asyncio.wait_for(
-                        harness.first_to_ahead_by_k(
-                            "test prompt", 
-                            RedFlagParser.parse_move_state_flag
-                        ),
-                        timeout=10.0
+                    await harness.first_to_ahead_by_k(
+                        "test prompt", 
+                        RedFlagParser.parse_move_state_flag
                     )
             finally:
                 # Restore original config

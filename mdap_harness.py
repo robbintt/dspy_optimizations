@@ -123,7 +123,9 @@ class MDAPHarness:
                 return None
         
         # Sample candidates until we have a winner or hit max limit
-        while len(candidates) < self.config.max_candidates:
+        attempts = 0
+        while len(candidates) < self.config.max_candidates and attempts < self.config.max_candidates:
+            attempts += 1
             # Get new candidate
             raw_response = await get_candidate()
             if raw_response is None:
