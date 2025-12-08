@@ -26,14 +26,14 @@ class TestMDAPConfig:
     def test_custom_config(self):
         """Test custom configuration values"""
         config = MDAPConfig(
-            model="gpt-4",
+            model="gpt-4o-mini",
             k_margin=5,
             max_candidates=15,
             temperature=0.2,
             max_retries=5,
             cost_threshold=10.0
         )
-        assert config.model == "gpt-4"
+        assert config.model == "gpt-4o-mini"
         assert config.k_margin == 5
         assert config.max_candidates == 15
         assert config.temperature == 0.2
