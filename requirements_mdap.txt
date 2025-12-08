@@ -4,6 +4,9 @@
 # LiteLLM for unified LLM API access
 litellm>=1.0.0
 
+# Environment variable management
+python-dotenv>=1.0.0
+
 # Standard library modules (included with Python 3.7+)
 # asyncio - for async operations
 # dataclasses - for data structures

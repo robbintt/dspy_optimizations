@@ -32,10 +32,28 @@ echo "📚 Installing dependencies..."
 pip install -r requirements_mdap.txt
 
 # Check if .env file exists, if not create from example
-if [ ! -f ".env" ] && [ -f ".env.example" ]; then
-    echo "📝 Creating .env file from example..."
-    cp .env.example .env
-    echo "⚠️  Please edit .env file and add your API keys"
+if [ ! -f ".env" ]; then
+    if [ -f ".env.example" ]; then
+        echo "📝 Creating .env file from example..."
+        cp .env.example .env
+        echo "⚠️  IMPORTANT: Please edit .env file and add your API keys before running the examples!"
+        echo ""
+        echo "   Required: At least one LLM provider API key (e.g., OPENAI_API_KEY)"
+        echo "   Optional: Configure alternative providers or MDAP settings"
+        echo ""
+    else
+        echo "⚠️  No .env.example found. Creating minimal .env file..."
+        cat > .env << EOF
+# MDAP Environment Configuration
+# Add your API keys here
+
+OPENAI_API_KEY="your-openai-api-key-here"
+LITELLM_LOG="INFO"
+EOF
+        echo "⚠️  Please edit .env file and add your API keys"
+    fi
+else
+    echo "✅ .env file already exists"
 fi
 
 # Create logs directory if it doesn't exist

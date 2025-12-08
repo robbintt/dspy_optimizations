@@ -7,11 +7,23 @@ first-to-ahead-by-K Error correction, and Red-flagging
 import asyncio
 import json
 import logging
+import os
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass
 from collections import Counter
 import litellm
 from litellm import completion, acompletion
+
+# Load environment variables
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # Fallback if python-dotenv not installed
+    pass
+
+# Configure LiteLLM logging from environment
+litellm.set_verbose = os.getenv("LITELLM_LOG", "INFO").upper() == "DEBUG"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,10 +31,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MDAPConfig:
     """Configuration for MDAP execution"""
-    model: str = "gpt-4o-mini"
-    k_margin: int = 3  # First-to-ahead-by-K margin
-    max_candidates: int = 10  # Max candidates to sample
-    temperature: float = 0.1
+    model: str = os.getenv("MDAP_DEFAULT_MODEL", "gpt-4o-mini")
+    k_margin: int = int(os.getenv("MDAP_K_MARGIN", "3"))  # First-to-ahead-by-K margin
+    max_candidates: int = int(os.getenv("MDAP_MAX_CANDIDATES", "10"))  # Max candidates to sample
+    temperature: float = float(os.getenv("MDAP_TEMPERATURE", "0.1"))
     max_retries: int = 3
     cost_threshold: Optional[float] = None
 
