@@ -203,7 +203,7 @@ class TestHanoiMDAP:
         prompt, parser = solver.step_generator(state)
         
         assert isinstance(prompt, str)
-        assert "2 disks" in prompt
+        assert "3 disks" in prompt
         assert callable(parser)
     
     @pytest.mark.asyncio
