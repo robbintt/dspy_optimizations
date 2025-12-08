@@ -117,7 +117,11 @@ class MDAPHarness:
                     temperature=self.config.temperature,
                     max_tokens=100
                 )
-                return response.choices[0].message.content.strip()
+                content = response.choices[0].message.content
+                if content is None:
+                    logger.warning("LLM returned None content")
+                    return None
+                return content.strip()
             except Exception as e:
                 logger.error(f"LLM call failed: {e}")
                 return None
