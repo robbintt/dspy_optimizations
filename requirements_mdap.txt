@@ -10,6 +10,7 @@ python-dotenv>=1.0.0
 # Testing framework
 pytest>=7.0.0
 pytest-asyncio>=0.21.0
+pytest-asyncio>=0.21.0
 
 # Standard library modules (included with Python 3.7+)
 # asyncio - for async operations
