@@ -189,7 +189,8 @@ class MDAPHarness:
     async def execute_mdap(self, 
                           initial_state: Any,
                           step_generator: Callable[[Any], Tuple[str, Callable[[str], Any]]],
-                          termination_check: Callable[[Any], bool]) -> List[Any]:
+                          termination_check: Callable[[Any], bool],
+                          agent: 'MicroAgent' = None) -> List[Any]:
         """
         Execute a complete MDAP process
         """
@@ -207,8 +208,11 @@ class MDAPHarness:
             # Execute step with error correction
             step_result = await self.execute_step(step_prompt, response_parser)
             
-            # Update state (this would be problem-specific)
-            current_state = self.update_state(current_state, step_result)
+            # Update state using the agent's update_state method if available
+            if agent:
+                current_state = agent.update_state(current_state, step_result)
+            else:
+                current_state = self.update_state(current_state, step_result)
             execution_trace.append(current_state)
             
             # Check cost threshold
@@ -235,7 +239,8 @@ class MDAPHarness:
         return await self.execute_mdap(
             initial_state=initial_state,
             step_generator=agent.step_generator,
-            termination_check=agent.is_solved
+            termination_check=agent.is_solved,
+            agent=agent
         )
     
     def update_state(self, current_state: Any, step_result: Any) -> Any:
