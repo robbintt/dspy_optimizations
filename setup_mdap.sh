@@ -31,6 +31,10 @@ pip install --upgrade pip
 echo "📚 Installing dependencies..."
 pip install -r requirements_mdap.txt
 
+# Ensure pytest-asyncio is properly installed
+echo "🔧 Ensuring pytest-asyncio is installed..."
+pip install pytest-asyncio>=0.21.0
+
 # Check if .env file exists, if not create from example
 if [ ! -f ".env" ]; then
     if [ -f ".env.example" ]; then
