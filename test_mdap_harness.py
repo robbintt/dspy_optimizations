@@ -111,7 +111,7 @@ class TestMDAPHarness:
     def config(self):
         """Create test configuration"""
         return MDAPConfig(
-            model="test-model",
+            model="gpt-4o-mini",
             k_margin=2,
             max_candidates=5,
             temperature=0.1,
@@ -284,11 +284,20 @@ class TestMDAPHarness:
                 return state["step"] >= state["max_steps"]
         
         agent = TestAgent()
-        trace = await harness.execute_agent_mdap(agent, 3)
         
-        assert len(trace) == 4  # Initial + 3 steps
-        assert trace[0]["step"] == 0
-        assert trace[-1]["step"] == 3
+        # Mock the LLM calls to avoid actual API calls
+        with patch('mdap_harness.acompletion') as mock_acompletion:
+            # Setup mock to return a simple response
+            mock_response = MagicMock()
+            mock_response.choices = [MagicMock()]
+            mock_response.choices[0].message.content = "step completed"
+            mock_acompletion.return_value = mock_response
+            
+            trace = await harness.execute_agent_mdap(agent, 3)
+            
+            assert len(trace) == 4  # Initial + 3 steps
+            assert trace[0]["step"] == 0
+            assert trace[-1]["step"] == 3
 
 class TestMDAPIntegration:
     """Integration tests for MDAP framework"""
