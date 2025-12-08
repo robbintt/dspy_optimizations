@@ -124,12 +124,20 @@ class MDAPHarness:
         async def get_candidate():
             """Get a single candidate response"""
             try:
-                response = await acompletion(
-                    model=self.config.model,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=self.config.temperature,
-                    max_tokens=100
-                )
+                # Build completion parameters, including optional model-specific ones
+                completion_params = {
+                    "model": self.config.model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": self.config.temperature,
+                    "max_tokens": self.config.max_tokens,
+                }
+
+                # Add disable_reasoning if specified in the config
+                if self.config.disable_reasoning is not None:
+                    completion_params["disable_reasoning"] = self.config.disable_reasoning
+                
+                response = await acompletion(**completion_params)
+                
                 content = response.choices[0].message.content
                 if content is None:
                     logger.warning(f"LLM returned None content. Full response: {response}")
