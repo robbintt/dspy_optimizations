@@ -6,6 +6,7 @@ import pytest
 import asyncio
 from unittest.mock import patch, MagicMock
 from hanoi_solver import HanoiMDAP, HanoiState, MDAPConfig
+from micro_agent import MicroAgent
 
 class TestHanoiState:
     """Test HanoiState class"""
@@ -215,7 +216,7 @@ class TestHanoiMDAP:
             {"from_peg": "B", "to_peg": "C"}
         ]
         
-        with patch.object(solver, 'first_to_ahead_by_k') as mock_voting:
+        with patch.object(solver.harness, 'first_to_ahead_by_k') as mock_voting:
             mock_voting.side_effect = optimal_moves
             
             trace = await solver.solve_hanoi(2)
@@ -234,7 +235,7 @@ class TestHanoiMDAP:
     async def test_solve_hanoi_with_invalid_move(self, solver):
         """Test solving Hanoi when LLM returns invalid move"""
         # Mock responses: first invalid, then valid
-        with patch.object(solver, 'first_to_ahead_by_k') as mock_voting:
+        with patch.object(solver.harness, 'first_to_ahead_by_k') as mock_voting:
             mock_voting.side_effect = [
                 {"from_peg": "A", "to_peg": "A"},  # Invalid: same peg
                 {"from_peg": "A", "to_peg": "B"},  # Valid
@@ -265,7 +266,7 @@ class TestHanoiIntegration:
             {"from_peg": "A", "to_peg": "C"}
         ]
         
-        with patch.object(solver, 'first_to_ahead_by_k') as mock_voting:
+        with patch.object(solver.harness, 'first_to_ahead_by_k') as mock_voting:
             mock_voting.side_effect = optimal_moves
             
             trace = await solver.solve_hanoi(3)
@@ -300,7 +301,7 @@ class TestHanoiIntegration:
         solver = HanoiMDAP(config)
         
         # Simple 1-disk solution
-        with patch.object(solver, 'first_to_ahead_by_k') as mock_voting:
+        with patch.object(solver.harness, 'first_to_ahead_by_k') as mock_voting:
             mock_voting.return_value = {"from_peg": "A", "to_peg": "C"}
             
             trace = await solver.solve_hanoi(1)

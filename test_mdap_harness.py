@@ -8,6 +8,7 @@ import json
 from unittest.mock import AsyncMock, patch, MagicMock
 from collections import Counter
 from mdap_harness import MDAPHarness, MDAPConfig, RedFlagParser
+from micro_agent import MicroAgent
 
 class TestMDAPConfig:
     """Test MDAPConfig class"""
@@ -265,6 +266,29 @@ class TestMDAPHarness:
         """Test that update_state raises NotImplementedError"""
         with pytest.raises(NotImplementedError, match="Subclasses must implement update_state"):
             harness.update_state({}, {})
+    
+    @pytest.mark.asyncio
+    async def test_execute_agent_mdap(self, harness):
+        """Test executing MDAP with a micro agent"""
+        class TestAgent(MicroAgent):
+            def create_initial_state(self, max_steps):
+                return {"step": 0, "max_steps": max_steps}
+            
+            def generate_step_prompt(self, state):
+                return f"Current step: {state['step']}"
+            
+            def update_state(self, current_state, step_result):
+                return {"step": current_state["step"] + 1, "max_steps": current_state["max_steps"]}
+            
+            def is_solved(self, state):
+                return state["step"] >= state["max_steps"]
+        
+        agent = TestAgent()
+        trace = await harness.execute_agent_mdap(agent, 3)
+        
+        assert len(trace) == 4  # Initial + 3 steps
+        assert trace[0]["step"] == 0
+        assert trace[-1]["step"] == 3
 
 class TestMDAPIntegration:
     """Integration tests for MDAP framework"""
