@@ -151,11 +151,13 @@ class TestMDAPHarness:
     @pytest.mark.asyncio
     async def test_first_to_ahead_by_k_red_flagged(self, harness):
         """Test first-to-ahead-by-K with red-flagged responses"""
-        # Mock invalid responses
+        # Mock responses - first few are invalid, then valid
         mock_responses = [
             'invalid json',  # Invalid JSON
             '{"from_peg": "A", "to_peg": "A"}',  # Same peg move
             '{"from_peg": "A", "to_peg": "B"}',  # Valid
+            '{"from_peg": "A", "to_peg": "B"}',  # Same valid response
+            '{"from_peg": "A", "to_peg": "B"}',  # Same valid response
         ]
         
         with patch('mdap_harness.acompletion') as mock_acompletion:
@@ -166,15 +168,22 @@ class TestMDAPHarness:
             call_count = 0
             def side_effect(*args, **kwargs):
                 nonlocal call_count
-                mock_response.choices[0].message.content = mock_responses[call_count]
+                if call_count < len(mock_responses):
+                    mock_response.choices[0].message.content = mock_responses[call_count]
+                else:
+                    mock_response.choices[0].message.content = '{"from_peg": "A", "to_peg": "B"}'
                 call_count += 1
                 return mock_response
             
             mock_acompletion.side_effect = side_effect
             
-            result = await harness.first_to_ahead_by_k(
-                "test prompt", 
-                RedFlagParser.parse_move_state_flag
+            # Add timeout to prevent hanging
+            result = await asyncio.wait_for(
+                harness.first_to_ahead_by_k(
+                    "test prompt", 
+                    RedFlagParser.parse_move_state_flag
+                ),
+                timeout=10.0
             )
             
             assert result['from_peg'] == 'A'
