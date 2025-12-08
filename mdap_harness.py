@@ -119,7 +119,7 @@ class MDAPHarness:
                 )
                 content = response.choices[0].message.content
                 if content is None:
-                    logger.warning("LLM returned None content")
+                    logger.warning(f"LLM returned None content. Full response: {response}")
                     return None
                 return content.strip()
             except Exception as e:
