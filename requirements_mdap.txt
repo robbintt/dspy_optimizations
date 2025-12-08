@@ -1,0 +1,19 @@
+# MDAP Harness Requirements
+# Core dependencies for Massively Decomposed Agentic Processes
+
+# LiteLLM for unified LLM API access
+litellm>=1.0.0
+
+# Standard library modules (included with Python 3.7+)
+# asyncio - for async operations
+# dataclasses - for data structures
+# typing - for type hints
+# json - for JSON parsing
+# logging - for logging
+# collections - for Counter in voting
+
+# Optional: For enhanced logging
+colorlog>=6.0.0
+
+# Optional: For performance monitoring
+psutil>=5.8.0
