@@ -13,15 +13,18 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-# Create virtual environment if it doesn't exist
-if [ ! -d "venv_mdap" ]; then
-    echo "📦 Creating virtual environment..."
-    python3 -m venv venv_mdap
+# Create virtualenvs directory if it doesn't exist
+mkdir -p ~/virtualenvs
+
+VENV_PATH="$HOME/virtualenvs/mdap_harness_venv"
+if [ ! -d "$VENV_PATH" ]; then
+    echo "📦 Creating virtual environment in ~/virtualenvs/mdap_harness_venv..."
+    python3 -m venv "$VENV_PATH"
 fi
 
 # Activate virtual environment
 echo "🔄 Activating virtual environment..."
-source venv_mdap/bin/activate
+source "$VENV_PATH/bin/activate"
 
 # Upgrade pip
 echo "⬆️  Upgrading pip..."
@@ -69,7 +72,7 @@ fi
 echo "✅ MDAP Harness setup complete!"
 echo ""
 echo "🚀 To get started:"
-echo "   1. Activate the environment: source venv_mdap/bin/activate"
+echo "   1. Activate the environment: source ~/virtualenvs/mdap_harness_venv/bin/activate"
 echo "   2. Set your API key in .env file"
 echo "   3. Run example: python example_hanoi.py"
 echo "   4. Run tests: python test_hanoi.py"

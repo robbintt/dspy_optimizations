@@ -2,17 +2,21 @@
 set -euo pipefail
 
 echo "--- Setting up Python virtual environment ---"
-if [ ! -d "venv" ]; then
-    echo "Creating Python virtual environment 'venv'..."
-    python3 -m venv venv
+# Create virtualenvs directory if it doesn't exist
+mkdir -p ~/virtualenvs
+
+VENV_PATH="$HOME/virtualenvs/mdap_venv"
+if [ ! -d "$VENV_PATH" ]; then
+    echo "Creating Python virtual environment in ~/virtualenvs/mdap_venv..."
+    python3 -m venv "$VENV_PATH"
 fi
-echo "Virtual environment 'venv' is ready."
+echo "Virtual environment 'mdap_venv' is ready at $VENV_PATH."
 
 
 echo ""
 echo "--- Installing dependencies ---"
 # Activate venv for this script
-source venv/bin/activate
+source "$VENV_PATH/bin/activate"
 pip install -r requirements.txt
 
 
