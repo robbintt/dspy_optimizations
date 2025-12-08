@@ -17,7 +17,7 @@ async def main():
     print("=" * 40)
     
     # Create solver with GLM 4.6 config
-    config = MDAPConfig(model="zhipuai/glm-4.6")
+    config = MDAPConfig(model="z-ai/glm-4.6")
     solver = HanoiMDAP(config)
     
     # Solve 2-disk Hanoi
