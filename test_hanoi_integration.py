@@ -134,13 +134,13 @@ class TestHanoiMDAP:
             num_disks=3
         )
         
-        # Valid: move 1 onto empty
-        assert solver.is_valid_move(state, 'C', 'B') == False  # 1 onto 2 is invalid
-        assert solver.is_valid_move(state, 'C', 'A') == False  # 1 onto 3 is invalid
-        assert solver.is_valid_move(state, 'B', 'C') == True   # 2 onto 1 is invalid
-        assert solver.is_valid_move(state, 'B', 'A') == True   # 2 onto 3 is invalid
-        assert solver.is_valid_move(state, 'A', 'B') == True   # 3 onto 2 is invalid
-        assert solver.is_valid_move(state, 'A', 'C') == True   # 3 onto 1 is invalid
+        # Test size rule: can only place smaller disk on larger disk
+        assert solver.is_valid_move(state, 'C', 'B') == True   # 1 onto 2 is valid (smaller on larger)
+        assert solver.is_valid_move(state, 'C', 'A') == True   # 1 onto 3 is valid (smaller on larger)
+        assert solver.is_valid_move(state, 'B', 'C') == False  # 2 onto 1 is invalid (larger on smaller)
+        assert solver.is_valid_move(state, 'B', 'A') == True   # 2 onto 3 is valid (smaller on larger)
+        assert solver.is_valid_move(state, 'A', 'B') == False  # 3 onto 2 is invalid (larger on smaller)
+        assert solver.is_valid_move(state, 'A', 'C') == False  # 3 onto 1 is invalid (larger on smaller)
     
     def test_update_state_valid_move(self, solver):
         """Test updating state with valid move"""
