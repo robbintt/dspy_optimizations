@@ -29,7 +29,7 @@ class HanoiState:
             move_count=self.move_count
         )
 
-class HanoiMDAP(MDAPHarness):
+class HanoiMDAP(MicroAgent):
     """MDAP implementation for Towers of Hanoi"""
     
     def __init__(self, config: MDAPConfig = None):
@@ -41,6 +41,7 @@ class HanoiMDAP(MDAPHarness):
                 temperature=0.1
             )
         super().__init__(config)
+        self.harness = MDAPHarness(self.config)
     
     def create_initial_state(self, num_disks: int) -> HanoiState:
         """Create initial Hanoi state with all disks on peg A"""
@@ -123,15 +124,7 @@ Where from_peg and to_peg are one of "A", "B", "C".
     
     async def solve_hanoi(self, num_disks: int) -> List[HanoiState]:
         """Solve Towers of Hanoi using MDAP"""
-        initial_state = self.create_initial_state(num_disks)
-        
-        execution_trace = await self.execute_mdap(
-            initial_state=initial_state,
-            step_generator=self.step_generator,
-            termination_check=self.is_solved
-        )
-        
-        return execution_trace
+        return await self.harness.execute_agent_mdap(self, num_disks)
 
 # Utility function for testing
 def print_solution(trace: List[HanoiState]):
