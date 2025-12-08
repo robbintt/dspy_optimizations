@@ -1,5 +1,10 @@
 """
 Simple example demonstrating MDAP Hanoi solver usage
+
+To run this example:
+1. Activate the virtual environment: source ~/virtualenvs/mdap_harness_venv/bin/activate
+2. Set your API key in .env file
+3. Run: python example_hanoi.py
 """
 
 import asyncio

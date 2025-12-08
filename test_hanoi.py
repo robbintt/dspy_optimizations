@@ -1,5 +1,10 @@
 """
 Test script for MDAP Hanoi solver
+
+To run these tests:
+1. Activate the virtual environment: source ~/virtualenvs/mdap_harness_venv/bin/activate
+2. Set your API key in .env file
+3. Run: python test_hanoi.py
 """
 
 import asyncio
