@@ -66,10 +66,10 @@ Rules:
 2. A disk can only be placed on top of a larger disk or on an empty peg
 3. Goal: Move all disks from peg A to peg C
 
-Return your move as JSON with exactly this format:
+Determine the next valid move. Your entire response must be a JSON object with exactly this format, and nothing else:
 {{"from_peg": "A", "to_peg": "B"}}
 
-Where from_peg and to_peg are one of "A", "B", "C".
+Where from_peg and to_peg are one of "A", "B", "C". Do not include any text before or after the JSON.
 """
         return prompt
     
