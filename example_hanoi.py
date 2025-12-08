@@ -20,23 +20,34 @@ async def main():
     config = MDAPConfig()
     solver = HanoiMDAP(config)
     
-    # Solve 2-disk Hanoi
-    print("Solving 2-disk Towers of Hanoi...")
-    trace = await solver.solve_hanoi(2)
-    
-    # Print solution summary
-    final_state = trace[-1]
-    print(f"\n✅ Solved in {final_state.move_count} moves!")
-    print(f"Optimal solution: {2**2 - 1} moves")
-    
-    if final_state.move_count == 3:
-        print("🎯 Found optimal solution!")
-    else:
-        print(f"Used {final_state.move_count - 3} extra moves")
-    
-    # Show initial and final states
-    print(f"\nInitial state: {trace[0].pegs}")
-    print(f"Final state:   {trace[-1].pegs}")
+    try:
+        # Solve 2-disk Hanoi
+        print("Solving 2-disk Towers of Hanoi...")
+        trace = await solver.solve_hanoi(2)
+        
+        # Print solution summary
+        final_state = trace[-1]
+        print(f"\n✅ Solved in {final_state.move_count} moves!")
+        print(f"Optimal solution: {2**2 - 1} moves")
+        
+        if final_state.move_count == 3:
+            print("🎯 Found optimal solution!")
+        else:
+            print(f"Used {final_state.move_count - 3} extra moves")
+        
+        # Show initial and final states
+        print(f"\nInitial state: {trace[0].pegs}")
+        print(f"Final state:   {trace[-1].pegs}")
+        
+    except Exception as e:
+        print(f"\n❌ Failed to solve Hanoi: {e}")
+        print("This could be due to:")
+        print("  - API key not set or invalid")
+        print("  - Model not available or responding with None")
+        print("  - Network connectivity issues")
+        print("  - Rate limiting or quota exceeded")
+        print("\nPlease check your .env file and try again.")
+        return
 
 if __name__ == "__main__":
     asyncio.run(main())
