@@ -60,6 +60,24 @@ check_env() {
     fi
 }
 
+# Function to run unit tests
+run_unit_tests() {
+    print_status "Running MDAP unit tests..."
+    python -m pytest test_mdap_harness.py -v
+}
+
+# Function to run integration tests
+run_integration_tests() {
+    print_status "Running MDAP integration tests..."
+    python -m pytest test_hanoi_integration.py -v
+}
+
+# Function to run all tests
+run_all_tests() {
+    print_status "Running all MDAP tests..."
+    python test_runner.py
+}
+
 # Function to show help
 show_help() {
     echo "MDAP Harness Run Script"
@@ -69,6 +87,9 @@ show_help() {
     echo "Commands:"
     echo "  example [disks]    Run Hanoi example (default: 3 disks)"
     echo "  test [disks]       Run Hanoi test suite (default: 3,4 disks)"
+    echo "  unit               Run unit tests only"
+    echo "  integration        Run integration tests only"
+    echo "  test-all           Run all unit and integration tests"
     echo "  benchmark [disks]  Run performance benchmark (default: 3 disks)"
     echo "  solve [disks]      Solve Hanoi with specified disk count"
     echo "  interactive        Start interactive Python session with MDAP loaded"
@@ -77,6 +98,9 @@ show_help() {
     echo "Examples:"
     echo "  $0 example 3       # Run 3-disk example"
     echo "  $0 test            # Run all tests"
+    echo "  $0 unit            # Run unit tests only"
+    echo "  $0 integration     # Run integration tests only"
+    echo "  $0 test-all        # Run comprehensive test suite"
     echo "  $0 solve 5         # Solve 5-disk Hanoi"
     echo "  $0 benchmark       # Run benchmark"
 }
@@ -193,6 +217,15 @@ main() {
             ;;
         "test")
             run_tests "$2"
+            ;;
+        "unit")
+            run_unit_tests
+            ;;
+        "integration")
+            run_integration_tests
+            ;;
+        "test-all")
+            run_all_tests
             ;;
         "benchmark")
             run_benchmark "$2"

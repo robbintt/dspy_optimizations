@@ -1,0 +1,298 @@
+"""
+Unit tests for MDAP Harness core functionality
+"""
+
+import pytest
+import asyncio
+import json
+from unittest.mock import AsyncMock, patch, MagicMock
+from collections import Counter
+from mdap_harness import MDAPHarness, MDAPConfig, RedFlagParser
+
+class TestMDAPConfig:
+    """Test MDAPConfig class"""
+    
+    def test_default_config(self):
+        """Test default configuration values"""
+        config = MDAPConfig()
+        assert config.model == "gpt-4o-mini"
+        assert config.k_margin == 3
+        assert config.max_candidates == 10
+        assert config.temperature == 0.1
+        assert config.max_retries == 3
+        assert config.cost_threshold is None
+    
+    def test_custom_config(self):
+        """Test custom configuration values"""
+        config = MDAPConfig(
+            model="gpt-4",
+            k_margin=5,
+            max_candidates=15,
+            temperature=0.2,
+            max_retries=5,
+            cost_threshold=10.0
+        )
+        assert config.model == "gpt-4"
+        assert config.k_margin == 5
+        assert config.max_candidates == 15
+        assert config.temperature == 0.2
+        assert config.max_retries == 5
+        assert config.cost_threshold == 10.0
+
+class TestRedFlagParser:
+    """Test RedFlagParser class"""
+    
+    def test_valid_move_response(self):
+        """Test parsing a valid move response"""
+        response = '{"from_peg": "A", "to_peg": "B"}'
+        result = RedFlagParser.parse_move_state_flag(response)
+        
+        assert result is not None
+        assert result['from_peg'] == 'A'
+        assert result['to_peg'] == 'B'
+    
+    def test_valid_move_response_dict(self):
+        """Test parsing a valid move response as dict"""
+        response = {"from_peg": "A", "to_peg": "C"}
+        result = RedFlagParser.parse_move_state_flag(response)
+        
+        assert result is not None
+        assert result['from_peg'] == 'A'
+        assert result['to_peg'] == 'C'
+    
+    def test_invalid_json(self):
+        """Test parsing invalid JSON"""
+        response = '{"from_peg": "A", "to_peg": "B"'  # Missing closing brace
+        result = RedFlagParser.parse_move_state_flag(response)
+        assert result is None
+    
+    def test_non_dict_response(self):
+        """Test parsing non-dict response"""
+        response = '"not a dict"'
+        result = RedFlagParser.parse_move_state_flag(response)
+        assert result is None
+    
+    def test_missing_fields(self):
+        """Test parsing response with missing fields"""
+        response = '{"from_peg": "A"}'  # Missing to_peg
+        result = RedFlagParser.parse_move_state_flag(response)
+        assert result is None
+    
+    def test_none_fields(self):
+        """Test parsing response with None fields"""
+        response = '{"from_peg": null, "to_peg": "B"}'
+        result = RedFlagParser.parse_move_state_flag(response)
+        assert result is None
+    
+    def test_invalid_peg_values(self):
+        """Test parsing response with invalid peg values"""
+        response = '{"from_peg": "D", "to_peg": "B"}'  # D is not valid
+        result = RedFlagParser.parse_move_state_flag(response)
+        assert result is None
+    
+    def test_same_peg_move(self):
+        """Test parsing response moving to same peg"""
+        response = '{"from_peg": "A", "to_peg": "A"}'
+        result = RedFlagParser.parse_move_state_flag(response)
+        assert result is None
+    
+    def test_too_long_response(self):
+        """Test parsing overly long response"""
+        long_data = {"from_peg": "A", "to_peg": "B", "extra": "x" * 500}
+        response = json.dumps(long_data)
+        result = RedFlagParser.parse_move_state_flag(response)
+        assert result is None
+
+class TestMDAPHarness:
+    """Test MDAPHarness class"""
+    
+    @pytest.fixture
+    def config(self):
+        """Create test configuration"""
+        return MDAPConfig(
+            model="test-model",
+            k_margin=2,
+            max_candidates=5,
+            temperature=0.1,
+            max_retries=2
+        )
+    
+    @pytest.fixture
+    def harness(self, config):
+        """Create test harness"""
+        return MDAPHarness(config)
+    
+    @pytest.mark.asyncio
+    async def test_first_to_ahead_by_k_winner_found(self, harness):
+        """Test first-to-ahead-by-K when winner is found"""
+        # Mock responses
+        mock_responses = [
+            '{"from_peg": "A", "to_peg": "B"}',  # Valid
+            '{"from_peg": "A", "to_peg": "B"}',  # Same valid response
+            '{"from_peg": "A", "to_peg": "C"}',  # Different valid response
+        ]
+        
+        with patch('mdap_harness.acompletion') as mock_acompletion:
+            # Setup mock to return responses in sequence
+            mock_response = MagicMock()
+            mock_response.choices = [MagicMock()]
+            mock_response.choices[0].message.content = mock_responses[0]
+            mock_acompletion.return_value = mock_response
+            
+            # First call returns first response
+            result = await harness.first_to_ahead_by_k(
+                "test prompt", 
+                RedFlagParser.parse_move_state_flag
+            )
+            
+            assert result['from_peg'] == 'A'
+            assert result['to_peg'] == 'B'
+    
+    @pytest.mark.asyncio
+    async def test_first_to_ahead_by_k_red_flagged(self, harness):
+        """Test first-to-ahead-by-K with red-flagged responses"""
+        # Mock invalid responses
+        mock_responses = [
+            'invalid json',  # Invalid JSON
+            '{"from_peg": "A", "to_peg": "A"}',  # Same peg move
+            '{"from_peg": "A", "to_peg": "B"}',  # Valid
+        ]
+        
+        with patch('mdap_harness.acompletion') as mock_acompletion:
+            # Setup mock to return responses in sequence
+            mock_response = MagicMock()
+            mock_response.choices = [MagicMock()]
+            
+            call_count = 0
+            def side_effect(*args, **kwargs):
+                nonlocal call_count
+                mock_response.choices[0].message.content = mock_responses[call_count]
+                call_count += 1
+                return mock_response
+            
+            mock_acompletion.side_effect = side_effect
+            
+            result = await harness.first_to_ahead_by_k(
+                "test prompt", 
+                RedFlagParser.parse_move_state_flag
+            )
+            
+            assert result['from_peg'] == 'A'
+            assert result['to_peg'] == 'B'
+    
+    @pytest.mark.asyncio
+    async def test_first_to_ahead_by_k_no_valid_candidates(self, harness):
+        """Test first-to-ahead-by-K when no valid candidates found"""
+        with patch('mdap_harness.acompletion') as mock_acompletion:
+            # Always return invalid response
+            mock_response = MagicMock()
+            mock_response.choices = [MagicMock()]
+            mock_response.choices[0].message.content = 'invalid json'
+            mock_acompletion.return_value = mock_response
+            
+            with pytest.raises(Exception, match="No valid candidates found"):
+                await harness.first_to_ahead_by_k(
+                    "test prompt", 
+                    RedFlagParser.parse_move_state_flag
+                )
+    
+    @pytest.mark.asyncio
+    async def test_execute_step_success(self, harness):
+        """Test successful step execution"""
+        with patch.object(harness, 'first_to_ahead_by_k') as mock_voting:
+            mock_voting.return_value = {"from_peg": "A", "to_peg": "B"}
+            
+            result = await harness.execute_step(
+                "test prompt",
+                RedFlagParser.parse_move_state_flag
+            )
+            
+            assert result['from_peg'] == 'A'
+            assert result['to_peg'] == 'B'
+            mock_voting.assert_called_once()
+    
+    @pytest.mark.asyncio
+    async def test_execute_step_retry_success(self, harness):
+        """Test step execution with retry on failure"""
+        with patch.object(harness, 'first_to_ahead_by_k') as mock_voting:
+            # Fail first time, succeed second time
+            mock_voting.side_effect = [
+                Exception("First failure"),
+                {"from_peg": "A", "to_peg": "B"}
+            ]
+            
+            result = await harness.execute_step(
+                "test prompt",
+                RedFlagParser.parse_move_state_flag
+            )
+            
+            assert result['from_peg'] == 'A'
+            assert result['to_peg'] == 'B'
+            assert mock_voting.call_count == 2
+    
+    @pytest.mark.asyncio
+    async def test_execute_step_max_retries_exceeded(self, harness):
+        """Test step execution when max retries exceeded"""
+        with patch.object(harness, 'first_to_ahead_by_k') as mock_voting:
+            mock_voting.side_effect = Exception("Always fails")
+            
+            with pytest.raises(Exception, match="Step execution failed after 2 attempts"):
+                await harness.execute_step(
+                    "test prompt",
+                    RedFlagParser.parse_move_state_flag
+                )
+            
+            assert mock_voting.call_count == 2  # max_retries = 2
+    
+    def test_update_state_not_implemented(self, harness):
+        """Test that update_state raises NotImplementedError"""
+        with pytest.raises(NotImplementedError, match="Subclasses must implement update_state"):
+            harness.update_state({}, {})
+
+class TestMDAPIntegration:
+    """Integration tests for MDAP framework"""
+    
+    @pytest.mark.asyncio
+    async def test_simple_mdap_execution(self):
+        """Test simple MDAP execution with mock LLM"""
+        config = MDAPConfig(k_margin=2, max_candidates=3)
+        harness = MDAPHarness(config)
+        
+        # Track state and steps
+        states = [{"count": 0}, {"count": 1}, {"count": 2}]
+        current_step = 0
+        
+        def step_generator(state):
+            nonlocal current_step
+            if current_step < len(states) - 1:
+                prompt = f"Current count: {state['count']}. Increment by 1."
+                parser = lambda x: {"increment": 1} if x == "increment" else None
+                current_step += 1
+                return prompt, parser
+            return None, None
+        
+        def termination_check(state):
+            return state["count"] >= 2
+        
+        def update_state(current_state, step_result):
+            return {"count": current_state["count"] + step_result["increment"]}
+        
+        harness.update_state = update_state
+        
+        # Mock the voting to return predictable results
+        with patch.object(harness, 'first_to_ahead_by_k') as mock_voting:
+            mock_voting.return_value = {"increment": 1}
+            
+            trace = await harness.execute_mdap(
+                initial_state={"count": 0},
+                step_generator=step_generator,
+                termination_check=termination_check
+            )
+            
+            assert len(trace) == 3
+            assert trace[0]["count"] == 0
+            assert trace[1]["count"] == 1
+            assert trace[2]["count"] == 2
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
