@@ -248,33 +248,105 @@ MDAP uses LiteLLM for unified API access. Supported providers include:
 
 ## Testing
 
+### Test Architecture: No Real Inference Required
+
+The MDAP test suite is designed to be completely deterministic and fast by **mocking all LLM calls**. This means:
+
+- **No network requests** are made to any LLM provider
+- **No API costs** are incurred during testing
+- **No API keys** are required to run the test suite
+- Tests run **instantly** without waiting for model responses
+
+#### How Mocking Works
+
+1. **Mocked LLM Calls**: Tests use `unittest.mock.patch` to replace `litellm.acompletion`
+2. **Predefined Responses**: We provide optimal move sequences that the mocked LLM returns
+3. **Logic Validation**: Tests verify framework correctness, not model performance
+
 ### Run Test Suite
 
 ```bash
-# Run all tests
+# Run all tests (unit + integration)
 ./run_mdap.sh test
 
-# Run specific disk count test
-./run_mdap.sh test 3
+# Run unit tests only
+./test_mdap.sh unit
+
+# Run integration tests only
+./test_mdap.sh integration
+
+# Run with coverage report
+./test_mdap.sh coverage
+
+# Run specific test
+./test_mdap.sh specific test_hanoi_integration.py::TestHanoiMDAP::test_solve_hanoi_mock_success
 ```
 
-### Benchmark Performance
+### Integration Tests
 
+Integration tests validate the complete MDAP workflow with mocked LLM responses:
+
+- **3-disk Hanoi**: Tests optimal 7-move solution
+- **4-disk Hanoi**: Tests optimal 15-move solution  
+- **State Consistency**: Verifies execution trace maintains valid states
+- **Error Handling**: Tests behavior with invalid moves and edge cases
+
+Example integration test flow:
+```python
+# Mock optimal moves for 3-disk Hanoi
+optimal_moves = [
+    {"from_peg": "A", "to_peg": "C"},
+    {"from_peg": "A", "to_peg": "B"},
+    # ... more moves
+]
+
+with patch.object(solver, 'first_to_ahead_by_k') as mock_voting:
+    mock_voting.side_effect = optimal_moves
+    trace = await solver.solve_hanoi(3)
+    assert solver.is_solved(trace[-1])
+```
+
+### Performance Tests
+
+Performance tests evaluate the framework's efficiency with different configurations:
+
+- **K Margin Testing**: Tests reliability vs cost trade-offs
+- **Candidate Sampling**: Evaluates effect of `max_candidates` parameter
+- **Retry Logic**: Validates error recovery mechanisms
+
+Performance test example:
 ```bash
-# Benchmark different K margins
-./run_mdap.sh benchmark
+# Test different K margins (1, 2, 3, 4)
+./test_mdap.sh performance
 
-# Benchmark with specific disk count
-./run_mdap.sh benchmark 4
+# Output shows success/failure for each configuration
+# K=1: 7 moves ✅
+# K=2: 7 moves ✅
+# K=3: 7 moves ✅
+# K=4: 7 moves ✅
 ```
 
 ### Test Cases
 
-The test suite includes:
-- 3-disk Hanoi (7 moves optimal)
-- 4-disk Hanoi (15 moves optimal)
-- Performance benchmarks with different K margins
-- Error handling validation
+The complete test suite includes:
+
+#### Unit Tests (`test_mdap_harness.py`)
+- **MDAPConfig**: Default and custom configuration validation
+- **RedFlagParser**: Response filtering and validation logic
+- **MDAPHarness**: Core voting and execution mechanisms
+- **Error Handling**: Retry logic and exception handling
+
+#### Integration Tests (`test_hanoi_integration.py`)
+- **HanoiState**: State creation, copying, and serialization
+- **HanoiMDAP**: Complete solver workflow
+- **Move Validation**: Rule enforcement and edge cases
+- **Solution Verification**: Optimal path detection
+- **Trace Consistency**: State transition validation
+
+#### Performance Benchmarks
+- **K Margin Analysis**: Reliability vs cost optimization
+- **Model Comparison**: Framework behavior with different models
+- **Scaling Tests**: Performance with larger problem sizes
 
 ## Performance Considerations
 
