@@ -133,7 +133,7 @@ async def benchmark():
     for k in k_values:
         print(f'Testing K={k}:')
         config = MDAPConfig(
-            model='zai/glm-4.6',
+            model='openai/z-ai/glm-4.6',
             k_margin=k,
             max_candidates=10,
             temperature=0.1
@@ -162,7 +162,7 @@ from hanoi_solver import HanoiMDAP, MDAPConfig
 
 async def solve():
     config = MDAPConfig(
-        model='zai/glm-4.6',
+        model='openai/z-ai/glm-4.6',
         k_margin=3,
         max_candidates=10,
         temperature=0.1
