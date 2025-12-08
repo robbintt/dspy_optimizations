@@ -6,6 +6,7 @@ Demonstrates MAKER framework on a classic recursive problem
 from typing import List, Tuple, Callable, Any
 from dataclasses import dataclass
 import copy
+from micro_agent import MicroAgent
 from mdap_harness import MDAPHarness, MDAPConfig, RedFlagParser
 
 @dataclass
