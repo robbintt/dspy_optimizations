@@ -219,6 +219,25 @@ class MDAPHarness:
         logger.info(f"MDAP execution completed in {step_count} steps")
         return execution_trace
     
+    async def execute_agent_mdap(self, agent: 'MicroAgent', *args, **kwargs) -> List[Any]:
+        """
+        Execute MDAP using a micro agent
+        
+        Args:
+            agent: The micro agent to execute
+            *args, **kwargs: Arguments to pass to agent.create_initial_state()
+            
+        Returns:
+            List of states representing the execution trace
+        """
+        initial_state = agent.create_initial_state(*args, **kwargs)
+        
+        return await self.execute_mdap(
+            initial_state=initial_state,
+            step_generator=agent.step_generator,
+            termination_check=agent.is_solved
+        )
+    
     def update_state(self, current_state: Any, step_result: Any) -> Any:
         """
         Update state based on step result.
