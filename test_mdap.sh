@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 # Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_PATH="$SCRIPT_DIR/venv_mdap"
+VENV_PATH="$HOME/virtualenvs/mdap_harness_venv"
 
 # Function to print colored output
 print_status() {
