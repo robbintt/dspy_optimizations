@@ -15,7 +15,7 @@ class TestMDAPConfig:
     def test_default_config(self):
         """Test default configuration values"""
         config = MDAPConfig()
-        assert config.model == "gpt-4o-mini"
+        assert config.model == "cerebras/zai-glm-4.6"
         assert config.k_margin == 3
         assert config.max_candidates == 10
         assert config.temperature == 0.1
@@ -200,9 +200,12 @@ class TestMDAPHarness:
             mock_acompletion.return_value = mock_response
             
             with pytest.raises(Exception, match="No valid candidates found"):
-                await harness.first_to_ahead_by_k(
-                    "test prompt", 
-                    RedFlagParser.parse_move_state_flag
+                await asyncio.wait_for(
+                    harness.first_to_ahead_by_k(
+                        "test prompt", 
+                        RedFlagParser.parse_move_state_flag
+                    ),
+                    timeout=5.0
                 )
     
     @pytest.mark.asyncio
