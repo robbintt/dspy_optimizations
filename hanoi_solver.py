@@ -183,7 +183,12 @@ class HanoiMDAP(MicroAgent):
             # Use dict format directly
             new_state.pegs = predicted_state_dict['pegs']
         
-        new_state.move_count = predicted_state_dict['move_count']
+        # Handle move_count - increment from current state if not provided
+        if 'move_count' in predicted_state_dict:
+            new_state.move_count = predicted_state_dict['move_count']
+        else:
+            # If move_count is not in predicted_state, increment from current state
+            new_state.move_count = current_state.move_count + 1
         
         # Initialize move_history if not present
         if not hasattr(new_state, 'move_history'):

@@ -101,9 +101,11 @@ class RedFlagParser:
                 state_line = None
 
                 for line in lines:
-                    if line.startswith("move ="):
+                    # More flexible matching for move line
+                    if "move" in line.lower() and "=" in line:
                         move_line = line
-                    elif line.startswith("next_state ="):
+                    # More flexible matching for state line
+                    elif "next_state" in line.lower() and "=" in line:
                         state_line = line
                 
                 if not move_line or not state_line:
@@ -178,6 +180,11 @@ class RedFlagParser:
                     logger.warning("Each peg must be a list")
                     return None
 
+                # Ensure predicted_state has move_count for compatibility
+                if isinstance(predicted_state, dict) and 'move_count' not in predicted_state:
+                    # If move_count is missing, we'll add it later in update_state
+                    pass
+                
                 # Return the move and the predicted state for later validation
                 return {
                     "move": move_data,
