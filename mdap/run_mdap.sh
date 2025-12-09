@@ -44,7 +44,7 @@ main() {
     check_env
     
     # Run the Python script with all arguments
-    python scripts/run_mdap.py "$@"
+    python ../scripts/run_mdap.py "$@"
 }
 
 # Run main function with all arguments
