@@ -14,7 +14,7 @@ from datetime import datetime
 from hanoi_solver import HanoiMDAP, MDAPConfig
 
 # Setup logging to file with timestamps
-LOGS_DIR = "logs"
+LOGS_DIR = os.path.join(os.path.dirname(__file__), "logs")
 os.makedirs(LOGS_DIR, exist_ok=True)
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 log_file = os.path.join(LOGS_DIR, f"example_hanoi_{timestamp}.log")
