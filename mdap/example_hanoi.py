@@ -10,7 +10,7 @@ To run this example:
 import asyncio
 import os
 from datetime import datetime
-from .hanoi_solver import HanoiMDAP, MDAPConfig
+from hanoi_solver import HanoiMDAP, MDAPConfig
 
 # Setup logging to file with timestamps
 LOGS_DIR = "logs"
