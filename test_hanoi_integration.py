@@ -316,6 +316,119 @@ class TestHanoiIntegration:
             assert trace[1].pegs == {'A': [], 'B': [], 'C': [1]}
             assert trace[1].move_count == 1
 
+    @pytest.mark.asyncio
+    async def test_solver_stops_immediately_at_goal(self):
+        """Test that solver stops immediately when goal is reached"""
+        config = MDAPConfig(k_margin=2, max_candidates=3)
+        solver = HanoiMDAP(config)
+        
+        # Track how many times the LLM is called
+        call_count = 0
+        
+        def mock_acompletion_side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            mock_response = MagicMock()
+            mock_response.choices = [MagicMock()]
+            
+            # Return the final winning move that solves the puzzle
+            if call_count <= 6:  # Allow enough calls for voting
+                mock_response.choices[0].message.content = """move = {"from_peg": "B", "to_peg": "C"}
+next_state = {"pegs": {"A": [], "B": [], "C": [2, 1]}, "num_disks": 2, "move_count": 4}"""
+            else:
+                # Should not reach here if solver stops correctly
+                mock_response.choices[0].message.content = """move = {"from_peg": "A", "to_peg": "B"}
+next_state = {"pegs": {"A": [], "B": [2], "C": [1]}, "num_disks": 2, "move_count": 5}"""
+            
+            return mock_response
+        
+        with patch('mdap_harness.acompletion', side_effect=mock_acompletion_side_effect):
+            # Start from a state just before the final move
+            initial_state = HanoiState(
+                pegs={'A': [], 'B': [2], 'C': [1]},
+                num_disks=2,
+                move_count=3
+            )
+            
+            trace = await solver.harness.execute_mdap(
+                initial_state=initial_state,
+                step_generator=solver.step_generator,
+                termination_check=solver.is_solved,
+                agent=solver
+            )
+            
+            # Should stop after the final move (4 moves total including initial state)
+            assert len(trace) == 5  # Initial + 4 moves
+            assert solver.is_solved(trace[-1])
+            # Verify it doesn't continue after solving
+            assert trace[-1].move_count == 4
+    
+    @pytest.mark.asyncio
+    async def test_solver_raises_error_if_not_solved(self):
+        """Test that solver raises RuntimeError if final state is not solved"""
+        config = MDAPConfig(k_margin=2, max_candidates=3)
+        solver = HanoiMDAP(config)
+        
+        # Mock to return an incomplete solution
+        with patch('mdap_harness.acompletion') as mock_acompletion:
+            mock_response = MagicMock()
+            mock_response.choices = [MagicMock()]
+            mock_response.choices[0].message.content = """move = {"from_peg": "A", "to_peg": "B"}
+next_state = {"pegs": {"A": [2], "B": [1], "C": []}, "num_disks": 2, "move_count": 1}"""
+            mock_acompletion.return_value = mock_response
+            
+            # Mock the termination check to always return False after 1 step
+            original_is_solved = solver.is_solved
+            step_count = 0
+            def mock_termination_check(state):
+                nonlocal step_count
+                step_count += 1
+                return step_count > 1  # Stop after 1 step (not solved)
+            
+            with patch.object(solver, 'is_solved', side_effect=mock_termination_check):
+                with pytest.raises(RuntimeError, match="Hanoi solver failed to reach goal state"):
+                    await solver.solve_hanoi(2)
+    
+    @pytest.mark.asyncio
+    async def test_no_extra_steps_after_goal_state(self):
+        """Test that no extra steps are attempted after reaching goal state"""
+        config = MDAPConfig(k_margin=2, max_candidates=3)
+        solver = HanoiMDAP(config)
+        
+        # Track LLM calls to ensure no extra calls after solving
+        llm_calls = []
+        
+        def mock_acompletion_side_effect(*args, **kwargs):
+            llm_calls.append(len(llm_calls) + 1)
+            mock_response = MagicMock()
+            mock_response.choices = [MagicMock()]
+            
+            # Always return the solved state
+            mock_response.choices[0].message.content = """move = {"from_peg": "B", "to_peg": "C"}
+next_state = {"pegs": {"A": [], "B": [], "C": [2, 1]}, "num_disks": 2, "move_count": 4}"""
+            
+            return mock_response
+        
+        with patch('mdap_harness.acompletion', side_effect=mock_acompletion_side_effect):
+            # Start from a state that needs one more move to solve
+            initial_state = HanoiState(
+                pegs={'A': [], 'B': [2], 'C': [1]},
+                num_disks=2,
+                move_count=3
+            )
+            
+            trace = await solver.harness.execute_mdap(
+                initial_state=initial_state,
+                step_generator=solver.step_generator,
+                termination_check=solver.is_solved,
+                agent=solver
+            )
+            
+            # Should only make one LLM call to get the final move
+            assert len(llm_calls) <= 6  # k_margin=2, so up to 6 calls for voting
+            assert len(trace) == 5  # Initial + 4 moves total
+            assert solver.is_solved(trace[-1])
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
 
