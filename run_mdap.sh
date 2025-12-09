@@ -203,7 +203,7 @@ async def solve():
     solver = HanoiMDAP(config)
     
     try:
-        logger.info(f'Attempting to solve {disks}-disk Towers of Hanoi')
+        logger.info(f'Attempting to solve $disks-disk Towers of Hanoi')
         trace = await solver.solve_hanoi($disks)
         
         final_state = trace[-1]
