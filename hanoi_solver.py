@@ -58,14 +58,16 @@ class HanoiMDAP(MicroAgent):
         """Generate prompt for the next move"""
         prompt = f"""Solve Towers of Hanoi. Move all disks to peg C.
 
-Rules: Move top disk only. Never place larger on smaller.
+1. Move top disk only.
+2. Never place larger on smaller.
 
 Current State:
 Peg A: {state.pegs['A']}
 Peg B: {state.pegs['B']}
 Peg C: {state.pegs['C']}
 
-IMPORTANT: You must respond with ONLY the following two lines. No explanations, no reasoning, no other text.
+Your task:
+Choose the next move and predict the resulting state.
 
 move = {{"from_peg": "X", "to_peg": "Y"}}
 next_state = {{"pegs": {{"A": [...], "B": [...], "C": [...]}}, "num_disks": {state.num_disks}, "move_count": {state.move_count + 1}}}
