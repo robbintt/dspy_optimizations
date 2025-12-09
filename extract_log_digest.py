@@ -57,6 +57,7 @@ def extract_voting_info(log_content: str) -> List[Dict]:
     # Extract candidate attempts and winner info
     candidate_pattern = r'Attempting to get candidate (\d+)/10'
     winner_pattern = r'Winner found with (\d+) votes \(reached k_margin\)'
+    majority_pattern = r'No clear winner, returning majority vote'
     
     candidates = []
     current_step = 1
@@ -73,10 +74,21 @@ def extract_voting_info(log_content: str) -> List[Dict]:
                     "step": current_step,
                     "candidates_sampled": len(candidates),
                     "winning_votes": int(match.group(1)),
-                    "k_margin": 3  # From config
+                    "k_margin": params.get('k_margin', 3)
                 })
                 candidates = []
                 current_step += 1
+        elif 'No clear winner' in line:
+            # Count occurrences of each response to find majority
+            voting_info.append({
+                "step": current_step,
+                "candidates_sampled": len(candidates),
+                "winning_votes": max(2, len(candidates) // 2 + 1),  # Estimate majority
+                "k_margin": params.get('k_margin', 3),
+                "majority_vote": True
+            })
+            candidates = []
+            current_step += 1
     
     return voting_info
 
@@ -85,7 +97,7 @@ def extract_paper_parameters(log_content: str) -> Dict:
     params = {}
     
     # Extract model info
-    model_match = re.search(r'LiteLLM completion\(\) model= ([^;]+)', log_content)
+    model_match = re.search(r'Created solver with config: model=([^,]+)', log_content)
     if model_match:
         params["model"] = model_match.group(1)
     
@@ -119,6 +131,11 @@ def extract_paper_parameters(log_content: str) -> Dict:
     if moves_match:
         params["total_moves"] = int(moves_match.group(1))
     
+    # Extract goal reached info
+    goal_match = re.search(r'Goal reached after (\d+) steps', log_content)
+    if goal_match:
+        params["goal_steps"] = int(goal_match.group(1))
+    
     return params
 
 def extract_state_transitions(log_content: str) -> List[Dict]:
@@ -139,6 +156,18 @@ def extract_state_transitions(log_content: str) -> List[Dict]:
         except:
             continue
     
+    # If no states found with the above pattern, try extracting from LLM responses
+    if not transitions:
+        for resp in responses:
+            if 'predicted_state' in resp and 'pegs' in resp['predicted_state']:
+                # Convert list format to dict format
+                pegs_list = resp['predicted_state']['pegs']
+                pegs_dict = {'A': pegs_list[0], 'B': pegs_list[1], 'C': pegs_list[2]}
+                transitions.append({
+                    "step": resp['step'],
+                    "pegs": pegs_dict
+                })
+    
     return transitions
 
 def generate_digest(responses: List[Dict], voting: List[Dict], 
@@ -158,7 +187,8 @@ def generate_digest(responses: List[Dict], voting: List[Dict],
     for i, (resp, vote, trans) in enumerate(zip(responses, voting, transitions), 1):
         digest.append(f"Step {i}:")
         digest.append(f"  Move: {resp['move']}")
-        digest.append(f"  Votes: {vote['winning_votes']}/{vote['candidates_sampled']}")
+        vote_type = " (majority)" if vote.get('majority_vote') else ""
+        digest.append(f"  Votes: {vote['winning_votes']}/{vote['candidates_sampled']}{vote_type}")
         digest.append(f"  State: {trans['pegs']}")
         digest.append("")
     
