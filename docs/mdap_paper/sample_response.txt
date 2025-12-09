@@ -1,0 +1,16 @@
+Let's analyze the situation step-by-step:
+Previous move: [2, 2, 1] (disk 2 moved)
+Since the previous move did move disk 2 (not disk 1), the next move should be to move disk 1
+clockwise one peg.
+Disk 1 is currently on peg 0 (top disk of peg 0 is 1).
+Clockwise from peg 0 is peg 1.
+So, move disk 1 from peg 0 to peg 1.
+Now, let's update the state:
+- Remove disk 1 from peg 0: peg 0 becomes [6, 5, 4]
+- Add disk 1 to peg 1 on top: peg 1 becomes [17, 16, 7, 2, 1]
+- Peg 2 remains the same.
+So the next move and next state are:
+```
+move = [1, 0, 1]
+next_state = [[6, 5, 4], [17, 16, 7, 2, 1], [20, 19, 18, 15, 14, 13, 12, 11, 10, 9, 8, 3]]
+```
