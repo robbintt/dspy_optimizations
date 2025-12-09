@@ -327,7 +327,7 @@ class TestMDAPCalibration:
         """Test the per-step success rate estimation"""
         class MockAgent(MicroAgent):
             def create_initial_state(self, *args, **kwargs):
-                return {'step': 0, 'max_steps': 10}
+                return {'step': 0, 'max_steps': 100}
             
             def generate_step_prompt(self, state):
                 return f"Step {state['step']}"
@@ -335,8 +335,8 @@ class TestMDAPCalibration:
             def update_state(self, current_state, step_result):
                 # The step_result is the parsed response from RedFlagParser
                 # It should be a dict with 'move' and 'predicted_state' keys
+                # Don't increment step here - the estimation function counts successful LLM calls
                 if step_result and 'move' in step_result:
-                    current_state['step'] += 1
                     return current_state
                 else:
                     raise ValueError("Invalid step result")
