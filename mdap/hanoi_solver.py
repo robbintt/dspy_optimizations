@@ -282,35 +282,45 @@ The response must be under {self.config.max_tokens} tokens."""
 
         else:
             # --- Rule 2: Make the only other legal move ---
-            # Find all possible moves that do not involve disk 1
-            possible_moves = []
-            for from_peg_name, from_peg in state.pegs.items():
-                if not from_peg:
+            # Find the top disk that is not disk 1
+            moving_disk = None
+            from_peg_name = None
+            
+            for peg_name, peg in state.pegs.items():
+                if not peg:
                     continue
                 # Skip if the top disk is disk 1
-                if from_peg[-1] == 1:
+                if peg[-1] == 1:
                     continue
                 
-                moving_disk = from_peg[-1]
-                from_idx = peg_indices[from_peg_name]
+                moving_disk = peg[-1]
+                from_peg_name = peg_name
+                break # Found the disk to move
 
-                for to_peg_name, to_peg in state.pegs.items():
-                    if from_peg_name == to_peg_name:
-                        continue
-                    
-                    # Check if move is valid (can't place larger on smaller)
-                    if to_peg and moving_disk > to_peg[-1]:
-                        continue
-                    
-                    to_idx = peg_indices[to_peg_name]
-                    possible_moves.append([moving_disk, from_idx, to_idx])
+            if moving_disk is None:
+                # This state might be solved or invalid if no other disk can be moved
+                return None
+
+            # Find the destination peg for this disk
+            to_peg_name = None
+            for peg_name, peg in state.pegs.items():
+                if peg_name == from_peg_name:
+                    continue
+                
+                # Check if move is valid (can't place larger on smaller)
+                if peg and moving_disk > peg[-1]:
+                    continue
+                
+                to_peg_name = peg_name
+                break # Found the destination peg
+
+            if to_peg_name is None:
+                # No valid destination found
+                return None
             
-            # In the optimal strategy, there will be exactly one such move.
-            if len(possible_moves) == 1:
-                return possible_moves[0]
-            
-            # This should not happen if the state is on the optimal path
-            return None
+            from_idx = peg_indices[from_peg_name]
+            to_idx = peg_indices[to_peg_name]
+            return [moving_disk, from_idx, to_idx]
     
     def step_generator(self, state: HanoiState) -> Tuple[str, Callable]:
         """Generate prompt and parser for current step"""

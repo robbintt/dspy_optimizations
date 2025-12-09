@@ -52,6 +52,12 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
         """Generate optimal moves without LLM calls"""
         optimal_move = solver.get_optimal_move(state)
         
+        # Check if a valid move was found
+        if not optimal_move:
+            # This should not happen for a valid, unsolved state.
+            # Raising an error here gives a much clearer message than the TypeError.
+            raise ValueError(f"get_optimal_move returned no valid move for state: {state.to_dict()}")
+        
         # Get the previous move from state history if available
         previous_move = "None"
         if hasattr(state, 'move_history') and len(state.move_history) > 0:
