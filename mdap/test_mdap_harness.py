@@ -45,9 +45,11 @@ class TestRedFlagParser:
     
     def test_valid_move_response(self):
         """Test parsing a valid move response in paper's format"""
+        config = MDAPConfig()
+        parser = RedFlagParser(config)
         response = """move = [1, 0, 1]
 next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}"""
-        result = RedFlagParser.parse_move_state_flag(response)
+        result = parser.parse_move_state_flag(response)
         
         assert result is not None
         assert result['move'] == [1, 0, 1]
@@ -55,8 +57,10 @@ next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}"""
     
     def test_valid_move_response_dict(self):
         """Test parsing a valid move response as dict (legacy format)"""
+        config = MDAPConfig()
+        parser = RedFlagParser(config)
         response = {"from_peg": "A", "to_peg": "C"}
-        result = RedFlagParser.parse_move_state_flag(response)
+        result = parser.parse_move_state_flag(response)
         
         assert result is not None
         assert result['move']['from_peg'] == 'A'
@@ -64,44 +68,58 @@ next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}"""
     
     def test_invalid_json(self):
         """Test parsing invalid JSON"""
+        config = MDAPConfig()
+        parser = RedFlagParser(config)
         response = '{"from_peg": "A", "to_peg": "B"'  # Missing closing brace
-        result = RedFlagParser.parse_move_state_flag(response)
+        result = parser.parse_move_state_flag(response)
         assert result is None
     
     def test_non_dict_response(self):
         """Test parsing non-dict response"""
+        config = MDAPConfig()
+        parser = RedFlagParser(config)
         response = '"not a dict"'
-        result = RedFlagParser.parse_move_state_flag(response)
+        result = parser.parse_move_state_flag(response)
         assert result is None
     
     def test_missing_fields(self):
         """Test parsing response with missing fields"""
+        config = MDAPConfig()
+        parser = RedFlagParser(config)
         response = 'move = [1, 0]'  # Missing to_peg
-        result = RedFlagParser.parse_move_state_flag(response)
+        result = parser.parse_move_state_flag(response)
         assert result is None
     
     def test_none_fields(self):
         """Test parsing response with None fields"""
+        config = MDAPConfig()
+        parser = RedFlagParser(config)
         response = 'move = [1, null, 1]'
-        result = RedFlagParser.parse_move_state_flag(response)
+        result = parser.parse_move_state_flag(response)
         assert result is None
     
     def test_invalid_peg_values(self):
         """Test parsing response with invalid peg values"""
+        config = MDAPConfig()
+        parser = RedFlagParser(config)
         response = 'move = [1, 3, 1]'  # Peg 3 is not valid
-        result = RedFlagParser.parse_move_state_flag(response)
+        result = parser.parse_move_state_flag(response)
         assert result is None
     
     def test_same_peg_move(self):
         """Test parsing response moving to same peg"""
+        config = MDAPConfig()
+        parser = RedFlagParser(config)
         response = 'move = [1, 0, 0]'
-        result = RedFlagParser.parse_move_state_flag(response)
+        result = parser.parse_move_state_flag(response)
         assert result is None
     
     def test_too_long_response(self):
         """Test parsing overly long response"""
+        config = MDAPConfig()
+        parser = RedFlagParser(config)
         response = 'move = [1, 0, 1]\n' + 'x' * 1000
-        result = RedFlagParser.parse_move_state_flag(response)
+        result = parser.parse_move_state_flag(response)
         assert result is None
 
 class TestMDAPHarness:
@@ -144,9 +162,10 @@ next_state = {"pegs": [[], [], [1]], "num_disks": 1, "move_count": 1}""",  # Dif
             mock_acompletion.return_value = mock_response
             
             # First call returns first response
+            parser = RedFlagParser(harness.config)
             result = await harness.first_to_ahead_by_k(
                 "test prompt", 
-                RedFlagParser.parse_move_state_flag
+                parser.parse_move_state_flag
             )
             
             assert result['move'] == [1, 0, 1]
@@ -185,10 +204,11 @@ next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}""",  # Sam
             mock_acompletion.side_effect = side_effect
             
             # Add timeout to prevent hanging
+            parser = RedFlagParser(harness.config)
             result = await asyncio.wait_for(
                 harness.first_to_ahead_by_k(
                     "test prompt", 
-                    RedFlagParser.parse_move_state_flag
+                    parser.parse_move_state_flag
                 ),
                 timeout=10.0
             )
@@ -339,7 +359,8 @@ class TestMDAPCalibration:
                 return state['step'] >= state['max_steps']
             
             def step_generator(self, state):
-                return self.generate_step_prompt(state), RedFlagParser.parse_move_state_flag
+                parser = RedFlagParser(MDAPConfig())
+                return self.generate_step_prompt(state), parser.parse_move_state_flag
 
         # Mock the first_to_ahead_by_k to simulate a 70% success rate
         # The estimation function stops at the first failure, so we need
