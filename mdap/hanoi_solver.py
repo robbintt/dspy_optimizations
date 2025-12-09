@@ -301,16 +301,18 @@ class HanoiMDAP(MicroAgent):
             to_idx = peg_indices[to_peg_name]
             return [moving_disk, from_idx, to_idx]
     
-    def step_generator(self, state: HanoiState) -> Tuple[str, Callable]:
+    def step_generator(self, state: HanoiState) -> Tuple[Tuple[str, str], Callable]:
         """Generate prompt and parser for current step"""
         user_prompt = self.generate_step_prompt(state)
-        # Combine system prompt with user prompt
-        full_prompt = f"{SYSTEM_PROMPT}\n\n{user_prompt}"
+        # Format system prompt with configured token limit
+        # Note: We had to add token limit requirement to SYSTEM_PROMPT for GLM 4.6
+        system_prompt = SYSTEM_PROMPT.format(token_limit=self.config.max_response_length)
         parser = self.harness.red_flag_parser.parse_move_state_flag
         logger.info(f"Generated step prompt for state with move_count={state.move_count}")
-        logger.info(f"Full prompt length: {len(full_prompt)} characters")
+        logger.info(f"System prompt length: {len(system_prompt)} characters")
+        logger.info(f"User prompt length: {len(user_prompt)} characters")
         logger.info(f"Parser function: {parser}")
-        return full_prompt, parser
+        return (system_prompt, user_prompt), parser
     
     async def solve_hanoi(self, num_disks: int) -> List[HanoiState]:
         """Solve Towers of Hanoi using MDAP"""
