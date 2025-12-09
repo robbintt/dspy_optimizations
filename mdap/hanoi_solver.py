@@ -39,6 +39,7 @@ hanoi_logger.addHandler(console_handler)
 logger = logging.getLogger('hanoi_solver')
 
 # Import the system prompt and user template from the paper
+# Note: We had to add token limit requirement to SYSTEM_PROMPT for GLM 4.6
 SYSTEM_PROMPT = """
 You are a helpful assistant. Solve this puzzle for me.
 There are three pegs and n disks of different sizes stacked on the first peg. The disks are
@@ -59,6 +60,7 @@ Requirements:
 - Ensure your answer includes the next state resulting from applying the move to the current
 state in this EXACT FORMAT:
 ```next_state = [[...], [...], [...]]```
+The response must be under {token_limit} tokens.
 """
 
 USER_TEMPLATE = """
