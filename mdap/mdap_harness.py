@@ -61,6 +61,7 @@ class MDAPConfig:
     max_retries: int = 3
     cost_threshold: Optional[float] = None
     max_response_length: int = int(os.getenv("MDAP_MAX_RESPONSE_LENGTH", "1000"))  # Max response length in chars
+    mock_mode: bool = os.getenv("MDAP_MOCK_MODE", "false").lower() == "true"  # Mock mode for testing
 
     # --- Model Behavior Options ---
     # Options to control model output, particularly for Cerebras/zai-glm-4.6
@@ -249,6 +250,14 @@ class MDAPHarness:
         async def get_candidate():
             """Get a single candidate response with non-repairing extractor"""
             try:
+                # Check if we're in mock mode
+                if self.config.mock_mode:
+                    # Return a mock valid response for testing
+                    mock_response = """move = [1, 0, 2]
+next_state = {"pegs": [[2, 3], [], [1]]}"""
+                    logger.info("Using mock response (mock mode enabled)")
+                    return response_parser(mock_response.strip())
+                
                 # Build completion parameters, including optional model-specific ones
                 completion_params = {
                     "model": self.config.model,
