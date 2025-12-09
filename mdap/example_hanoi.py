@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 async def main():
     """Simple demonstration of solving Towers of Hanoi"""
     
+    print("Starting Hanoi solver example...")
     logger.info("Starting Hanoi solver example")
     logger.info("🏗️  MDAP Hanoi Solver Demo")
     logger.info("=" * 40)
@@ -86,4 +87,11 @@ async def main():
         return
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        print("About to run main()...")
+        asyncio.run(main())
+        print("Main() completed successfully")
+    except Exception as e:
+        print(f"Error running example: {e}")
+        import traceback
+        traceback.print_exc()
