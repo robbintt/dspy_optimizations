@@ -106,10 +106,10 @@ class RedFlagParser:
 
                 for line in lines:
                     # More flexible matching for move line
-                    if "move" in line.lower() and "=" in line:
+                    if line.strip().lower().startswith("move") and "=" in line:
                         move_line = line
                     # More flexible matching for state line
-                    elif "next_state" in line.lower() and "=" in line:
+                    elif line.strip().lower().startswith("next_state") and "=" in line:
                         state_line = line
                 
                 if not move_line or not state_line:
