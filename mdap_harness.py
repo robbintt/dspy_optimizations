@@ -8,6 +8,7 @@ import asyncio
 import json
 import logging
 import os
+import math
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass
 from collections import Counter
@@ -320,6 +321,65 @@ class MDAPHarness:
             agent=agent
         )
     
+    async def estimate_per_step_success_rate(self, agent: 'MicroAgent', num_disks: int, sample_steps: int = 10) -> float:
+        """
+        Estimates the per-step success rate (p) for a given model and agent.
+        Runs the agent for a small number of steps and counts successes.
+        """
+        logger.info(f"Estimating per-step success rate for {self.config.model} on {sample_steps} steps...")
+        initial_state = agent.create_initial_state(num_disks)
+        current_state = initial_state
+        successful_steps = 0
+        
+        for _ in range(sample_steps):
+            if agent.is_solved(current_state):
+                break
+            
+            step_prompt, response_parser = agent.step_generator(current_state)
+            
+            try:
+                # We only need one successful candidate to check for validity
+                step_result = await self.first_to_ahead_by_k(step_prompt, response_parser)
+                # The update_state method itself acts as the validation
+                agent.update_state(current_state, step_result)
+                successful_steps += 1
+                current_state = agent.update_state(current_state, step_result)
+            except Exception as e:
+                # A failure here means the step was unsuccessful
+                logger.debug(f"Estimation step failed: {e}")
+                break
+        
+        p_estimate = successful_steps / sample_steps
+        logger.info(f"Estimated per-step success rate (p): {p_estimate:.4f}")
+        return p_estimate
+
+    def calculate_k_min(self, p: float, num_disks: int, target_reliability: float = 0.95) -> int:
+        """
+        Calculates the minimal k_margin based on the paper's formula.
+        k_min = ceil( ln(t^(-1/s) - 1) / ln((1-p)/p) )
+        where s = 2^D - 1 for Towers of Hanoi.
+        """
+        if p <= 0.5:
+            logger.warning("Per-step success rate p is <= 0.5, voting may not converge. Using a high default k.")
+            return 20 # A high default to signal failure
+
+        total_steps = (2 ** num_disks) - 1
+        if total_steps == 0: return 1
+
+        # From the paper: k_min = ceil( ln(t^(-m/s) - 1) / ln((1-p)/p) )
+        # For MAD, m=1, so t^(-1/s)
+        try:
+            numerator = math.log((target_reliability ** (-1 / total_steps)) - 1)
+            denominator = math.log((1 - p) / p)
+            k_min_float = numerator / denominator
+            k_min = math.ceil(k_min_float)
+        except (ValueError, ZeroDivisionError):
+            logger.error("Could not calculate k_min, likely due to p=1 or p=0.5. Using default.")
+            k_min = 3 # Fallback
+
+        logger.info(f"Calculated k_min: {k_min} for p={p:.4f}, D={num_disks}, t={target_reliability}")
+        return k_min
+
     def update_state(self, current_state: Any, step_result: Any) -> Any:
         """
         Update state based on step result.
