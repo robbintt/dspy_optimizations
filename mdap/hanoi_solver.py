@@ -142,7 +142,7 @@ class HanoiMDAP(MicroAgent):
             peg_list.append(state.pegs[peg_key])
         
         # Enhanced user template with clearer optimal strategy guidance
-        enhanced_template = """Rules:
+        enhanced_template = f"""Rules:
 - Only one disk can be moved at a time.
 - Only the top disk from any stack can be moved.
 - A larger disk may not be placed on top of a smaller disk.
@@ -154,7 +154,7 @@ For the most efficient solution (2^n - 1 moves):
 3. This pattern guarantees the optimal solution
 
 Previous move: {previous_move}
-Current State: {current_state}
+Current State: {json.dumps(peg_list)}
 
 Based on the optimal strategy above, find the single next move and the resulting next state.
 
@@ -165,12 +165,9 @@ Requirements:
 - Ensure your answer includes the next state resulting from applying the move to the current state in this EXACT FORMAT:
 ```next_state = [[...], [...], [...]]```
 
-The response must be under {max_tokens} tokens.""".format(max_tokens=self.config.max_tokens)
+The response must be under {self.config.max_tokens} tokens."""
         
-        prompt = enhanced_template.format(
-            previous_move=previous_move,
-            current_state=json.dumps(peg_list)
-        )
+        prompt = enhanced_template
         
         return prompt
     
