@@ -56,23 +56,44 @@ class HanoiMDAP(MicroAgent):
     
     def generate_step_prompt(self, state: HanoiState) -> str:
         """Generate prompt for the next move"""
+        # Determine which peg has disks and which are empty
+        disks_on_A = len(state.pegs['A'])
+        disks_on_B = len(state.pegs['B'])
+        disks_on_C = len(state.pegs['C'])
+        
+        # Get top disk on each peg if it exists
+        top_A = state.pegs['A'][-1] if state.pegs['A'] else "empty"
+        top_B = state.pegs['B'][-1] if state.pegs['B'] else "empty"
+        top_C = state.pegs['C'][-1] if state.pegs['C'] else "empty"
+        
         prompt = f"""You are a Hanoi move generator. Respond with ONLY the move and next_state. No explanations, no reasoning, no other text.
 
 Solve Towers of Hanoi. Move all disks to peg C.
 
-1. Move top disk only.
-2. Never place larger on smaller.
+RULES:
+1. Only move the TOP disk from a peg
+2. Never place a larger disk on a smaller disk
+3. You can only move from a peg that has disks
+4. You cannot move to the same peg
+
+CURRENT STATE ANALYSIS:
+- Peg A has {disks_on_A} disks, top disk is {top_A}
+- Peg B has {disks_on_B} disks, top disk is {top_B}  
+- Peg C has {disks_on_C} disks, top disk is {top_C}
 
 Current State:
 Peg A: {state.pegs['A']}
 Peg B: {state.pegs['B']}
 Peg C: {state.pegs['C']}
 
+VALID MOVES:
+From pegs with disks to pegs where you can place the top disk.
+
 Your task:
-Choose the next move and predict the resulting state.
+Choose ONE valid move and predict the EXACT resulting state.
 
 move = {{"from_peg": "X", "to_peg": "Y"}}
-next_state = {{"pegs": {{"A": [...], "B": [...], "C": [...]}}, "num_disks": {state.num_disks}, "move_count": {state.move_count + 1}}}
+next_state = {{"pegs": {{"A": {state.pegs['A']}, "B": {state.pegs['B']}, "C": {state.pegs['C']}}}, "num_disks": {state.num_disks}, "move_count": {state.move_count + 1}}}
 
 REMEMBER: Respond with ONLY the two lines above. Nothing else."""
         return prompt
