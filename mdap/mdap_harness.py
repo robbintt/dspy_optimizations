@@ -255,6 +255,7 @@ class MDAPHarness:
                     # Return a mock valid response for testing
                     mock_response = """move = [1, 0, 2]
 next_state = {"pegs": [[2, 3], [], [1]]}"""
+                    print(f"DEBUG: Mock mode enabled, returning mock response")
                     logger.info("Using mock response (mock mode enabled)")
                     return response_parser(mock_response.strip())
                 
