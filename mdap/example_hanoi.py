@@ -50,7 +50,7 @@ async def main():
     
     # Parse command line arguments
     num_disks = 2  # default
-    k_margin = None  # use default from config
+    k_margin = 6  # set to 6 as requested
     
     if len(sys.argv) > 1:
         try:
