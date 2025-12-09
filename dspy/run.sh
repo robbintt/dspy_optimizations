@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 if [ $# -eq 0 ]; then
     echo "Usage: ./run.sh <script_name>"
     echo "Example: ./run.sh optimize_prompt.py"
@@ -9,9 +12,9 @@ fi
 
 SCRIPT_NAME=$1
 
-# Check if script exists
-if [ ! -f "$SCRIPT_NAME" ]; then
-    echo "Error: Script '$SCRIPT_NAME' not found."
+# Check if script exists in the dspy directory
+if [ ! -f "$SCRIPT_DIR/$SCRIPT_NAME" ]; then
+    echo "Error: Script '$SCRIPT_NAME' not found in $SCRIPT_DIR"
     exit 1
 fi
 

@@ -1,16 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 echo "--- Setting up Python virtual environment ---"
 # Create virtualenvs directory if it doesn't exist
 mkdir -p ~/virtualenvs
 
 VENV_PATH="$HOME/virtualenvs/dspy_venv"
 if [ ! -d "$VENV_PATH" ]; then
-    echo "Creating Python virtual environment in ~/virtualenvs/mdap_venv..."
+    echo "Creating Python virtual environment in ~/virtualenvs/dspy_venv..."
     python3 -m venv "$VENV_PATH"
 fi
-echo "Virtual environment 'mdap_venv' is ready at $VENV_PATH."
+echo "Virtual environment 'dspy_venv' is ready at $VENV_PATH."
 
 
 echo ""
