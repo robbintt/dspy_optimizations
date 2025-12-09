@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import math
+import time
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass
@@ -79,6 +80,11 @@ class MDAPConfig:
     # This is different from the 'thinking' parameter that Z.ai uses in their API.
     # Set to None to omit the parameter from the API call.
     disable_reasoning: Optional[bool] = os.getenv("MDAP_DISABLE_REASONING", "true").lower() == "true"
+    
+    # --- Cost Tracking ---
+    # Cost per million tokens for different models (adjust based on actual pricing)
+    cost_per_input_token: float = float(os.getenv("MDAP_COST_PER_INPUT", "0.00015"))  # $0.15/M input tokens
+    cost_per_output_token: float = float(os.getenv("MDAP_COST_PER_OUTPUT", "0.0006"))  # $0.60/M output tokens
 
 class RedFlagParser:
     """Red-flagging parser to filter invalid responses before voting"""
@@ -97,7 +103,7 @@ class RedFlagParser:
             if isinstance(response, str):
                 # Red flag 1: Check length (overly long responses)
                 if len(response) > self.config.max_response_length:
-                    logger.warning(f"Response too long: {len(response)} chars")
+                    logger.warning(f"RED FLAG: Response too long: {len(response)} chars > {self.config.max_response_length}")
                     return None
 
                 # Parse the multi-part response
@@ -114,7 +120,7 @@ class RedFlagParser:
                         state_line = line
                 
                 if not move_line or not state_line:
-                    logger.warning("Response missing 'move' or 'next_state' line")
+                    logger.warning(f"RED FLAG: Response missing required fields - move_line={bool(move_line)}, state_line={bool(state_line)}")
                     return None
 
                 # Extract JSON from the lines
@@ -124,7 +130,7 @@ class RedFlagParser:
                     move_json = move_json.replace('```', '').strip()
                     move_data = json.loads(move_json)
                 except (json.JSONDecodeError, IndexError) as e:
-                    logger.warning(f"Failed to parse move JSON: {e}")
+                    logger.warning(f"RED FLAG: Failed to parse move JSON: {e}")
                     return None
 
                 try:
@@ -133,7 +139,7 @@ class RedFlagParser:
                     state_json = state_json.replace('```', '').strip()
                     predicted_state = json.loads(state_json)
                 except (json.JSONDecodeError, IndexError) as e:
-                    logger.warning(f"Failed to parse next_state JSON: {e}")
+                    logger.warning(f"RED FLAG: Failed to parse next_state JSON: {e}")
                     return None
 
                 # Red flag 2: Check move structure (paper format: [disk_id, from_peg, to_peg])
@@ -236,6 +242,9 @@ class MDAPHarness:
         self.config = config
         self.red_flag_parser = RedFlagParser(config)
         self.total_cost = 0.0
+        self.total_input_tokens = 0
+        self.total_output_tokens = 0
+        self.total_api_calls = 0
         
     async def first_to_ahead_by_k(self, 
                                  prompt: str, 
@@ -272,27 +281,54 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                 if self.config.disable_reasoning is not None:
                     completion_params["disable_reasoning"] = self.config.disable_reasoning
                 
+                # Time the API call
+                api_start = time.time()
                 response = await acompletion(**completion_params)
+                api_time = time.time() - api_start
                 
                 message = response.choices[0].message
                 content = message.content
                 
+                # Extract token usage
+                usage = response.usage
+                input_tokens = usage.prompt_tokens if usage else 0
+                output_tokens = usage.completion_tokens if usage else 0
+                
+                # Calculate cost
+                call_cost = (input_tokens * self.config.cost_per_input_token + 
+                           output_tokens * self.config.cost_per_output_token)
+                
+                # Update cumulative statistics
+                self.total_cost += call_cost
+                self.total_input_tokens += input_tokens
+                self.total_output_tokens += output_tokens
+                self.total_api_calls += 1
+                
+                # Log API call details
+                logger.info(f"API Call: model={self.config.model}, "
+                           f"in_tokens={input_tokens}, out_tokens={output_tokens}, "
+                           f"cost=${call_cost:.6f}, temp={completion_params.get('temperature')}, "
+                           f"time={api_time:.2f}s, length={len(content) if content else 0} chars, "
+                           f"cumulative: total_cost=${self.total_cost:.4f}, "
+                           f"total_calls={self.total_api_calls}")
+                
                 # Check if we have reasoning content but no final content
                 if content is None and hasattr(message, 'reasoning_content') and message.reasoning_content:
-                    logger.warning(f"LLM returned reasoning but no final content. This often means max_tokens was too small.")
+                    logger.warning(f"RED FLAG: LLM returned reasoning but no final content. This often means max_tokens was too small.")
                     logger.warning(f"Reasoning was: {message.reasoning_content[:200]}...")
                     return None
                 
                 if content is None:
-                    logger.warning(f"LLM returned None content. Full response: {response}")
+                    logger.warning(f"RED FLAG: LLM returned None content. Full response: {response}")
                     return None
                 
                 # Apply red flagging (non-repairing extractor)
                 parsed_response = response_parser(content.strip())
                 if parsed_response is None:
-                    logger.info("Response red-flagged, discarding without repair")
+                    logger.warning(f"RED FLAG: Response discarded by red-flag parser")
                     return None
                 
+                logger.info(f"Response passed red-flagging: {parsed_response}")
                 return parsed_response
             except Exception as e:
                 logger.error(f"LLM call failed: {e}")
@@ -319,6 +355,15 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
             
             # Check if we have a winner
             if votes[response_key] >= self.config.k_margin:
+                # Calculate vote margin
+                sorted_votes = votes.most_common()
+                runner_up_votes = sorted_votes[1][1] if len(sorted_votes) > 1 else 0
+                vote_margin = votes[response_key] - runner_up_votes
+                
+                logger.info(f"Voting Result: winner='{str(parsed_response)[:50]}...', "
+                           f"votes={votes[response_key]}/{attempts}, "
+                           f"margin={vote_margin}, unique_responses={len(votes)}, "
+                           f"reached_k_margin=True")
                 logger.info(f"Winner found with {votes[response_key]} votes (reached k_margin)")
                 logger.info(f"Winning response: {parsed_response}")
                 return parsed_response
@@ -331,13 +376,25 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                 if leader_votes - runner_up_votes >= self.config.k_margin:
                     winner_key = sorted_votes[0][0]
                     winner = json.loads(winner_key)
-                    logger.info(f"Winner leads by {leader_votes - runner_up_votes} votes")
+                    vote_margin = leader_votes - runner_up_votes
+                    
+                    logger.info(f"Voting Result: winner='{str(winner)[:50]}...', "
+                               f"votes={leader_votes}/{attempts}, "
+                               f"margin={vote_margin}, unique_responses={len(votes)}, "
+                               f"reached_k_margin=True")
+                    logger.info(f"Winner leads by {vote_margin} votes")
                     return winner
         
         # If no clear winner, return majority vote
         if votes:
             winner_key = votes.most_common(1)[0][0]
             winner = json.loads(winner_key)
+            winner_votes = votes.most_common(1)[0][1]
+            
+            logger.info(f"Voting Result: winner='{str(winner)[:50]}...', "
+                       f"votes={winner_votes}/{attempts}, "
+                       f"margin=0, unique_responses={len(votes)}, "
+                       f"reached_k_margin=False (majority vote)")
             logger.warning(f"No clear winner, returning majority vote")
             return winner
         
