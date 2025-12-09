@@ -371,8 +371,8 @@ next_state = {"pegs": {"A": [], "B": [2], "C": [1]}, "num_disks": 2, "move_count
         config = MDAPConfig(k_margin=2, max_candidates=3)
         solver = HanoiMDAP(config)
         
-        # Mock the solve_hanoi method to return an unsolved trace
-        async def mock_solve_hanoi(num_disks):
+        # Mock the execute_agent_mdap method to return an unsolved trace
+        async def mock_execute_agent_mdap(agent, num_disks):
             # Return a trace that ends in an unsolved state
             # Final state has disks on A and B, not all on C
             return [
@@ -380,7 +380,7 @@ next_state = {"pegs": {"A": [], "B": [2], "C": [1]}, "num_disks": 2, "move_count
                 HanoiState(pegs={'A': [2], 'B': [1], 'C': []}, num_disks=2, move_count=1)
             ]
         
-        with patch.object(solver, 'solve_hanoi', side_effect=mock_solve_hanoi):
+        with patch.object(solver.harness, 'execute_agent_mdap', side_effect=mock_execute_agent_mdap):
             with pytest.raises(RuntimeError, match="Hanoi solver failed to reach goal state"):
                 await solver.solve_hanoi(2)
     
