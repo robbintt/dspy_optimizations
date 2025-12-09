@@ -103,7 +103,7 @@ run_coverage_tests() {
     fi
     
     # Run coverage
-    coverage run -m pytest test_mdap_harness.py test_hanoi_integration.py -v
+    coverage run -m pytest test_mdap_harness.py test_hanoi_integration.py test_hanoi_calibration.py -v
     coverage report -m
     coverage html
     
