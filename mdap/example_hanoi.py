@@ -47,8 +47,13 @@ async def main():
     
     # Create solver with default config (uses MDAP_DEFAULT_MODEL from env or default)
     config = MDAPConfig()
-    logger.info(f"Created solver with config: model={config.model}, k_margin={config.k_margin}")
-    print(f"Config: model={config.model}, k_margin={config.k_margin}")
+    # Enable mock mode if environment variable is set
+    if os.getenv("MDAP_MOCK_MODE", "false").lower() == "true":
+        config.mock_mode = True
+        config.k_margin = 1  # Lower K for faster testing
+        config.max_candidates = 2  # Fewer candidates for faster testing
+    logger.info(f"Created solver with config: model={config.model}, k_margin={config.k_margin}, mock_mode={config.mock_mode}")
+    print(f"Config: model={config.model}, k_margin={config.k_margin}, mock_mode={config.mock_mode}")
     solver = HanoiMDAP(config)
     
     try:
