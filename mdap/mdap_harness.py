@@ -267,15 +267,20 @@ class MDAPHarness:
                     # Return a mock valid response for testing
                     mock_response = """move = [1, 0, 2]
 next_state = {"pegs": [[2, 3], [], [1]]}"""
-                    print(f"DEBUG: Mock mode enabled, returning mock response")
-                    logger.info("Using mock response (mock mode enabled)")
-                    return response_parser(mock_response.strip())
+                    logger.warning("MOCK MODE ENABLED - returning mock response instead of calling LLM")
+                    logger.info(f"Mock response: {mock_response}")
+                    try:
+                        return response_parser(mock_response.strip())
+                    except Exception as e:
+                        logger.error(f"Mock response parser failed: {e}")
+                        return None
                 
                 # Use temperature=0 for first vote, 0.1 for subsequent votes (per paper)
                 temperature = 0.0 if first_vote else self.config.temperature
                 if first_vote:
                     logger.info(f"Using temperature=0.0 for first vote to ensure best guess")
                     first_vote = False
+                logger.info(f"Making LLM call with temperature={temperature}")
                 
                 # Build completion parameters, including optional model-specific ones
                 completion_params = {
@@ -336,10 +341,20 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                 logger.info(content)
                 logger.info("-" * 80)
                 
+                # Check if content is empty or None
+                if not content or content.strip() == "":
+                    logger.error("RED FLAG: LLM returned empty content")
+                    return None
+                
                 # Apply red flagging (non-repairing extractor)
-                parsed_response = response_parser(content.strip())
-                if parsed_response is None:
-                    logger.warning(f"RED FLAG: Response discarded by red-flag parser")
+                try:
+                    parsed_response = response_parser(content.strip())
+                    if parsed_response is None:
+                        logger.warning(f"RED FLAG: Response discarded by red-flag parser")
+                        return None
+                except Exception as e:
+                    logger.error(f"RED FLAG: Response parser threw exception: {e}")
+                    logger.error(f"Response content was: {content[:200]}...")
                     return None
                 
                 logger.info(f"Response passed red-flagging: {parsed_response}")
@@ -607,8 +622,9 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                 
                 # Get step prompt and parser
                 step_prompt, response_parser = agent.step_generator(state)
-                
+            
                 # We only need one successful candidate to check against optimal
+                logger.info(f"Step prompt for state {i+1}: {step_prompt[:200]}...")
                 step_result = await self.first_to_ahead_by_k(step_prompt, response_parser)
                 logger.info(f"State {i+1} LLM call successful")
                 
