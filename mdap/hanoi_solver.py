@@ -215,6 +215,9 @@ class HanoiMDAP(MicroAgent):
             'to_peg': move[2]
         })
         
+        # Also update previous_move for backward compatibility
+        new_state.previous_move = move
+        
         return new_state
     
     def is_solved(self, state: HanoiState) -> bool:
