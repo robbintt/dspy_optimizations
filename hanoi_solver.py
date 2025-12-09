@@ -70,6 +70,11 @@ class HanoiMDAP(MicroAgent):
 
 Solve Towers of Hanoi. Move all disks to peg C.
 
+DISK SIZES: 
+- Larger numbers = LARGER disks (disk 2 is bigger than disk 1)
+- Smaller numbers = SMALLER disks (disk 1 is the smallest)
+- NEVER place a larger number on a smaller number
+
 GOAL: All disks on peg C in order [largest...smallest]
 Goal State: Peg A: [], Peg B: [], Peg C: {list(range(state.num_disks, 0, -1))}
 
@@ -80,7 +85,7 @@ STRATEGY:
 
 RULES:
 1. Only move the TOP disk from a peg
-2. Never place a larger disk on a smaller disk
+2. NEVER place a LARGER disk on a SMALLER disk (e.g., 2 cannot go on 1)
 3. You can only move from a peg that has disks
 4. You cannot move to the same peg
 
