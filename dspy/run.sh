@@ -43,6 +43,5 @@ else
     echo "Warning: .env file not found. Script might fail if it requires environment variables."
 fi
 
-# Change to the script directory and run the Python script
-cd "$SCRIPT_DIR"
-python "$SCRIPT_NAME"
+# Run the Python script using the extracted Python runner
+python ../scripts/run_script.py "$SCRIPT_NAME"
