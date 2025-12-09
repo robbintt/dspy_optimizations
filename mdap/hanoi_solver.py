@@ -216,6 +216,43 @@ class HanoiMDAP(MicroAgent):
             len(state.pegs['B']) == 0
         )
     
+    def get_optimal_move(self, state: HanoiState) -> List[int]:
+        """
+        Get the optimal move for the current state based on the even-disk strategy.
+        Returns the move as [disk_id, from_peg, to_peg].
+        """
+        # For even number of disks, the optimal strategy is:
+        # - Move smallest disk to the next peg in the sequence A->B->C->A
+        # - Make the only other legal move
+        # - Repeat
+        
+        # Find the smallest disk that can be moved
+        smallest_disk = None
+        from_peg = None
+        
+        # Check each peg from top to bottom for the smallest disk
+        for peg_name, peg in state.pegs.items():
+            if peg:  # If peg is not empty
+                disk = peg[-1]  # Top disk
+                if smallest_disk is None or disk < smallest_disk:
+                    smallest_disk = disk
+                    from_peg = peg_name
+        
+        if smallest_disk is None:
+            return None  # No moves possible
+        
+        # Convert peg name to index
+        peg_indices = {'A': 0, 'B': 1, 'C': 2}
+        from_idx = peg_indices[from_peg]
+        
+        # For even number of disks, move smallest disk in reverse direction
+        if state.num_disks % 2 == 0:
+            to_idx = (from_idx - 1) % 3
+        else:
+            to_idx = (from_idx + 1) % 3
+        
+        return [smallest_disk, from_idx, to_idx]
+    
     def step_generator(self, state: HanoiState) -> Tuple[str, Callable]:
         """Generate prompt and parser for current step"""
         user_prompt = self.generate_step_prompt(state)
