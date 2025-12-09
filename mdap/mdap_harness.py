@@ -583,6 +583,49 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
         logger.info(f"Estimated per-step success rate (p): {p_estimate:.4f} ({successful_steps}/{actual_steps_attempted} steps)")
         return p_estimate
 
+    async def estimate_per_step_success_rate_from_states(self, agent: 'MicroAgent', states: list) -> float:
+        """
+        Estimate the per-step success rate using pre-generated states.
+        Checks against known optimal moves instead of just validity.
+        """
+        logger.info(f"Estimating per-step success rate for {self.config.model} on {len(states)} pre-generated states...")
+        successful_steps = 0
+        
+        for i, state in enumerate(states):
+            logger.info(f"Testing pre-generated state {i+1}/{len(states)}")
+            
+            try:
+                # Get the optimal move for this state
+                optimal_move = agent.get_optimal_move(state)
+                logger.info(f"Optimal move for state {i+1}: {optimal_move}")
+                
+                # Get step prompt and parser
+                step_prompt, response_parser = agent.step_generator(state)
+                
+                # We only need one successful candidate to check against optimal
+                step_result = await self.first_to_ahead_by_k(step_prompt, response_parser)
+                logger.info(f"State {i+1} LLM call successful")
+                
+                # Check if the LLM's move matches the optimal move
+                llm_move = step_result.get("move", [])
+                logger.info(f"LLM move: {llm_move}")
+                
+                if llm_move == optimal_move:
+                    logger.info(f"State {i+1}: LLM move matches optimal move ✓")
+                    successful_steps += 1
+                else:
+                    logger.warning(f"State {i+1}: LLM move {llm_move} != optimal move {optimal_move} ✗")
+                        
+            except Exception as e:
+                # A failure here means the step was unsuccessful
+                logger.error(f"Estimation for state {i+1} failed: {e}")
+        
+        p_estimate = successful_steps / len(states) if states else 0.0
+        
+        logger.info(f"Final count: successful_steps={successful_steps}, total_states={len(states)}")
+        logger.info(f"Estimated per-step success rate (p): {p_estimate:.4f} ({successful_steps}/{len(states)} steps)")
+        return p_estimate
+
     def calculate_k_min(self, p: float, num_disks: int, target_reliability: float = 0.95) -> int:
         """
         Calculates the minimal k_margin based on the paper's formula.
