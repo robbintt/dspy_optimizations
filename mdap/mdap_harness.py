@@ -385,7 +385,7 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
             logger.info(f"Attempting to get candidate {attempts}/{self.config.max_candidates}")
             
             # Check if prompt is valid
-            if not prompt or not isinstance(prompt, str):
+            if not prompt or not isinstance(prompt, tuple) or len(prompt) != 2:
                 logger.error(f"Invalid prompt: {prompt}")
                 return None
             
