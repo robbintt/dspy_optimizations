@@ -131,7 +131,7 @@ class HanoiMDAP(MicroAgent):
         """Generate prompt for next step using the new MDAP prompt format"""
         # Get the previous move from the state history
         previous_move = "None"  # Default for first move
-        if hasattr(state, 'move_history') and len(state.move_history) > 0:
+        if hasattr(state, 'move_history') and state.move_history is not None and len(state.move_history) > 0:
             last_move = state.move_history[-1]
             previous_move = f"[{last_move['disk_id']}, {last_move['from_peg']}, {last_move['to_peg']}]"
         
