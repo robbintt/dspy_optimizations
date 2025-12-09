@@ -54,62 +54,48 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
         
         # Check if a valid move was found
         if not optimal_move:
-            # This should not happen for a valid, unsolved state.
-            # Raising an error here gives a much clearer message than the TypeError.
             raise ValueError(f"get_optimal_move returned no valid move for state: {state.to_dict()}")
         
-        # Get the previous move from state history if available
-        previous_move = "None"
-        if hasattr(state, 'move_history') and len(state.move_history) > 0:
-            last_move = state.move_history[-1]
-            previous_move = f"[{last_move['disk_id']}, {last_move['from_peg']}, {last_move['to_peg']}]"
-        
-        # Generate the prompt with correct previous move
+        # Generate the prompt (required by function signature, but won't be sent to LLM)
         prompt = solver.generate_step_prompt(state)
         
         # Generate the predicted state for this move
-        # Apply the move directly to get the new state
         disk_id, from_peg, to_peg = optimal_move
         new_pegs = {peg: list(disks) for peg, disks in state.pegs.items()}
-        
-        # Move the disk - but ensure we're moving from the correct peg
-        # The optimal_move uses 0-indexed pegs, but state.pegs uses 'A', 'B', 'C'
         from_peg_char = chr(65 + from_peg)
         to_peg_char = chr(65 + to_peg)
         
-        # Validate the move before applying
         if not new_pegs[from_peg_char]:
             raise ValueError(f"Cannot move from empty peg {from_peg_char}")
         
-        disk = new_pegs[from_peg_char].pop()  # Pop from end (smallest/top disk)
-        
-        # Check if move is valid (can't place larger on smaller)
+        disk = new_pegs[from_peg_char].pop()
         if new_pegs[to_peg_char] and disk > new_pegs[to_peg_char][-1]:
             raise ValueError(f"Invalid move: placing disk {disk} on top of smaller disk {new_pegs[to_peg_char][-1]}")
+        new_pegs[to_peg_char].append(disk)
         
-        new_pegs[to_peg_char].append(disk)  # Append to end (place on top)
-        
-        # Create new state object with proper move history
         new_state = type(state)(
             pegs=new_pegs,
             num_disks=state.num_disks,
             move_count=state.move_count + 1,
             move_history=copy.deepcopy(state.move_history) if state.move_history else []
         )
-        
-        # Add current move to history
         new_state.move_history.append({
-            'disk_id': disk_id,
-            'from_peg': from_peg,
-            'to_peg': to_peg
+            'disk_id': disk_id, 'from_peg': from_peg, 'to_peg': to_peg
         })
         
-        return prompt, lambda x: {
-            "move": optimal_move,
-            "predicted_state": new_state.to_dict()
-        }
-    
+        # The parser now directly returns the computed result
+        parser = lambda x: {"move": optimal_move, "predicted_state": new_state.to_dict()}
+        return prompt, parser
+
+    async def mock_execute_step(step_prompt, response_parser):
+        """Mock execute_step to return the pre-computed result without LLM calls"""
+        # The parser from our mock_step_generator holds the correct answer.
+        # We can just call it with a dummy string to get the result.
+        return response_parser("dummy response")
+
+    # Apply the mocks to bypass the LLM
     solver.step_generator = mock_step_generator
+    solver.harness.execute_step = mock_execute_step
     
     logger.info("Generating full solution...")
     full_solution = await solver.solve_hanoi(num_disks)
