@@ -74,6 +74,8 @@ class HanoiMDAP(MicroAgent):
         
         prompt = f"""You are a Hanoi move generator. You have {self.config.thinking_budget} tokens for thinking if needed.
 
+IMPORTANT: After thinking, you MUST provide the final response in the exact format below. The thinking and final response share the token budget.
+
 Respond with ONLY the move and next_state. Use thinking tokens if the model supports them, but keep the final response concise.
 
 Solve Towers of Hanoi. Move all disks to peg C.

@@ -45,7 +45,7 @@ class MDAPConfig:
 
     # Set appropriate max_completion_tokens limits. For focused responses, consider using lower values.
     # Note: LiteLLM uses the 'max_tokens' parameter, which maps to 'max_completion_tokens' in the API.
-    max_tokens: int = int(os.getenv("MDAP_MAX_TOKENS", "500"))
+    max_tokens: int = int(os.getenv("MDAP_MAX_TOKENS", "1000"))
     
     # Thinking budget for models that support reasoning/thinking
     thinking_budget: int = int(os.getenv("MDAP_THINKING_BUDGET", "200"))
@@ -201,7 +201,15 @@ class MDAPHarness:
                 
                 response = await acompletion(**completion_params)
                 
-                content = response.choices[0].message.content
+                message = response.choices[0].message
+                content = message.content
+                
+                # Check if we have reasoning content but no final content
+                if content is None and hasattr(message, 'reasoning_content') and message.reasoning_content:
+                    logger.warning(f"LLM returned reasoning but no final content. This often means max_tokens was too small.")
+                    logger.warning(f"Reasoning was: {message.reasoning_content[:200]}...")
+                    return None
+                
                 if content is None:
                     logger.warning(f"LLM returned None content. Full response: {response}")
                     return None
