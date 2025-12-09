@@ -360,12 +360,15 @@ class MDAPHarness:
         initial_state = agent.create_initial_state(num_disks)
         current_state = initial_state
         successful_steps = 0
+        actual_steps_attempted = 0
         
         for _ in range(sample_steps):
             if agent.is_solved(current_state):
+                logger.info(f"Agent solved the problem after {actual_steps_attempted} steps")
                 break
             
             step_prompt, response_parser = agent.step_generator(current_state)
+            actual_steps_attempted += 1
             
             try:
                 # We only need one successful candidate to check for validity
@@ -379,8 +382,13 @@ class MDAPHarness:
                 logger.debug(f"Estimation step failed: {e}")
                 break
         
-        p_estimate = successful_steps / sample_steps
-        logger.info(f"Estimated per-step success rate (p): {p_estimate:.4f}")
+        # If we didn't attempt any steps (e.g., already solved), return 1.0
+        if actual_steps_attempted == 0:
+            p_estimate = 1.0
+        else:
+            p_estimate = successful_steps / actual_steps_attempted
+        
+        logger.info(f"Estimated per-step success rate (p): {p_estimate:.4f} ({successful_steps}/{actual_steps_attempted} steps)")
         return p_estimate
 
     def calculate_k_min(self, p: float, num_disks: int, target_reliability: float = 0.95) -> int:
