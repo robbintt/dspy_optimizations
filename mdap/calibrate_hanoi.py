@@ -40,12 +40,6 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
     """Generate and cache calibration states from a full 20-disc solution"""
     logger.info(f"Generating calibration cache for {num_disks}-disc Hanoi problem")
     
-    # Check if cache already exists
-    if os.path.exists(cache_file):
-        logger.info(f"Loading existing calibration cache from {cache_file}")
-        with open(cache_file, 'rb') as f:
-            return pickle.load(f)
-    
     # Generate full solution for 20 discs (2^20 - 1 = 1,048,575 steps)
     config = MDAPConfig(model="cerebras/zai-glm-4.6", k_margin=1)  # Use cerebras model for caching
     solver = HanoiMDAP(config=config)
