@@ -62,7 +62,7 @@ class MDAPConfig:
     temperature: float = float(os.getenv("MDAP_TEMPERATURE", "0.1"))  # Default temperature set to 0.1
     max_retries: int = 3
     cost_threshold: Optional[float] = None
-    max_response_length: int = int(os.getenv("MDAP_MAX_RESPONSE_LENGTH", "1000"))  # Max response length in chars
+    max_response_length: int = int(os.getenv("MDAP_MAX_RESPONSE_LENGTH", "750"))  # Max response length in chars (paper uses 750)
     mock_mode: bool = os.getenv("MDAP_MOCK_MODE", "false").lower() == "true"  # Mock mode for testing
 
     # --- Model Behavior Options ---
@@ -511,6 +511,7 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
         """
         Estimates the per-step success rate (p) for a given model and agent.
         Runs the agent for a small number of steps and counts successes.
+        Now checks against known optimal moves instead of just validity.
         """
         logger.info(f"Estimating per-step success rate for {self.config.model} on {sample_steps} steps...")
         initial_state = agent.create_initial_state(num_disks)
@@ -530,15 +531,35 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
             logger.info(f"Attempting step {actual_steps_attempted}")
             
             try:
-                # We only need one successful candidate to check for validity
+                # Get the optimal move for this state
+                optimal_move = agent.get_optimal_move(current_state)
+                logger.info(f"Optimal move for step {actual_steps_attempted}: {optimal_move}")
+                
+                # We only need one successful candidate to check against optimal
                 step_result = await self.first_to_ahead_by_k(step_prompt, response_parser)
                 logger.info(f"Step {actual_steps_attempted} LLM call successful")
-                # The update_state method itself acts as the validation
-                new_state = agent.update_state(current_state, step_result)
-                logger.info(f"Step {actual_steps_attempted} state update successful")
-                successful_steps += 1
-                current_state = new_state
-                logger.info(f"New state: {current_state.to_dict() if hasattr(current_state, 'to_dict') else current_state}")
+                
+                # Check if the LLM's move matches the optimal move
+                llm_move = step_result.get("move", [])
+                logger.info(f"LLM move: {llm_move}")
+                
+                if llm_move == optimal_move:
+                    logger.info(f"Step {actual_steps_attempted}: LLM move matches optimal move ✓")
+                    successful_steps += 1
+                    # Update state with the correct move
+                    new_state = agent.update_state(current_state, step_result)
+                    current_state = new_state
+                    logger.info(f"New state: {current_state.to_dict() if hasattr(current_state, 'to_dict') else current_state}")
+                else:
+                    logger.warning(f"Step {actual_steps_attempted}: LLM move {llm_move} != optimal move {optimal_move} ✗")
+                    # Still update state to continue calibration, but don't count as success
+                    try:
+                        new_state = agent.update_state(current_state, step_result)
+                        current_state = new_state
+                    except Exception as e:
+                        logger.error(f"Failed to update state with suboptimal move: {e}")
+                        break
+                        
             except Exception as e:
                 # A failure here means the step was unsuccessful
                 logger.error(f"Estimation step {actual_steps_attempted} failed: {e}")

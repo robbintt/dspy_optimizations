@@ -56,8 +56,8 @@ async def main():
     logger.info(f"   Target Reliability: {args.target_reliability}")
     logger.info("-" * 20)
 
-    # Use a temporary config for calibration
-    config = MDAPConfig(model=args.model, k_margin=3) # k_margin doesn't matter for estimation
+    # Use a temporary config for calibration with lower k_margin for testing
+    config = MDAPConfig(model=args.model, k_margin=1) # Use k_margin=1 for calibration to avoid overconfidence
     solver = HanoiMDAP(config=config)
     
     # 1. Estimate per-step success rate
