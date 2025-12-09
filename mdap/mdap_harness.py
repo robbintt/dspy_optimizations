@@ -256,9 +256,11 @@ class MDAPHarness:
         logger.info(f"Starting first-to-ahead-by-K with k_margin={self.config.k_margin}, max_candidates={self.config.max_candidates}")
         votes = Counter()
         candidates = []
+        first_vote = True  # Track if this is the first vote
         
         async def get_candidate():
             """Get a single candidate response with non-repairing extractor"""
+            nonlocal first_vote
             try:
                 # Check if we're in mock mode
                 if self.config.mock_mode:
@@ -269,11 +271,17 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                     logger.info("Using mock response (mock mode enabled)")
                     return response_parser(mock_response.strip())
                 
+                # Use temperature=0 for first vote, 0.1 for subsequent votes (per paper)
+                temperature = 0.0 if first_vote else self.config.temperature
+                if first_vote:
+                    logger.info(f"Using temperature=0.0 for first vote to ensure best guess")
+                    first_vote = False
+                
                 # Build completion parameters, including optional model-specific ones
                 completion_params = {
                     "model": self.config.model,
                     "messages": [{"role": "user", "content": prompt}],
-                    "temperature": self.config.temperature,
+                    "temperature": temperature,
                     "max_tokens": self.config.max_tokens,
                 }
 
