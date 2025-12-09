@@ -48,8 +48,9 @@ except ImportError:
 # Configure LiteLLM logging from environment
 litellm.set_verbose = os.getenv("LITELLM_LOG", "INFO").upper() == "DEBUG"
 
-logging.basicConfig(level=logging.INFO)
+# Don't call basicConfig here since handlers are already configured above
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 @dataclass
 class MDAPConfig:

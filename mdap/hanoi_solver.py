@@ -25,16 +25,19 @@ file_handler.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
 
-# Add handler to root logger
-logging.getLogger().addHandler(file_handler)
+# Create a specific logger for hanoi_solver to avoid conflicts
+hanoi_logger = logging.getLogger('hanoi_solver')
+hanoi_logger.setLevel(logging.INFO)
+hanoi_logger.addHandler(file_handler)
+hanoi_logger.addHandler(console_handler)
 
 # Also add console handler to tee output to terminal
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(formatter)
-logging.getLogger().addHandler(console_handler)
+hanoi_logger.addHandler(console_handler)
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('hanoi_solver')
 
 # Import the new system prompt and user template from the paper
 SYSTEM_PROMPT = """

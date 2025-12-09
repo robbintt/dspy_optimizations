@@ -15,14 +15,13 @@ os.makedirs(LOGS_DIR, exist_ok=True)
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 log_file = os.path.join(LOGS_DIR, f"test_mock_{timestamp}.log")
 
-logging.basicConfig(
-    level=logging.INFO,
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+# Create a specific logger for test_mock to avoid conflicts
+test_logger = logging.getLogger('test_mock')
+test_logger.setLevel(logging.INFO)
+test_logger.addHandler(logging.FileHandler(log_file))
+test_logger.addHandler(logging.StreamHandler())
+
+logger = logging.getLogger('test_mock')
 
 async def main():
     """Test MDAP with mock mode"""
