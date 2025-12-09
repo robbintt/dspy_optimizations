@@ -56,52 +56,18 @@ class HanoiMDAP(MicroAgent):
     
     def generate_step_prompt(self, state: HanoiState) -> str:
         """Generate prompt for the next move"""
-        # Create a visual representation of the state
-        def visualize_pegs(pegs):
-            max_height = max(len(p) for p in pegs.values())
-            lines = []
-            for level in range(max_height - 1, -1, -1):
-                line_parts = []
-                for peg_name in ['A', 'B', 'C']:
-                    disks = pegs[peg_name]
-                    if level < len(disks):
-                        disk_size = disks[level]
-                        line_parts.append(f"  {disk_size}  ")
-                    else:
-                        line_parts.append("  |  ")
-                lines.append("".join(line_parts))
-            lines.append("-----" * 3) # Base
-            lines.append("  A    B    C  ")
-            return "\n".join(lines)
+        prompt = f"""Solve Towers of Hanoi. Move all disks to peg C.
 
-        visual_state = visualize_pegs(state.pegs)
-        
-        prompt = f"""You are solving the Towers of Hanoi puzzle. Your goal is to move all disks to peg C.
+Rules: Move top disk only. Never place larger on smaller.
 
-**OVERALL STRATEGY:**
-Follow this optimal strategy for {state.num_disks} disks:
-1. Move the smallest disk (1) to the auxiliary peg (B).
-2. Move the remaining disks (2 to {state.num_disks}) to the target peg (C).
-3. Move the smallest disk (1) from the auxiliary peg (B) to the target peg (C).
+Current State:
+Peg A: {state.pegs['A']}
+Peg B: {state.pegs['B']}
+Peg C: {state.pegs['C']}
 
-**CRITICAL RULES:**
-- Disk numbers represent SIZE: {state.num_disks} is LARGEST, 1 is SMALLEST.
-- You can ONLY move the TOP disk from a peg.
-- You can NEVER place a larger disk on top of a smaller disk.
-- The goal is to move the entire tower to peg C.
-
-**Current State (Move {state.move_count}):**
-{visual_state}
-
-**Your Task:**
-Based on the OVERALL STRATEGY and the current state, choose the SINGLE next move and predict the resulting state. Do not undo the previous move.
-
-Your response must be in the following format, with no other text:
-move = <move>
-next_state = <next_state>
-
-Where <move> is a JSON object {{"from_peg": "A", "to_peg": "B"}}
-and <next_state> is a JSON object {{"pegs": {{"A": [...], "B": [...], "C": [...]}}, "num_disks": {state.num_disks}, "move_count": {state.move_count + 1}}}
+Provide the next move and the resulting state in this format:
+move = {{"from_peg": "X", "to_peg": "Y"}}
+next_state = {{"pegs": {{"A": [...], "B": [...], "C": [...]}}, "num_disks": {state.num_disks}, "move_count": {state.move_count + 1}}}
 """
         return prompt
     
