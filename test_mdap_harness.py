@@ -348,14 +348,11 @@ class TestMDAPCalibration:
                 return self.generate_step_prompt(state), RedFlagParser.parse_move_state_flag
 
         # Mock the first_to_ahead_by_k to simulate a 70% success rate
-        # The function stops on first failure, so we need to ensure it runs 10 times
-        # with 7 successes and 3 failures, but the failures should be at the end
         call_count = 0
         async def mock_first_to_ahead_by_k(prompt, parser):
             nonlocal call_count
             call_count += 1
             # Simulate 7 successes out of 10 calls
-            # The estimation function stops on first failure, so all failures must be at the end
             if call_count <= 7:
                 # Return a valid response that the parser will accept
                 response = {"from_peg": "A", "to_peg": "B"}
