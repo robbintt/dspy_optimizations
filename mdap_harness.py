@@ -9,11 +9,33 @@ import json
 import logging
 import os
 import math
+from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass
 from collections import Counter
 import litellm
 from litellm import completion, acompletion
+
+# Setup logging to file with timestamps
+LOGS_DIR = "logs"
+os.makedirs(LOGS_DIR, exist_ok=True)
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+log_file = os.path.join(LOGS_DIR, f"mdap_harness_{timestamp}.log")
+
+# Configure file handler for MDAP logs
+file_handler = logging.FileHandler(log_file)
+file_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+
+# Add handler to root logger
+logging.getLogger().addHandler(file_handler)
+
+# Also add console handler to tee output to terminal
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(formatter)
+logging.getLogger().addHandler(console_handler)
 
 # Load environment variables
 try:
@@ -203,6 +225,7 @@ class MDAPHarness:
         First-to-ahead-by-K voting mechanism
         Samples candidates until one leads by K votes
         """
+        logger.info(f"Starting first-to-ahead-by-K with k_margin={self.config.k_margin}, max_candidates={self.config.max_candidates}")
         votes = Counter()
         candidates = []
         
@@ -251,9 +274,11 @@ class MDAPHarness:
         attempts = 0
         while len(candidates) < self.config.max_candidates and attempts < self.config.max_candidates:
             attempts += 1
+            logger.info(f"Attempting to get candidate {attempts}/{self.config.max_candidates}")
             # Get new candidate (already parsed and red-flagged)
             parsed_response = await get_candidate()
             if parsed_response is None:
+                logger.info(f"Candidate {attempts} was red-flagged and discarded")
                 continue
 
             # Add this line to log the parsed response
@@ -266,7 +291,8 @@ class MDAPHarness:
             
             # Check if we have a winner
             if votes[response_key] >= self.config.k_margin:
-                logger.info(f"Winner found with {votes[response_key]} votes")
+                logger.info(f"Winner found with {votes[response_key]} votes (reached k_margin)")
+                logger.info(f"Winning response: {parsed_response}")
                 return parsed_response
             
             # Check if any candidate leads by K
@@ -316,6 +342,8 @@ class MDAPHarness:
         """
         Execute a complete MDAP process
         """
+        logger.info("Starting MDAP execution")
+        logger.info(f"Initial state: {initial_state}")
         current_state = initial_state
         execution_trace = [current_state]
         step_count = 0
@@ -323,6 +351,7 @@ class MDAPHarness:
         while not termination_check(current_state):
             step_count += 1
             logger.info(f"Executing step {step_count}")
+            logger.info(f"Current state before step: {current_state}")
             
             # Generate prompt and parser for current step
             step_prompt, response_parser = step_generator(current_state)
@@ -337,10 +366,13 @@ class MDAPHarness:
                     
                     # Update state using the agent's update_state method if available
                     if agent:
+                        logger.info(f"Updating state using agent method with step result: {step_result}")
                         current_state = agent.update_state(current_state, step_result)
                     else:
+                        logger.info(f"Updating state using harness method with step result: {step_result}")
                         current_state = self.update_state(current_state, step_result)
                     
+                    logger.info(f"State updated successfully: {current_state}")
                     # If both succeed, break the retry loop and continue
                     break
 

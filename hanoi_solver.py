@@ -5,11 +5,34 @@ Demonstrates MAKER framework on a classic recursive problem
 
 import json
 import logging
+import os
+from datetime import datetime
 from typing import List, Tuple, Callable, Any
 from dataclasses import dataclass
 import copy
 from micro_agent import MicroAgent
 from mdap_harness import MDAPHarness, MDAPConfig, RedFlagParser
+
+# Setup logging to file with timestamps
+LOGS_DIR = "logs"
+os.makedirs(LOGS_DIR, exist_ok=True)
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+log_file = os.path.join(LOGS_DIR, f"hanoi_solver_{timestamp}.log")
+
+# Configure file handler for Hanoi solver logs
+file_handler = logging.FileHandler(log_file)
+file_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+
+# Add handler to root logger
+logging.getLogger().addHandler(file_handler)
+
+# Also add console handler to tee output to terminal
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(formatter)
+logging.getLogger().addHandler(console_handler)
 
 logger = logging.getLogger(__name__)
 
@@ -193,6 +216,8 @@ class HanoiMDAP(MicroAgent):
     
     async def solve_hanoi(self, num_disks: int) -> List[HanoiState]:
         """Solve Towers of Hanoi using MDAP"""
+        logger.info(f"Starting to solve {num_disks}-disk Towers of Hanoi problem")
+        logger.info(f"Using model: {self.config.model}, k_margin: {self.config.k_margin}")
         trace = await self.harness.execute_agent_mdap(self, num_disks)
         
         # Verify the final state is actually solved
@@ -201,14 +226,15 @@ class HanoiMDAP(MicroAgent):
             raise RuntimeError("Hanoi solver failed to reach goal state")
         
         logger.info(f"Successfully solved {num_disks}-disk Hanoi in {trace[-1].move_count} moves")
+        logger.info(f"Solution trace contains {len(trace)} states")
         return trace
 
 # Utility function for testing
 def print_solution(trace: List[HanoiState]):
     """Print the solution trace"""
-    print(f"Towers of Hanoi Solution ({len(trace)-1} moves):")
+    logger.info(f"Towers of Hanoi Solution ({len(trace)-1} moves):")
     for i, state in enumerate(trace):
-        print(f"\nStep {i}:")
+        logger.info(f"\nStep {i}:")
         for peg, disks in state.pegs.items():
-            print(f"  {peg}: {disks}")
-    print(f"\nSolved in {trace[-1].move_count} moves!")
+            logger.info(f"  {peg}: {disks}")
+    logger.info(f"\nSolved in {trace[-1].move_count} moves!")
