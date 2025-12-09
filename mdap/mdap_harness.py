@@ -112,34 +112,40 @@ class RedFlagParser:
                 state_line = None
 
                 for line in lines:
-                    # More flexible matching for move line
-                    if line.strip().lower().startswith("move") and "=" in line:
+                    # Strict matching for move line - must start exactly with "move ="
+                    if line.strip().startswith("move ="):
                         move_line = line
-                    # More flexible matching for state line
-                    elif line.strip().lower().startswith("next_state") and "=" in line:
+                    # Strict matching for state line - must start exactly with "next_state ="
+                    elif line.strip().startswith("next_state ="):
                         state_line = line
                 
                 if not move_line or not state_line:
                     logger.warning(f"RED FLAG: Response missing required fields - move_line={bool(move_line)}, state_line={bool(state_line)}")
                     return None
 
-                # Extract JSON from the lines
+                # Extract JSON from the lines - strict format enforcement
                 try:
                     move_json = move_line.split("=", 1)[1].strip()
-                    # Remove any code block markers
-                    move_json = move_json.replace('```', '').strip()
+                    # NO code block markers allowed - this is a red flag
+                    if '```' in move_json:
+                        logger.warning(f"RED FLAG: Move contains code block markers: {move_line}")
+                        return None
                     move_data = json.loads(move_json)
                 except (json.JSONDecodeError, IndexError) as e:
                     logger.warning(f"RED FLAG: Failed to parse move JSON: {e}")
+                    logger.warning(f"Move line was: {move_line}")
                     return None
 
                 try:
                     state_json = state_line.split("=", 1)[1].strip()
-                    # Remove any code block markers
-                    state_json = state_json.replace('```', '').strip()
+                    # NO code block markers allowed - this is a red flag
+                    if '```' in state_json:
+                        logger.warning(f"RED FLAG: Next state contains code block markers: {state_line}")
+                        return None
                     predicted_state = json.loads(state_json)
                 except (json.JSONDecodeError, IndexError) as e:
                     logger.warning(f"RED FLAG: Failed to parse next_state JSON: {e}")
+                    logger.warning(f"State line was: {state_line}")
                     return None
 
                 # Red flag 2: Check move structure (paper format: [disk_id, from_peg, to_peg])
