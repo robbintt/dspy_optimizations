@@ -75,6 +75,11 @@ DISK SIZES:
 - Smaller numbers = SMALLER disks (disk 1 is the smallest)
 - NEVER place a larger number on a smaller number
 
+FINAL ORDER EXAMPLE:
+- For 2 disks: Peg C should have [2, 1] (disk 2 at bottom, disk 1 on top)
+- For 3 disks: Peg C should have [3, 2, 1] (disk 3 at bottom, disk 1 on top)
+- Larger numbers ALWAYS go below smaller numbers
+
 GOAL: All disks on peg C in order [largest...smallest]
 Goal State: Peg A: [], Peg B: [], Peg C: {list(range(state.num_disks, 0, -1))}
 
