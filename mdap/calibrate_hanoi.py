@@ -5,6 +5,7 @@ import os
 import sys
 import random
 import pickle
+import copy
 from datetime import datetime
 
 # Add the project root to the path to import modules
