@@ -76,34 +76,35 @@ class HanoiMDAP(MicroAgent):
 
 Solve Towers of Hanoi. Move all disks to peg C.
 
-DISK SIZES: 
-- Larger numbers = LARGER disks (disk 2 is bigger than disk 1)
-- Smaller numbers = SMALLER disks (disk 1 is the smallest)
-- NEVER place a larger number on a smaller number
+CRITICAL DISK SIZE RULE:
+- Disk numbers represent SIZE: 3 is BIGGER than 2, 2 is BIGGER than 1
+- BIGGER disks can NEVER go on SMALLER disks
+- VALID: 1 on 2, 1 on 3, 2 on 3 (smaller on larger)
+- INVALID: 2 on 1, 3 on 1, 3 on 2 (larger on smaller)
+- The peg list shows [bottom...top], so RIGHTMOST number is the TOP disk
 
-FINAL ORDER EXAMPLE:
-- For 2 disks: Peg C should have [2, 1] (disk 2 at bottom, disk 1 on top)
-- For 3 disks: Peg C should have [3, 2, 1] (disk 3 at bottom, disk 1 on top)
-- Larger numbers ALWAYS go below smaller numbers
+FINAL ORDER ON PEG C:
+- For 2 disks: [2, 1] - disk 2 at BOTTOM, disk 1 on TOP
+- For 3 disks: [3, 2, 1] - disk 3 at BOTTOM, disk 2 in middle, disk 1 on TOP
 
-GOAL: All disks on peg C in order [largest...smallest]
+GOAL: All disks on peg C in descending order [largest...smallest]
 Goal State: Peg A: [], Peg B: [], Peg C: {list(range(state.num_disks, 0, -1))}
 
 STRATEGY: 
-- Move smaller disks to the auxiliary peg (B) to free larger disks
-- Move larger disks toward the goal peg (C)
-- Never move a disk away from peg C unless necessary
+- Move smaller disks to auxiliary peg (B) to free larger disks
+- Move larger disks toward goal peg (C) when possible
+- Build the tower on C from bottom up: largest first, then smaller on top
 
 RULES:
-1. Only move the TOP disk from a peg
-2. NEVER place a LARGER disk on a SMALLER disk (e.g., 2 cannot go on 1)
-3. You can only move from a peg that has disks
-4. You cannot move to the same peg
+1. Only move the TOP disk (rightmost number in the list)
+2. NEVER place a LARGER disk on a SMALLER disk
+3. Check destination peg's top disk before moving
+4. Cannot move to the same peg
 
 CURRENT STATE ANALYSIS:
-- Peg A has {disks_on_A} disks, top disk is {top_A}
-- Peg B has {disks_on_B} disks, top disk is {top_B}  
-- Peg C has {disks_on_C} disks, top disk is {top_C}
+- Peg A: {state.pegs['A']} (top: {top_A})
+- Peg B: {state.pegs['B']} (top: {top_B})
+- Peg C: {state.pegs['C']} (top: {top_C})
 
 Current State (move {state.move_count}):
 Peg A: {state.pegs['A']}
@@ -112,7 +113,8 @@ Peg C: {state.pegs['C']}
 
 PROGRESS: {disks_on_C}/{state.num_disks} disks on goal peg
 
-IMPORTANT: Look at the Current State above. ONLY move from pegs that actually have disks.
+VALID MOVE CHECK:
+Before choosing, verify: if destination has disks, is moving disk < destination top disk?
 
 Your task:
 Choose ONE valid move toward the goal and predict the EXACT resulting state.

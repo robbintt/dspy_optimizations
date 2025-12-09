@@ -315,7 +315,7 @@ class MDAPHarness:
                     logger.error(f"Step execution attempt {attempt + 1} failed: {e}")
                     # If this is not the last attempt, modify the prompt to include the error
                     if attempt < self.config.max_retries - 1:
-                        error_context = f"\n\nYour previous move was invalid. Error: {str(e)}. Please analyze the state again and choose a different, valid move."
+                        error_context = f"\n\nERROR: Your previous move was invalid!\n{str(e)}\n\nREMEMBER: Larger disks CANNOT go on smaller disks.\nIf moving disk X to peg Y, check that peg Y's top disk (if any) is larger than X.\n\nPlease analyze the current state carefully and choose a VALID move:"
                         current_step_prompt = step_prompt + error_context
                     else:
                         # If max retries reached, re-raise the exception to stop execution
