@@ -108,7 +108,7 @@ def apply_moves_to_states(num_disks: int, moves: List[List[int]]):
     return states
 
 async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "calibration_cache.pkl"):
-    """Generate and cache calibration states from a full 20-disc solution"""
+    """Generate and cache calibration states from a full disc solution"""
     logger.info(f"Generating calibration cache for {num_disks}-disc Hanoi problem")
     
     # Suppress INFO level logging during cache generation to avoid massive output
