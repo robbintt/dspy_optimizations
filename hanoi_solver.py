@@ -56,7 +56,7 @@ class HanoiMDAP(MicroAgent):
     def generate_step_prompt(self, state: HanoiState) -> str:
         """Generate prompt for the next move"""
         prompt = f"""You are solving Towers of Hanoi with {state.num_disks} disks.
-Current state:
+Current state (Move {state.move_count}):
 - Peg A: {state.pegs['A']} (top disk is last number)
 - Peg B: {state.pegs['B']} (top disk is last number)  
 - Peg C: {state.pegs['C']} (top disk is last number)
@@ -65,6 +65,8 @@ Rules:
 1. Only one disk can be moved at a time
 2. A disk can only be placed on top of a larger disk or on an empty peg
 3. Goal: Move all disks from peg A to peg C
+
+Your task is to choose the single best move that makes progress towards the goal. Analyze the board and move a disk that brings you closer to having all disks on peg C. Avoid undoing progress by moving a disk back to its previous position.
 
 Determine the next valid move. Your entire response must be a JSON object with exactly this format, and nothing else:
 {{"from_peg": "A", "to_peg": "B"}}

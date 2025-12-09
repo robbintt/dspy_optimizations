@@ -155,6 +155,9 @@ class MDAPHarness:
             raw_response = await get_candidate()
             if raw_response is None:
                 continue
+
+            # Add this line to log the raw response
+            logger.info(f"LLM Raw Response: {raw_response}")
                 
             # Apply red-flagging
             parsed_response = response_parser(raw_response)
