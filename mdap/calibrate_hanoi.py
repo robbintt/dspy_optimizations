@@ -56,6 +56,14 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
     def mock_step_generator(state):
         """Generate optimal moves without LLM calls"""
         optimal_move = solver.get_optimal_move(state)
+        
+        # Get the previous move from state history if available
+        previous_move = "None"
+        if hasattr(state, 'move_history') and len(state.move_history) > 0:
+            last_move = state.move_history[-1]
+            previous_move = f"[{last_move['disk_id']}, {last_move['from_peg']}, {last_move['to_peg']}]"
+        
+        # Generate the prompt with correct previous move
         prompt = solver.generate_step_prompt(state)
         
         # Generate the predicted state for this move
@@ -67,12 +75,23 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
         disk = new_pegs[chr(65 + from_peg)].pop(0)
         new_pegs[chr(65 + to_peg)].insert(0, disk)
         
-        # Create new state object
+        # Create new state object with proper move history
         new_state = type(state)(
             pegs=new_pegs,
             num_disks=state.num_disks,
             move_count=state.move_count + 1
         )
+        
+        # Initialize move_history if not present
+        if not hasattr(new_state, 'move_history'):
+            new_state.move_history = []
+        
+        # Add current move to history
+        new_state.move_history.append({
+            'disk_id': disk_id,
+            'from_peg': from_peg,
+            'to_peg': to_peg
+        })
         
         return prompt, lambda x: {
             "move": optimal_move,
