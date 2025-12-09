@@ -73,11 +73,20 @@ def run_command(cmd: list, cwd: Optional[str] = None):
         print_status(f"Executing: {' '.join(cmd)}")
         if cwd:
             print_status(f"Working directory: {cwd}")
+        
+        # Ensure PYTHONPATH includes the project directory
+        env = os.environ.copy()
+        if 'PYTHONPATH' in env:
+            env['PYTHONPATH'] = f"{PROJECT_DIR}:{env['PYTHONPATH']}"
+        else:
+            env['PYTHONPATH'] = PROJECT_DIR
+        
         result = subprocess.run(
             cmd,
             cwd=cwd or PROJECT_DIR,
             check=True,
-            capture_output=False
+            capture_output=False,
+            env=env
         )
         return result
     except subprocess.CalledProcessError as e:
@@ -158,6 +167,7 @@ def solve_hanoi(disks: int = 3):
 import asyncio
 import logging
 import os
+import sys
 from datetime import datetime
 from mdap.hanoi_solver import HanoiMDAP, MDAPConfig
 
