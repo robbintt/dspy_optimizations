@@ -49,7 +49,7 @@ main() {
         python mdap/example_hanoi.py "${@:2}"
     else
         # Run the Python script with all arguments
-        python ../scripts/run_mdap.py "$@"
+        python "$SCRIPT_DIR/../scripts/run_mdap.py" "$@"
     fi
 }
 
