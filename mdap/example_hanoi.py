@@ -10,6 +10,7 @@ To run this example:
 import asyncio
 import logging
 import os
+import sys
 from datetime import datetime
 from hanoi_solver import HanoiMDAP, MDAPConfig
 
@@ -45,8 +46,35 @@ async def main():
     logger.info("🏗️  MDAP Hanoi Solver Demo")
     logger.info("=" * 40)
     
+    # Parse command line arguments
+    num_disks = 2  # default
+    k_margin = None  # use default from config
+    
+    if len(sys.argv) > 1:
+        try:
+            num_disks = int(sys.argv[1])
+        except ValueError:
+            print(f"Invalid number of disks: {sys.argv[1]}")
+            return
+    
+    # Check for --k flag
+    if "--k" in sys.argv:
+        try:
+            k_index = sys.argv.index("--k")
+            if k_index + 1 < len(sys.argv):
+                k_margin = int(sys.argv[k_index + 1])
+            else:
+                print("--k flag requires a value")
+                return
+        except ValueError:
+            print("Invalid k value")
+            return
+    
     # Create solver with default config (uses MDAP_DEFAULT_MODEL from env or default)
     config = MDAPConfig()
+    # Override k_margin if provided
+    if k_margin is not None:
+        config.k_margin = k_margin
     # Enable mock mode if environment variable is set
     if os.getenv("MDAP_MOCK_MODE", "false").lower() == "true":
         config.mock_mode = True
@@ -57,26 +85,27 @@ async def main():
     solver = HanoiMDAP(config)
     
     try:
-        # Solve 2-disk Hanoi (using the parameter from command line)
-        logger.info("Attempting to solve 2-disk Towers of Hanoi")
-        logger.info("Solving 2-disk Towers of Hanoi...")
+        # Solve Hanoi with specified number of disks
+        logger.info(f"Attempting to solve {num_disks}-disk Towers of Hanoi")
+        logger.info(f"Solving {num_disks}-disk Towers of Hanoi...")
         print("About to call solve_hanoi...")
-        trace = await solver.solve_hanoi(2)
+        trace = await solver.solve_hanoi(num_disks)
         print("solve_hanoi completed")
         
         # Print solution summary
         final_state = trace[-1]
+        optimal_moves = 2**num_disks - 1
         logger.info(f"Solution completed in {final_state.move_count} moves")
         logger.info(f"Solution trace: {len(trace)} states")
         logger.info(f"\n✅ Solved in {final_state.move_count} moves!")
-        logger.info(f"Optimal solution: {2**2 - 1} moves")
+        logger.info(f"Optimal solution: {optimal_moves} moves")
         
-        if final_state.move_count == 3:
+        if final_state.move_count == optimal_moves:
             logger.info("Found optimal solution")
             logger.info("🎯 Found optimal solution!")
         else:
-            logger.info(f"Used {final_state.move_count - 3} extra moves beyond optimal")
-            logger.info(f"Used {final_state.move_count - 3} extra moves")
+            logger.info(f"Used {final_state.move_count - optimal_moves} extra moves beyond optimal")
+            logger.info(f"Used {final_state.move_count - optimal_moves} extra moves")
         
         # Show initial and final states
         logger.info(f"\nInitial state: {trace[0].pegs}")
