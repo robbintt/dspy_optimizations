@@ -8,6 +8,7 @@ To run this example:
 """
 
 import asyncio
+import logging
 import os
 from datetime import datetime
 from hanoi_solver import HanoiMDAP, MDAPConfig
