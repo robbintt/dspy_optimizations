@@ -302,8 +302,26 @@ The response must be under {self.config.max_tokens} tokens."""
                 break # Found the disk to move
 
             if moving_disk is None:
-                # This state might be solved or invalid if no other disk can be moved
-                return None
+                # If we couldn't find a disk to move, it might be because disk 1 is not on top
+                # Let's check if disk 1 is buried and we need to move a larger disk
+                # Find the smallest top disk that can be moved
+                smallest_top_disk = None
+                smallest_from_peg = None
+                
+                for peg_name, peg in state.pegs.items():
+                    if not peg:
+                        continue
+                    # Skip empty pegs
+                    if smallest_top_disk is None or peg[-1] < smallest_top_disk:
+                        smallest_top_disk = peg[-1]
+                        smallest_from_peg = peg_name
+                
+                if smallest_top_disk is not None and smallest_top_disk != 1:
+                    moving_disk = smallest_top_disk
+                    from_peg_name = smallest_from_peg
+                else:
+                    # This state might be solved or invalid if no other disk can be moved
+                    return None
 
             # Find the destination peg for this disk
             to_peg_name = None
