@@ -139,8 +139,33 @@ class HanoiMDAP(MicroAgent):
         for peg_key in ['A', 'B', 'C']:
             peg_list.append(state.pegs[peg_key])
         
-        # Use the new user template
-        prompt = USER_TEMPLATE.format(
+        # Enhanced user template with clearer optimal strategy guidance
+        enhanced_template = """Rules:
+- Only one disk can be moved at a time.
+- Only the top disk from any stack can be moved.
+- A larger disk may not be placed on top of a smaller disk.
+
+OPTIMAL STRATEGY FOR TOWERS OF HANOI:
+For the most efficient solution (2^n - 1 moves):
+1. If the previous move did NOT move disk 1 (the smallest disk), move disk 1 clockwise one peg: A→B→C→A (or 0→1→2→0)
+2. If the previous move DID move disk 1, make the only legal move that does NOT involve disk 1
+3. This pattern guarantees the optimal solution
+
+Previous move: {previous_move}
+Current State: {current_state}
+
+Based on the optimal strategy above, find the single next move and the resulting next state.
+
+Requirements:
+- The positions are 0-indexed (the leftmost peg is 0).
+- Ensure your answer includes a single next move in this EXACT FORMAT:
+```move = [disk id, from peg, to peg]```
+- Ensure your answer includes the next state resulting from applying the move to the current state in this EXACT FORMAT:
+```next_state = [[...], [...], [...]]```
+
+The response must be under 1000 tokens."""
+        
+        prompt = enhanced_template.format(
             previous_move=previous_move,
             current_state=json.dumps(peg_list)
         )
