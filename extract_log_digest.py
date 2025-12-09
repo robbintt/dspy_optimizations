@@ -184,6 +184,13 @@ def main():
     with open(log_file, 'r') as f:
         content = f.read()
     
+    # Check if log is empty
+    if not content.strip():
+        print(f"Warning: Log file {log_file} is empty")
+        print("This may indicate that the MDAP execution didn't produce any log output.")
+        print("Please check that the MDAP run completed successfully and logging is enabled.")
+        return
+    
     # Extract information
     responses = extract_llm_responses(content)
     voting = extract_voting_info(content)
