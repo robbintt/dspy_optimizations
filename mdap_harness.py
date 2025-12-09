@@ -358,28 +358,34 @@ class MDAPHarness:
         """
         logger.info(f"Estimating per-step success rate for {self.config.model} on {sample_steps} steps...")
         initial_state = agent.create_initial_state(num_disks)
+        logger.info(f"Initial state: {initial_state.to_dict() if hasattr(initial_state, 'to_dict') else initial_state}")
         current_state = initial_state
         successful_steps = 0
         actual_steps_attempted = 0
         
-        for _ in range(sample_steps):
+        for i in range(sample_steps):
+            logger.info(f"Estimation loop iteration {i+1}/{sample_steps}")
             if agent.is_solved(current_state):
                 logger.info(f"Agent solved the problem after {actual_steps_attempted} steps")
                 break
             
             step_prompt, response_parser = agent.step_generator(current_state)
             actual_steps_attempted += 1
+            logger.info(f"Attempting step {actual_steps_attempted}")
             
             try:
                 # We only need one successful candidate to check for validity
                 step_result = await self.first_to_ahead_by_k(step_prompt, response_parser)
+                logger.info(f"Step {actual_steps_attempted} LLM call successful")
                 # The update_state method itself acts as the validation
-                agent.update_state(current_state, step_result)
+                new_state = agent.update_state(current_state, step_result)
+                logger.info(f"Step {actual_steps_attempted} state update successful")
                 successful_steps += 1
-                current_state = agent.update_state(current_state, step_result)
+                current_state = new_state
+                logger.info(f"New state: {current_state.to_dict() if hasattr(current_state, 'to_dict') else current_state}")
             except Exception as e:
                 # A failure here means the step was unsuccessful
-                logger.debug(f"Estimation step failed: {e}")
+                logger.error(f"Estimation step {actual_steps_attempted} failed: {e}")
                 break
         
         # If we didn't attempt any steps (e.g., already solved), return 1.0
@@ -388,6 +394,7 @@ class MDAPHarness:
         else:
             p_estimate = successful_steps / actual_steps_attempted
         
+        logger.info(f"Final count: successful_steps={successful_steps}, actual_steps_attempted={actual_steps_attempted}")
         logger.info(f"Estimated per-step success rate (p): {p_estimate:.4f} ({successful_steps}/{actual_steps_attempted} steps)")
         return p_estimate
 
