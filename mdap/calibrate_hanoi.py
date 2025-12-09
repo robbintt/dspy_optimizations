@@ -72,9 +72,22 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
         disk_id, from_peg, to_peg = optimal_move
         new_pegs = {peg: list(disks) for peg, disks in state.pegs.items()}
         
-        # Move the disk
-        disk = new_pegs[chr(65 + from_peg)].pop(0)
-        new_pegs[chr(65 + to_peg)].insert(0, disk)
+        # Move the disk - but ensure we're moving from the correct peg
+        # The optimal_move uses 0-indexed pegs, but state.pegs uses 'A', 'B', 'C'
+        from_peg_char = chr(65 + from_peg)
+        to_peg_char = chr(65 + to_peg)
+        
+        # Validate the move before applying
+        if not new_pegs[from_peg_char]:
+            raise ValueError(f"Cannot move from empty peg {from_peg_char}")
+        
+        disk = new_pegs[from_peg_char].pop(0)
+        
+        # Check if move is valid (can't place larger on smaller)
+        if new_pegs[to_peg_char] and disk > new_pegs[to_peg_char][0]:
+            raise ValueError(f"Invalid move: placing disk {disk} on top of smaller disk {new_pegs[to_peg_char][0]}")
+        
+        new_pegs[to_peg_char].insert(0, disk)
         
         # Create new state object with proper move history
         new_state = type(state)(
