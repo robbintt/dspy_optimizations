@@ -330,6 +330,12 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                     logger.warning(f"RED FLAG: LLM returned None content. Full response: {response}")
                     return None
                 
+                # Log raw response for debugging
+                logger.info(f"RAW LLM RESPONSE (length={len(content)}):")
+                logger.info("-" * 80)
+                logger.info(content)
+                logger.info("-" * 80)
+                
                 # Apply red flagging (non-repairing extractor)
                 parsed_response = response_parser(content.strip())
                 if parsed_response is None:
