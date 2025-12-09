@@ -100,7 +100,7 @@ class HanoiState:
             pegs=copy.deepcopy(self.pegs),
             num_disks=self.num_disks,
             move_count=self.move_count,
-            move_history=copy.deepcopy(self.move_history) if self.move_history else None
+            move_history=copy.deepcopy(self.move_history) if self.move_history else []
         )
 
 class HanoiMDAP(MicroAgent):
@@ -245,6 +245,10 @@ The response must be under {self.config.max_tokens} tokens."""
         Get the optimal move for the current state based on the optimal strategy.
         Returns the move as [disk_id, from_peg, to_peg].
         """
+        # Check if state is already solved
+        if self.is_solved(state):
+            return None
+            
         # Map peg names to indices for easier calculation
         peg_indices = {'A': 0, 'B': 1, 'C': 2}
         
@@ -253,7 +257,7 @@ The response must be under {self.config.max_tokens} tokens."""
         # Rule 2: If the previous move WAS disk 1, make the only other legal move.
         
         previous_move_was_disk_1 = False
-        if state.move_history:
+        if state.move_history and len(state.move_history) > 0:
             last_move = state.move_history[-1]
             if last_move['disk_id'] == 1:
                 previous_move_was_disk_1 = True
