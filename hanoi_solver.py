@@ -217,7 +217,7 @@ class HanoiMDAP(MicroAgent):
         user_prompt = self.generate_step_prompt(state)
         # Combine system prompt with user prompt
         full_prompt = f"{SYSTEM_PROMPT}\n\n{user_prompt}"
-        parser = RedFlagParser.parse_move_state_flag
+        parser = self.harness.red_flag_parser.parse_move_state_flag
         return full_prompt, parser
     
     async def solve_hanoi(self, num_disks: int) -> List[HanoiState]:
