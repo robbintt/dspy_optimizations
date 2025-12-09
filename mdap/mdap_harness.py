@@ -92,19 +92,30 @@ class RedFlagParser:
     def __init__(self, config: MDAPConfig):
         self.config = config
     
-    def parse_move_state_flag(self, response: Union[str, Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    def parse_move_state_flag(self, response: Union[str, Dict[str, Any]], usage: Optional[Any] = None) -> Optional[Dict[str, Any]]:
         """
         Parse and validate a move and next_state response using the paper's format.
         Non-repairing extractor: If the extractor fails, we discard per red flagging.
         Returns None if response is flagged (invalid).
+        
+        Args:
+            response: The response text to parse
+            usage: Optional usage object from the API response containing token counts
         """
         try:
             # Handle string input (paper's format)
             if isinstance(response, str):
-                # Red flag 1: Check length (overly long responses)
-                if len(response) > self.config.max_response_length:
-                    logger.warning(f"RED FLAG: Response too long: {len(response)} chars > {self.config.max_response_length}")
-                    return None
+                # Red flag 1: Check token limit (overly long responses)
+                if usage and hasattr(usage, 'completion_tokens'):
+                    token_count = usage.completion_tokens
+                    if token_count > self.config.max_response_length:
+                        logger.warning(f"RED FLAG: Response too long: {token_count} tokens > {self.config.max_response_length}")
+                        return None
+                else:
+                    # Fallback to character count if no usage info available
+                    if len(response) > self.config.max_response_length * 4:  # Rough estimate: 4 chars per token
+                        logger.warning(f"RED FLAG: Response too long (fallback): {len(response)} chars")
+                        return None
 
                 # Parse the multi-part response
                 lines = response.strip().split('\n')
@@ -363,7 +374,11 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                 
                 # Apply red flagging (non-repairing extractor)
                 try:
-                    parsed_response = response_parser(content.strip())
+                    # Pass usage info to the parser if it accepts it
+                    if hasattr(response_parser, '__code__') and response_parser.__code__.co_argcount > 1:
+                        parsed_response = response_parser(content.strip(), usage)
+                    else:
+                        parsed_response = response_parser(content.strip())
                     if parsed_response is None:
                         logger.warning(f"RED FLAG: Response discarded by red-flag parser")
                         return None
