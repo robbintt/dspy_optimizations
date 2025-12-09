@@ -241,6 +241,11 @@ def main():
     voting = extract_voting_info(content, params)
     transitions = extract_state_transitions(content)
     
+    # Debug output
+    print(f"Debug: Found {len(responses)} responses")
+    print(f"Debug: Found {len(voting)} voting entries")
+    print(f"Debug: Found {len(transitions)} transitions")
+    
     # Generate digest
     digest = generate_digest(responses, voting, params, transitions)
     
