@@ -73,12 +73,9 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
         new_state = type(state)(
             pegs=new_pegs,
             num_disks=state.num_disks,
-            move_count=state.move_count + 1
+            move_count=state.move_count + 1,
+            move_history=copy.deepcopy(state.move_history) if state.move_history else []
         )
-        
-        # Initialize move_history if not present
-        if not hasattr(new_state, 'move_history'):
-            new_state.move_history = []
         
         # Add current move to history
         new_state.move_history.append({
