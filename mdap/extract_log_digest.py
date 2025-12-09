@@ -33,8 +33,9 @@ def extract_llm_responses(log_content: str) -> List[Dict]:
     responses = []
     
     # Pattern to match LLM Parsed Response entries
-    pattern = r'LLM Parsed Response: ({.*?})'
-    matches = re.findall(pattern, log_content)
+    # Need to handle the fact that the JSON might span multiple lines
+    pattern = r'LLM Parsed Response: (\{.*?\})'
+    matches = re.findall(pattern, log_content, re.DOTALL)
     
     for i, match in enumerate(matches, 1):
         try:
@@ -189,12 +190,16 @@ def generate_digest(responses: List[Dict], voting: List[Dict],
     
     # Sequence of voted decisions
     digest.append("## Sequence of Voted Decisions")
-    for i, resp in enumerate(responses, 1):
-        digest.append(f"Step {i}:")
-        digest.append(f"  Move: {resp['move']}")
-        if 'predicted_state' in resp:
-            digest.append(f"  Predicted State: {resp['predicted_state']}")
-        digest.append("")
+    if responses:
+        for i, resp in enumerate(responses, 1):
+            digest.append(f"Step {i}:")
+            digest.append(f"  Move: {resp['move']}")
+            if 'predicted_state' in resp:
+                digest.append(f"  Predicted State: {resp['predicted_state']}")
+            digest.append("")
+    else:
+        digest.append("No LLM responses found in log")
+    digest.append("")
     
     # Step-by-step summary with voting info
     digest.append("## Step Summary")
