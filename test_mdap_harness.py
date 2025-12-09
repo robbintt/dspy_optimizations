@@ -60,8 +60,8 @@ next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count"
         result = RedFlagParser.parse_move_state_flag(response)
         
         assert result is not None
-        assert result['from_peg'] == 'A'
-        assert result['to_peg'] == 'C'
+        assert result['move']['from_peg'] == 'A'
+        assert result['move']['to_peg'] == 'C'
     
     def test_invalid_json(self):
         """Test parsing invalid JSON"""
@@ -152,7 +152,7 @@ next_state = {"pegs": {"A": [], "B": [], "C": [1]}, "num_disks": 1, "move_count"
             )
             
             assert result['move']['from_peg'] == 'A'
-            assert result['to_peg'] == 'B'
+            assert result['move']['to_peg'] == 'B'
     
     @pytest.mark.asyncio
     async def test_first_to_ahead_by_k_red_flagged(self, harness):
@@ -349,7 +349,7 @@ class TestMDAPCalibration:
             # Simulate 7 successes out of 10 calls
             if success_count < 7:
                 success_count += 1
-                return {'move': 'ok'}
+                return {'move': {'from_peg': 'A', 'to_peg': 'B'}, 'predicted_state': {'pegs': {}}}
             else:
                 raise Exception("Simulated LLM failure")
         
