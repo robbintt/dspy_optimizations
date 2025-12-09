@@ -185,7 +185,15 @@ REMEMBER: Respond with ONLY the two lines above. Nothing else."""
     
     async def solve_hanoi(self, num_disks: int) -> List[HanoiState]:
         """Solve Towers of Hanoi using MDAP"""
-        return await self.harness.execute_agent_mdap(self, num_disks)
+        trace = await self.harness.execute_agent_mdap(self, num_disks)
+        
+        # Verify the final state is actually solved
+        if trace and not self.is_solved(trace[-1]):
+            logger.error(f"Solver completed but final state is not solved: {trace[-1].to_dict()}")
+            raise RuntimeError("Hanoi solver failed to reach goal state")
+        
+        logger.info(f"Successfully solved {num_disks}-disk Hanoi in {trace[-1].move_count} moves")
+        return trace
 
 # Utility function for testing
 def print_solution(trace: List[HanoiState]):

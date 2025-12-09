@@ -323,6 +323,11 @@ class MDAPHarness:
             
             execution_trace.append(current_state)
             
+            # Check if solved AFTER updating state and BEFORE next iteration
+            if termination_check(current_state):
+                logger.info(f"Goal reached after {step_count} steps")
+                break
+            
             # Check cost threshold
             if self.config.cost_threshold and self.total_cost > self.config.cost_threshold:
                 logger.warning(f"Cost threshold exceeded: ${self.total_cost:.4f}")
