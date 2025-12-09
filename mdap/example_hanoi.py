@@ -51,10 +51,10 @@ async def main():
     solver = HanoiMDAP(config)
     
     try:
-        # Solve 2-disk Hanoi
-        logger.info("Attempting to solve 2-disk Towers of Hanoi")
-        logger.info("Solving 2-disk Towers of Hanoi...")
-        trace = await solver.solve_hanoi(2)
+        # Solve 3-disk Hanoi (using the parameter from command line)
+        logger.info("Attempting to solve 3-disk Towers of Hanoi")
+        logger.info("Solving 3-disk Towers of Hanoi...")
+        trace = await solver.solve_hanoi(3)
         
         # Print solution summary
         final_state = trace[-1]
