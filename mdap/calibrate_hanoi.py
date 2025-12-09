@@ -7,8 +7,8 @@ from datetime import datetime
 # Add the project root to the path to import modules
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from mdap.hanoi_solver import HanoiMDAP
-from mdap.mdap_harness import MDAPConfig
+from hanoi_solver import HanoiMDAP
+from mdap_harness import MDAPConfig
 
 # Setup logging to file with timestamps
 LOGS_DIR = "logs"
