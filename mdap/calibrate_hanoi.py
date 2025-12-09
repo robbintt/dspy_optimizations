@@ -41,6 +41,10 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
     """Generate and cache calibration states from a full 20-disc solution"""
     logger.info(f"Generating calibration cache for {num_disks}-disc Hanoi problem")
     
+    # Suppress INFO level logging during cache generation to avoid massive output
+    logging.getLogger('mdap_harness').setLevel(logging.WARNING)
+    logging.getLogger('hanoi_solver').setLevel(logging.WARNING)
+    
     # Generate full solution for 20 discs (2^20 - 1 = 1,048,575 steps)
     config = MDAPConfig(model="cerebras/zai-glm-4.6", k_margin=1)  # Use cerebras model for caching
     solver = HanoiMDAP(config=config)
@@ -114,6 +118,10 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
     
     with open(cache_file, 'wb') as f:
         pickle.dump(calibration_data, f)
+    
+    # Restore original logging levels
+    logging.getLogger('mdap_harness').setLevel(logging.INFO)
+    logging.getLogger('hanoi_solver').setLevel(logging.INFO)
     
     logger.info(f"Cached {len(sampled_states)} calibration states to {cache_file}")
     logger.info(f"Full solution has {len(full_solution)} steps")
