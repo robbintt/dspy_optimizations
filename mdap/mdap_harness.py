@@ -640,23 +640,23 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                     logger.info(f"Step prompt for state {i+1}: {step_prompt[:200]}...")
                     logger.info(f"About to call first_to_ahead_by_k...")
                     step_result = await self.first_to_ahead_by_k(step_prompt, response_parser)
-                logger.info(f"State {i+1} LLM call successful")
+                    logger.info(f"State {i+1} LLM call successful")
                 
-                # Check if the LLM's move matches the optimal move
-                llm_move = step_result.get("move", [])
-                logger.info(f"LLM move: {llm_move}")
-                
-                if llm_move == optimal_move:
-                    logger.info(f"State {i+1}: LLM move matches optimal move ✓")
-                    successful_steps += 1
-                else:
-                    logger.warning(f"State {i+1}: LLM move {llm_move} != optimal move {optimal_move} ✗")
+                    # Check if the LLM's move matches the optimal move
+                    llm_move = step_result.get("move", [])
+                    logger.info(f"LLM move: {llm_move}")
+                    
+                    if llm_move == optimal_move:
+                        logger.info(f"State {i+1}: LLM move matches optimal move ✓")
+                        successful_steps += 1
+                    else:
+                        logger.warning(f"State {i+1}: LLM move {llm_move} != optimal move {optimal_move} ✗")
                         
-            except Exception as e:
-                # A failure here means the step was unsuccessful
-                logger.error(f"Estimation for state {i+1} failed: {e}")
-                import traceback
-                logger.error(f"Traceback: {traceback.format_exc()}")
+                except Exception as e:
+                    # A failure here means the step was unsuccessful
+                    logger.error(f"Estimation for state {i+1} failed: {e}")
+                    import traceback
+                    logger.error(f"Traceback: {traceback.format_exc()}")
         
         except Exception as e:
             logger.error(f"Unexpected error in estimate_per_step_success_rate_from_states: {e}")
