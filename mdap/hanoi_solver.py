@@ -86,6 +86,7 @@ class HanoiState:
     pegs: dict  # {'A': [largest...smallest], 'B': [...], 'C': [...]}
     num_disks: int
     move_count: int = 0
+    move_history: List[dict] = None  # Track move history
     
     def to_dict(self) -> dict:
         return {
@@ -98,7 +99,8 @@ class HanoiState:
         return HanoiState(
             pegs=copy.deepcopy(self.pegs),
             num_disks=self.num_disks,
-            move_count=self.move_count
+            move_count=self.move_count,
+            move_history=copy.deepcopy(self.move_history) if self.move_history else None
         )
 
 class HanoiMDAP(MicroAgent):
@@ -123,7 +125,7 @@ class HanoiMDAP(MicroAgent):
             'B': [],
             'C': []
         }
-        return HanoiState(pegs=pegs, num_disks=num_disks)
+        return HanoiState(pegs=pegs, num_disks=num_disks, move_history=[])
     
     def generate_step_prompt(self, state: HanoiState) -> str:
         """Generate prompt for next step using the new MDAP prompt format"""
@@ -221,7 +223,7 @@ The response must be under {max_tokens} tokens.""".format(max_tokens=self.config
             new_state.move_count = current_state.move_count + 1
         
         # Initialize move_history if not present
-        if not hasattr(new_state, 'move_history'):
+        if new_state.move_history is None:
             new_state.move_history = []
         
         # Add move to history in paper's format
