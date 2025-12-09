@@ -84,22 +84,22 @@ def run_command(cmd: list, cwd: Optional[str] = None):
 def run_unit_tests():
     """Run unit tests"""
     print_status("Running MDAP unit tests...")
-    run_command([sys.executable, "-m", "pytest", "test_mdap_harness.py", "-v"])
+    run_command([sys.executable, "-m", "pytest", "mdap/test_mdap_harness.py", "-v"])
 
 def run_integration_tests():
     """Run integration tests"""
     print_status("Running MDAP integration tests...")
-    run_command([sys.executable, "-m", "pytest", "test_hanoi_integration.py", "-v"])
+    run_command([sys.executable, "-m", "pytest", "mdap/test_hanoi_integration.py", "-v"])
 
 def run_all_tests():
     """Run all tests"""
     print_status("Running all MDAP tests...")
-    run_command([sys.executable, "test_runner.py"])
+    run_command([sys.executable, "mdap/test_runner.py"])
 
 def run_example(disks: int = 2):
     """Run Hanoi example"""
     print_status(f"Running Hanoi example with {disks} disks...")
-    run_command([sys.executable, "example_hanoi.py"])
+    run_command([sys.executable, "mdap/example_hanoi.py"])
 
 def run_tests(disks: int = 3):
     """Run Hanoi test suite"""
@@ -154,7 +154,7 @@ import asyncio
 import logging
 import os
 from datetime import datetime
-from hanoi_solver import HanoiMDAP, MDAPConfig
+from mdap.hanoi_solver import HanoiMDAP, MDAPConfig
 
 # Setup logging
 LOGS_DIR = 'logs'
