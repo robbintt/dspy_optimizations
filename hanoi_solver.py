@@ -56,7 +56,9 @@ class HanoiMDAP(MicroAgent):
     
     def generate_step_prompt(self, state: HanoiState) -> str:
         """Generate prompt for the next move"""
-        prompt = f"""Solve Towers of Hanoi. Move all disks to peg C.
+        prompt = f"""You are a Hanoi move generator. Respond with ONLY the move and next_state. No explanations, no reasoning, no other text.
+
+Solve Towers of Hanoi. Move all disks to peg C.
 
 1. Move top disk only.
 2. Never place larger on smaller.
@@ -71,7 +73,8 @@ Choose the next move and predict the resulting state.
 
 move = {{"from_peg": "X", "to_peg": "Y"}}
 next_state = {{"pegs": {{"A": [...], "B": [...], "C": [...]}}, "num_disks": {state.num_disks}, "move_count": {state.move_count + 1}}}
-"""
+
+REMEMBER: Respond with ONLY the two lines above. Nothing else."""
         return prompt
     
     def is_valid_move(self, state: HanoiState, from_peg: str, to_peg: str) -> bool:
