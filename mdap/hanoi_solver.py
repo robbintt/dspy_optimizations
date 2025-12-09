@@ -38,7 +38,7 @@ hanoi_logger.addHandler(console_handler)
 
 logger = logging.getLogger('hanoi_solver')
 
-# Import the new system prompt and user template from the paper
+# Import the system prompt and user template from the paper
 SYSTEM_PROMPT = """
 You are a helpful assistant. Solve this puzzle for me.
 There are three pegs and n disks of different sizes stacked on the first peg. The disks are
@@ -59,8 +59,6 @@ Requirements:
 - Ensure your answer includes the next state resulting from applying the move to the current
 state in this EXACT FORMAT:
 ```next_state = [[...], [...], [...]]```
-
-The response must be under 1000 tokens.
 """
 
 USER_TEMPLATE = """
@@ -141,33 +139,11 @@ class HanoiMDAP(MicroAgent):
         for peg_key in ['A', 'B', 'C']:
             peg_list.append(state.pegs[peg_key])
         
-        # Enhanced user template with clearer optimal strategy guidance
-        enhanced_template = f"""Rules:
-- Only one disk can be moved at a time.
-- Only the top disk from any stack can be moved.
-- A larger disk may not be placed on top of a smaller disk.
-
-OPTIMAL STRATEGY FOR TOWERS OF HANOI:
-For the most efficient solution (2^n - 1 moves):
-1. If the previous move did NOT move disk 1 (the smallest disk), move disk 1 clockwise one peg: A→B→C→A (or 0→1→2→0)
-2. If the previous move DID move disk 1, make the only legal move that does NOT involve disk 1
-3. This pattern guarantees the optimal solution
-
-Previous move: {previous_move}
-Current State: {json.dumps(peg_list)}
-
-Based on the optimal strategy above, find the single next move and the resulting next state.
-
-Requirements:
-- The positions are 0-indexed (the leftmost peg is 0).
-- Ensure your answer includes a single next move in this EXACT FORMAT:
-```move = [disk id, from peg, to peg]```
-- Ensure your answer includes the next state resulting from applying the move to the current state in this EXACT FORMAT:
-```next_state = [[...], [...], [...]]```
-
-The response must be under {self.config.max_tokens} tokens."""
-        
-        prompt = enhanced_template
+        # Use the exact user template from the paper
+        prompt = USER_TEMPLATE.format(
+            previous_move=previous_move,
+            current_state=json.dumps(peg_list)
+        )
         
         return prompt
     
