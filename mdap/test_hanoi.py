@@ -9,7 +9,7 @@ To run these tests:
 
 import asyncio
 import sys
-from .hanoi_solver import HanoiMDAP, MDAPConfig
+from hanoi_solver import HanoiMDAP, MDAPConfig
 
 async def test_hanoi_solver():
     """Test the Hanoi solver with different disk counts"""
