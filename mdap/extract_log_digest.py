@@ -51,18 +51,21 @@ def extract_llm_responses(log_content: str) -> List[Dict]:
     
     for i, match in enumerate(matches, 1):
         try:
-            # Convert Python-style single quotes to JSON double quotes
-            # This is a simple approach - replace single quotes with double quotes
-            # but be careful not to replace quotes inside strings
-            json_str = match.replace("'", '"')
-            response_data = json.loads(json_str)
+            # Try parsing as JSON first (for double-quoted JSON)
+            try:
+                response_data = json.loads(match)
+            except json.JSONDecodeError:
+                # If JSON fails, try evaluating as Python dict
+                # This handles the single-quoted format in the logs
+                response_data = eval(match)
+            
             responses.append({
                 "step": i,
                 "move": response_data.get("move", []),
                 "predicted_state": response_data.get("predicted_state", {})
             })
-        except json.JSONDecodeError:
-            # Skip invalid JSON
+        except (json.JSONDecodeError, SyntaxError, NameError):
+            # Skip invalid JSON/Python dict
             continue
     
     return responses
