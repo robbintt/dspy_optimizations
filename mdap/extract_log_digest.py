@@ -45,9 +45,8 @@ def extract_llm_responses(log_content: str) -> List[Dict]:
     responses = []
     
     # Pattern to match LLM Parsed Response entries
-    # Need to handle the fact that the JSON might span multiple lines
-    pattern = r'LLM Parsed Response: (\{.*?\})'
-    matches = re.findall(pattern, log_content, re.DOTALL)
+    pattern = r'LLM Parsed Response: (\{.*\})'
+    matches = re.findall(pattern, log_content)
     
     for i, match in enumerate(matches, 1):
         try:
