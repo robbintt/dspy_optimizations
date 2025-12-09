@@ -95,13 +95,25 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
         """Mock execute_step to return the pre-computed result without LLM calls"""
         # The parser from our mock_step_generator holds the correct answer.
         # We can just call it with a dummy string to get the result.
-        return response_parser("dummy response")
+        result = response_parser("dummy response")
+        
+        # Add progress counter every 10,000 steps
+        if hasattr(mock_execute_step, 'step_count'):
+            mock_execute_step.step_count += 1
+        else:
+            mock_execute_step.step_count = 1
+        
+        if mock_execute_step.step_count % 10000 == 0:
+            print(f"Progress: {mock_execute_step.step_count:,} steps generated...")
+        
+        return result
 
     # Apply the mocks to bypass the LLM
     solver.step_generator = mock_step_generator
     solver.harness.execute_step = mock_execute_step
     
     logger.info("Generating full solution...")
+    print(f"Generating full solution for {num_disks} disks (expected {2**num_disks - 1:,} steps)...")
     full_solution = await solver.solve_hanoi(num_disks)
     
     # Sample up to 1 million states (the full solution has ~1M steps)
