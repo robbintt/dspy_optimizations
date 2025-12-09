@@ -34,6 +34,9 @@ console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(formatter)
 logging.getLogger().addHandler(console_handler)
 
+# Create logger
+logger = logging.getLogger(__name__)
+
 async def main():
     """Simple demonstration of solving Towers of Hanoi"""
     
