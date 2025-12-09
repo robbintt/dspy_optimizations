@@ -43,8 +43,14 @@ main() {
     activate_venv
     check_env
     
-    # Run the Python script with all arguments
-    python ../scripts/run_mdap.py "$@"
+    # Check if we're running an example
+    if [ "$1" = "example" ]; then
+        # Run the example directly
+        python example_hanoi.py "${@:2}"
+    else
+        # Run the Python script with all arguments
+        python ../scripts/run_mdap.py "$@"
+    fi
 }
 
 # Run main function with all arguments
