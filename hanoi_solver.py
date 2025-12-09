@@ -91,9 +91,10 @@ GOAL: All disks on peg C in descending order [largest...smallest]
 Goal State: Peg A: [], Peg B: [], Peg C: {list(range(state.num_disks, 0, -1))}
 
 STRATEGY: 
-- Move smaller disks to auxiliary peg (B) to free larger disks
-- Move larger disks toward goal peg (C) when possible
-- Build the tower on C from bottom up: largest first, then smaller on top
+- ALWAYS look at the CURRENT state and choose the BEST move for THIS situation
+- If the largest disk can move to C, do it
+- Otherwise, move smaller disks out of the way
+- Think step-by-step: "What move helps me get closer to all disks on C?"
 
 RULES:
 1. Only move the TOP disk (rightmost number in the list)
@@ -117,7 +118,8 @@ VALID MOVE CHECK:
 Before choosing, verify: if destination has disks, is moving disk < destination top disk?
 
 Your task:
-Choose ONE valid move toward the goal and predict the EXACT resulting state.
+Analyze the CURRENT state and choose the SMARTEST valid move.
+Don't follow a pattern - think about what helps most right now.
 
 move = {{"from_peg": "X", "to_peg": "Y"}}
 next_state = {{"pegs": {{"A": {state.pegs['A']}, "B": {state.pegs['B']}, "C": {state.pegs['C']}}}, "num_disks": {state.num_disks}, "move_count": {state.move_count + 1}}}
