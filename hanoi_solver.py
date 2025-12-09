@@ -70,6 +70,14 @@ class HanoiMDAP(MicroAgent):
 
 Solve Towers of Hanoi. Move all disks to peg C.
 
+GOAL: All disks on peg C in order [largest...smallest]
+Goal State: Peg A: [], Peg B: [], Peg C: {list(range(state.num_disks, 0, -1))}
+
+STRATEGY: 
+- Move smaller disks to the auxiliary peg (B) to free larger disks
+- Move larger disks toward the goal peg (C)
+- Never move a disk away from peg C unless necessary
+
 RULES:
 1. Only move the TOP disk from a peg
 2. Never place a larger disk on a smaller disk
@@ -81,16 +89,15 @@ CURRENT STATE ANALYSIS:
 - Peg B has {disks_on_B} disks, top disk is {top_B}  
 - Peg C has {disks_on_C} disks, top disk is {top_C}
 
-Current State:
+Current State (move {state.move_count}):
 Peg A: {state.pegs['A']}
 Peg B: {state.pegs['B']}
 Peg C: {state.pegs['C']}
 
-VALID MOVES:
-From pegs with disks to pegs where you can place the top disk.
+PROGRESS: {disks_on_C}/{state.num_disks} disks on goal peg
 
 Your task:
-Choose ONE valid move and predict the EXACT resulting state.
+Choose ONE valid move toward the goal and predict the EXACT resulting state.
 
 move = {{"from_peg": "X", "to_peg": "Y"}}
 next_state = {{"pegs": {{"A": {state.pegs['A']}, "B": {state.pegs['B']}, "C": {state.pegs['C']}}}, "num_disks": {state.num_disks}, "move_count": {state.move_count + 1}}}
