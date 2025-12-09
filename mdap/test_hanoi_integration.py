@@ -5,7 +5,7 @@ Integration tests for Hanoi MDAP solver
 import pytest
 import asyncio
 from unittest.mock import patch, MagicMock
-from hanoi_solver import HanoiMDAP, HanoiState, MDAPConfig
+from .hanoi_solver import HanoiMDAP, HanoiState, MDAPConfig
 from .micro_agent import MicroAgent
 
 class TestHanoiState:

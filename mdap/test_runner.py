@@ -14,8 +14,8 @@ def run_tests():
     
     # Test files to run
     test_files = [
-        "test_mdap_harness.py",
-        "test_hanoi_integration.py"
+        "mdap/test_mdap_harness.py",
+        "mdap/test_hanoi_integration.py"
     ]
     
     all_passed = True
