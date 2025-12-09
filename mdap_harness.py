@@ -81,8 +81,10 @@ class MDAPConfig:
 class RedFlagParser:
     """Red-flagging parser to filter invalid responses before voting"""
     
-    @staticmethod
-    def parse_move_state_flag(response: Union[str, Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    def __init__(self, config: MDAPConfig):
+        self.config = config
+    
+    def parse_move_state_flag(self, response: Union[str, Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """
         Parse and validate a move and next_state response using the paper's format.
         Non-repairing extractor: If the extractor fails, we discard per red flagging.
@@ -230,7 +232,7 @@ class MDAPHarness:
     
     def __init__(self, config: MDAPConfig):
         self.config = config
-        self.red_flag_parser = RedFlagParser()
+        self.red_flag_parser = RedFlagParser(config)
         self.total_cost = 0.0
         
     async def first_to_ahead_by_k(self, 
