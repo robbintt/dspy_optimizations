@@ -16,11 +16,12 @@ if [ ! -f "$SCRIPT_NAME" ]; then
 fi
 
 # Activate virtual environment
-if [ -d "venv" ]; then
+VENV_PATH="$HOME/virtualenvs/dspy_venv"
+if [ -d "$VENV_PATH" ]; then
     echo "--- Activating virtual environment ---"
-    source venv/bin/activate
+    source "$VENV_PATH/bin/activate"
 else
-    echo "Error: Virtual environment 'venv' not found. Please run ./setup.sh first."
+    echo "Error: Virtual environment 'dspy_venv' not found. Please run ./setup.sh first."
     exit 1
 fi
 
