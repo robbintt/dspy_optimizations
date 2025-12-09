@@ -70,6 +70,9 @@ def check_env():
 def run_command(cmd: list, cwd: Optional[str] = None):
     """Run a command and return its result"""
     try:
+        print_status(f"Executing: {' '.join(cmd)}")
+        if cwd:
+            print_status(f"Working directory: {cwd}")
         result = subprocess.run(
             cmd,
             cwd=cwd or PROJECT_DIR,
@@ -79,6 +82,7 @@ def run_command(cmd: list, cwd: Optional[str] = None):
         return result
     except subprocess.CalledProcessError as e:
         print_error(f"Command failed: {' '.join(cmd)}")
+        print_error(f"Return code: {e.returncode}")
         sys.exit(e.returncode)
 
 def run_unit_tests():
