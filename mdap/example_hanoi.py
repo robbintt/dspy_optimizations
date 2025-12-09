@@ -48,13 +48,16 @@ async def main():
     # Create solver with default config (uses MDAP_DEFAULT_MODEL from env or default)
     config = MDAPConfig()
     logger.info(f"Created solver with config: model={config.model}, k_margin={config.k_margin}")
+    print(f"Config: model={config.model}, k_margin={config.k_margin}")
     solver = HanoiMDAP(config)
     
     try:
         # Solve 3-disk Hanoi (using the parameter from command line)
         logger.info("Attempting to solve 3-disk Towers of Hanoi")
         logger.info("Solving 3-disk Towers of Hanoi...")
+        print("About to call solve_hanoi...")
         trace = await solver.solve_hanoi(3)
+        print("solve_hanoi completed")
         
         # Print solution summary
         final_state = trace[-1]
