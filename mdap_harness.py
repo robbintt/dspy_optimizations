@@ -233,14 +233,29 @@ class MDAPHarness:
             # Generate prompt and parser for current step
             step_prompt, response_parser = step_generator(current_state)
             
-            # Execute step with error correction
-            step_result = await self.execute_step(step_prompt, response_parser)
+            # Execute step and update state with error correction
+            last_exception = None
+            for attempt in range(self.config.max_retries):
+                try:
+                    # Execute step to get a result from the LLM
+                    step_result = await self.execute_step(step_prompt, response_parser)
+                    
+                    # Update state using the agent's update_state method if available
+                    if agent:
+                        current_state = agent.update_state(current_state, step_result)
+                    else:
+                        current_state = self.update_state(current_state, step_result)
+                    
+                    # If both succeed, break the retry loop and continue
+                    break
+
+                except Exception as e:
+                    last_exception = e
+                    logger.error(f"Step execution attempt {attempt + 1} failed: {e}")
+                    if attempt == self.config.max_retries - 1:
+                        # If max retries reached, re-raise the exception to stop execution
+                        raise Exception(f"Step execution failed after {self.config.max_retries} attempts") from e
             
-            # Update state using the agent's update_state method if available
-            if agent:
-                current_state = agent.update_state(current_state, step_result)
-            else:
-                current_state = self.update_state(current_state, step_result)
             execution_trace.append(current_state)
             
             # Check cost threshold
