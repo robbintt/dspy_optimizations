@@ -12,7 +12,7 @@ from typing import List
 # Add the project root to the path to import modules
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from hanoi_solver import HanoiMDAP
+from hanoi_solver import HanoiMDAP, HanoiState
 from mdap_harness import MDAPConfig
 
 # Setup logging to file with timestamps
