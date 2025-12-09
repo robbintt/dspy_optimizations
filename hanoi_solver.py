@@ -108,7 +108,7 @@ class HanoiMDAP(MicroAgent):
                 model="gpt-4o-mini",
                 k_margin=3,
                 max_candidates=10,
-                temperature=0.1,
+                temperature=0.1,  # Default temperature set to 0.1
                 max_response_length=1000  # Keep default at 1000
             )
         super().__init__(config)
