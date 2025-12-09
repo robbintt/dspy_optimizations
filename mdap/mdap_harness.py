@@ -56,7 +56,7 @@ logger.setLevel(logging.INFO)
 class MDAPConfig:
     """Configuration for MDAP execution"""
     model: str = os.getenv("MDAP_DEFAULT_MODEL", "cerebras/zai-glm-4.6")
-    k_margin: int = int(os.getenv("MDAP_K_MARGIN", "6"))  # First-to-ahead-by-K margin
+    k_margin: int = int(os.getenv("MDAP_K_MARGIN", "3"))  # First-to-ahead-by-K margin
     max_candidates: int = int(os.getenv("MDAP_MAX_CANDIDATES", "10"))  # Max candidates to sample
     temperature: float = float(os.getenv("MDAP_TEMPERATURE", "0.1"))  # Default temperature set to 0.1
     max_retries: int = 3
