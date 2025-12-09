@@ -134,13 +134,13 @@ class RedFlagParser:
                     logger.warning(f"RED FLAG: Response missing required fields - move_line={bool(move_line)}, state_line={bool(state_line)}")
                     return None
 
-                # Extract JSON from the lines - strict format enforcement
+                # Extract JSON from the lines
                 try:
                     move_json = move_line.split("=", 1)[1].strip()
-                    # NO code block markers allowed - this is a red flag
-                    if '```' in move_json:
-                        logger.warning(f"RED FLAG: Move contains code block markers: {move_line}")
-                        return None
+                    # Allow markdown code blocks by stripping them if present
+                    if move_json.startswith('```') and move_json.endswith('```'):
+                        move_json = move_json[3:-3].strip()
+                    # The value is a JSON array, not an object
                     move_data = json.loads(move_json)
                 except (json.JSONDecodeError, IndexError) as e:
                     logger.warning(f"RED FLAG: Failed to parse move JSON: {e}")
@@ -149,10 +149,10 @@ class RedFlagParser:
 
                 try:
                     state_json = state_line.split("=", 1)[1].strip()
-                    # NO code block markers allowed - this is a red flag
-                    if '```' in state_json:
-                        logger.warning(f"RED FLAG: Next state contains code block markers: {state_line}")
-                        return None
+                    # Allow markdown code blocks by stripping them if present
+                    if state_json.startswith('```') and state_json.endswith('```'):
+                        state_json = state_json[3:-3].strip()
+                    # The value is a JSON array, not an object
                     predicted_state = json.loads(state_json)
                 except (json.JSONDecodeError, IndexError) as e:
                     logger.warning(f"RED FLAG: Failed to parse next_state JSON: {e}")
@@ -532,7 +532,10 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                     # If this is not the last attempt, modify the prompt to include the error
                     if attempt < self.config.max_retries - 1:
                         error_context = f"\n\nERROR: Your previous move was invalid!\n{str(e)}\n\nREMEMBER: Larger disks CANNOT go on smaller disks.\nIf moving disk X to peg Y, check that peg Y's top disk (if any) is larger than X.\n\nPlease analyze the current state carefully and choose a VALID move:"
-                        current_step_prompt = step_prompt + error_context
+                        # step_prompt is a tuple (system_prompt, user_prompt)
+                        # We need to append the error_context to the user_prompt string
+                        system_prompt, user_prompt = step_prompt
+                        current_step_prompt = (system_prompt, user_prompt + error_context)
                     else:
                         # If max retries reached, re-raise the exception to stop execution
                         raise Exception(f"Step execution failed after {self.config.max_retries} attempts") from e
