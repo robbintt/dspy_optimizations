@@ -55,11 +55,16 @@ class HanoiMDAP(MicroAgent):
     
     def generate_step_prompt(self, state: HanoiState) -> str:
         """Generate prompt for the next move"""
+        # Determine the top disk for each peg
+        top_disk_A = state.pegs['A'][-1] if state.pegs['A'] else 'empty'
+        top_disk_B = state.pegs['B'][-1] if state.pegs['B'] else 'empty'
+        top_disk_C = state.pegs['C'][-1] if state.pegs['C'] else 'empty'
+
         prompt = f"""You are solving Towers of Hanoi with {state.num_disks} disks.
 Current state (Move {state.move_count}):
-- Peg A: {state.pegs['A']} (top disk is last number)
-- Peg B: {state.pegs['B']} (top disk is last number)  
-- Peg C: {state.pegs['C']} (top disk is last number)
+- Peg A: {state.pegs['A']} (Top disk: {top_disk_A})
+- Peg B: {state.pegs['B']} (Top disk: {top_disk_B})  
+- Peg C: {state.pegs['C']} (Top disk: {top_disk_C})
 
 Rules:
 1. Only one disk can be moved at a time
