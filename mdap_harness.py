@@ -235,10 +235,11 @@ class MDAPHarness:
             
             # Execute step and update state with error correction
             last_exception = None
+            current_step_prompt = step_prompt
             for attempt in range(self.config.max_retries):
                 try:
                     # Execute step to get a result from the LLM
-                    step_result = await self.execute_step(step_prompt, response_parser)
+                    step_result = await self.execute_step(current_step_prompt, response_parser)
                     
                     # Update state using the agent's update_state method if available
                     if agent:
@@ -252,7 +253,11 @@ class MDAPHarness:
                 except Exception as e:
                     last_exception = e
                     logger.error(f"Step execution attempt {attempt + 1} failed: {e}")
-                    if attempt == self.config.max_retries - 1:
+                    # If this is not the last attempt, modify the prompt to include the error
+                    if attempt < self.config.max_retries - 1:
+                        error_context = f"\n\nYour previous move was invalid. Error: {str(e)}. Please analyze the state again and choose a different, valid move."
+                        current_step_prompt = step_prompt + error_context
+                    else:
                         # If max retries reached, re-raise the exception to stop execution
                         raise Exception(f"Step execution failed after {self.config.max_retries} attempts") from e
             
