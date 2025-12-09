@@ -54,42 +54,52 @@ def generate_hanoi_solution(num_disks: int):
     return moves
 
 def apply_moves_to_states(num_disks: int, moves: List[List[int]]):
-    """Apply a sequence of moves to generate all states"""
+    """Apply a sequence of moves to generate all states efficiently"""
     states = []
     
-    # Initial state
-    pegs = {'A': list(range(num_disks, 0, -1)), 'B': [], 'C': []}
-    state = HanoiState(pegs=pegs, num_disks=num_disks, move_history=[])
-    states.append(state)
+    # Use tuple representation for pegs for faster copying
+    pegs_tuple = (tuple(range(num_disks, 0, -1)), (), ())  # (A, B, C)
     
-    # Apply each move
+    # Initial state - convert tuple to dict for HanoiState
+    initial_state = HanoiState(
+        pegs={'A': list(pegs_tuple[0]), 'B': list(pegs_tuple[1]), 'C': list(pegs_tuple[2])},
+        num_disks=num_disks,
+        move_history=[]
+    )
+    states.append(initial_state)
+    
+    # Apply each move using tuple operations for speed
     for i, move in enumerate(moves):
         disk_id, from_peg, to_peg = move
         
-        # Create new state
-        new_pegs = {peg: list(disks) for peg, disks in state.pegs.items()}
-        from_peg_char = chr(65 + from_peg)
-        to_peg_char = chr(65 + to_peg)
+        # Convert current state to tuples for manipulation
+        current_pegs = (
+            tuple(states[-1].pegs['A']),
+            tuple(states[-1].pegs['B']),
+            tuple(states[-1].pegs['C'])
+        )
         
-        # Apply move
-        disk = new_pegs[from_peg_char].pop()
-        new_pegs[to_peg_char].append(disk)
+        # Apply move to tuples (faster than list operations)
+        from_list = list(current_pegs[from_peg])
+        disk = from_list.pop()
+        to_list = list(current_pegs[to_peg])
+        to_list.append(disk)
         
-        # Create new state object
+        # Create new pegs tuple
+        new_pegs_list = [list(p) for p in current_pegs]
+        new_pegs_list[from_peg] = from_list
+        new_pegs_list[to_peg] = to_list
+        new_pegs_tuple = tuple(new_pegs_list)
+        
+        # Create new state with minimal copying
         new_state = HanoiState(
-            pegs=new_pegs,
+            pegs={'A': list(new_pegs_tuple[0]), 'B': list(new_pegs_tuple[1]), 'C': list(new_pegs_tuple[2])},
             num_disks=num_disks,
             move_count=i + 1,
-            move_history=copy.deepcopy(state.move_history) if state.move_history else []
+            move_history=None  # Don't store history for cache generation
         )
-        new_state.move_history.append({
-            'disk_id': disk_id,
-            'from_peg': from_peg,
-            'to_peg': to_peg
-        })
         
         states.append(new_state)
-        state = new_state
         
         # Progress counter
         if (i + 1) % 10000 == 0:
@@ -115,8 +125,8 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
     print(f"Applying {len(moves):,} moves to generate states...")
     full_solution = apply_moves_to_states(num_disks, moves)
     
-    # Sample up to 1 million states (the full solution has ~1M steps)
-    max_samples = min(1000000, len(full_solution))
+    # Sample up to 100,000 states for faster calibration
+    max_samples = min(100000, len(full_solution))
     sampled_states = random.sample(full_solution, max_samples)
     
     # Cache the sampled states
