@@ -57,6 +57,7 @@ show_help() {
     echo "Commands:"
     echo "  unit               Run unit tests only"
     echo "  integration        Run integration tests only"
+    echo "  calibration        Run calibration tests only"
     echo "  all                Run all unit and integration tests"
     echo "  coverage           Run tests with coverage report"
     echo "  specific [test]    Run specific test file or test"
@@ -67,6 +68,7 @@ show_help() {
     echo "Examples:"
     echo "  $0 unit            # Run unit tests only"
     echo "  $0 integration     # Run integration tests only"
+    echo "  $0 calibration     # Run calibration tests only"
     echo "  $0 all             # Run all tests"
     echo "  $0 specific test_mdap_harness.py::TestRedFlagParser"
     echo "  $0 coverage        # Run with coverage report"
@@ -201,6 +203,12 @@ asyncio.run(test_k($k))
     done
 }
 
+# Function to run calibration tests
+run_calibration_tests() {
+    print_status "Running Hanoi calibration tests..."
+    python -m pytest test_hanoi_calibration.py -v
+}
+
 # Main script logic
 main() {
     # Check prerequisites
@@ -215,6 +223,9 @@ main() {
             ;;
         "integration")
             run_integration_tests
+            ;;
+        "calibration")
+            run_calibration_tests
             ;;
         "all")
             run_all_tests
