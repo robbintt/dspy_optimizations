@@ -99,7 +99,8 @@ def run_all_tests():
 def run_example(disks: int = 2):
     """Run Hanoi example"""
     print_status(f"Running Hanoi example with {disks} disks...")
-    run_command([sys.executable, "mdap/example_hanoi.py"])
+    # Change to mdap directory to run the example with proper logging
+    run_command([sys.executable, "example_hanoi.py"], cwd=os.path.join(PROJECT_DIR, "mdap"))
 
 def run_tests(disks: int = 3):
     """Run Hanoi test suite"""
