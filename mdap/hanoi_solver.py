@@ -286,59 +286,38 @@ The response must be under {self.config.max_tokens} tokens."""
 
         else:
             # --- Rule 2: Make the only other legal move ---
-            # Find the top disk that is not disk 1
-            moving_disk = None
-            from_peg_name = None
+            # When previous move was disk 1, make the only legal move that doesn't involve disk 1
+            # Find all possible moves that don't involve disk 1
+            valid_moves = []
             
-            for peg_name, peg in state.pegs.items():
+            for from_peg_name, peg in state.pegs.items():
                 if not peg:
                     continue
-                # Skip if the top disk is disk 1
+                # Skip moves involving disk 1
                 if peg[-1] == 1:
                     continue
                 
                 moving_disk = peg[-1]
-                from_peg_name = peg_name
-                break # Found the disk to move
-
-            if moving_disk is None:
-                # If we couldn't find a disk to move, it might be because disk 1 is not on top
-                # Let's check if disk 1 is buried and we need to move a larger disk
-                # Find the smallest top disk that can be moved
-                smallest_top_disk = None
-                smallest_from_peg = None
                 
-                for peg_name, peg in state.pegs.items():
-                    if not peg:
+                # Check all possible destination pegs
+                for to_peg_name, dest_peg in state.pegs.items():
+                    if from_peg_name == to_peg_name:
                         continue
-                    # Skip empty pegs
-                    if smallest_top_disk is None or peg[-1] < smallest_top_disk:
-                        smallest_top_disk = peg[-1]
-                        smallest_from_peg = peg_name
-                
-                if smallest_top_disk is not None and smallest_top_disk != 1:
-                    moving_disk = smallest_top_disk
-                    from_peg_name = smallest_from_peg
-                else:
-                    # This state might be solved or invalid if no other disk can be moved
-                    return None
-
-            # Find the destination peg for this disk
-            to_peg_name = None
-            for peg_name, peg in state.pegs.items():
-                if peg_name == from_peg_name:
-                    continue
-                
-                # Check if move is valid (can't place larger on smaller)
-                if peg and moving_disk > peg[-1]:
-                    continue
-                
-                to_peg_name = peg_name
-                break # Found the destination peg
-
-            if to_peg_name is None:
-                # No valid destination found
+                    
+                    # Check if move is valid (can't place larger on smaller)
+                    if dest_peg and moving_disk > dest_peg[-1]:
+                        continue
+                    
+                    # This is a valid move
+                    valid_moves.append((moving_disk, from_peg_name, to_peg_name))
+            
+            if not valid_moves:
+                # No valid moves found (shouldn't happen in a valid unsolved state)
                 return None
+            
+            # There should be exactly one valid move when following optimal strategy
+            # If there are multiple, take the first one
+            moving_disk, from_peg_name, to_peg_name = valid_moves[0]
             
             from_idx = peg_indices[from_peg_name]
             to_idx = peg_indices[to_peg_name]
