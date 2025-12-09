@@ -629,17 +629,17 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                 try:
                     # Get the optimal move for this state
                     optimal_move = agent.get_optimal_move(state)
-                logger.info(f"Optimal move for state {i+1}: {optimal_move}")
-                
-                # Get step prompt and parser
-                step_prompt, response_parser = agent.step_generator(state)
-                logger.info(f"Step prompt type: {type(step_prompt)}")
-                logger.info(f"Response parser type: {type(response_parser)}")
-                
-                # We only need one successful candidate to check against optimal
-                logger.info(f"Step prompt for state {i+1}: {step_prompt[:200]}...")
-                logger.info(f"About to call first_to_ahead_by_k...")
-                step_result = await self.first_to_ahead_by_k(step_prompt, response_parser)
+                    logger.info(f"Optimal move for state {i+1}: {optimal_move}")
+                    
+                    # Get step prompt and parser
+                    step_prompt, response_parser = agent.step_generator(state)
+                    logger.info(f"Step prompt type: {type(step_prompt)}")
+                    logger.info(f"Response parser type: {type(response_parser)}")
+                    
+                    # We only need one successful candidate to check against optimal
+                    logger.info(f"Step prompt for state {i+1}: {step_prompt[:200]}...")
+                    logger.info(f"About to call first_to_ahead_by_k...")
+                    step_result = await self.first_to_ahead_by_k(step_prompt, response_parser)
                 logger.info(f"State {i+1} LLM call successful")
                 
                 # Check if the LLM's move matches the optimal move
