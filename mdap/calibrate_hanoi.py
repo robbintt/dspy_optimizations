@@ -57,8 +57,7 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
         """Generate optimal moves without LLM calls"""
         optimal_move = solver.get_optimal_move(state)
         prompt = solver.generate_step_prompt(state)
-        return prompt, lambda x: {"from_peg": chr(65 + optimal_move[0]), 
-                                "to_peg": chr(65 + optimal_move[1])}
+        return prompt, lambda x: {"move": optimal_move}
     
     solver.step_generator = mock_step_generator
     
