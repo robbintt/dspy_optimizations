@@ -10,8 +10,8 @@ from datetime import datetime
 from typing import List, Tuple, Callable, Any
 from dataclasses import dataclass
 import copy
-from micro_agent import MicroAgent
-from mdap_harness import MDAPHarness, MDAPConfig, RedFlagParser
+from .micro_agent import MicroAgent
+from .mdap_harness import MDAPHarness, MDAPConfig, RedFlagParser
 
 # Setup logging to file with timestamps
 LOGS_DIR = "logs"

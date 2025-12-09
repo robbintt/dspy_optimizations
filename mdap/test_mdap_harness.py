@@ -7,8 +7,8 @@ import asyncio
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
 from collections import Counter
-from mdap_harness import MDAPHarness, MDAPConfig, RedFlagParser
-from micro_agent import MicroAgent
+from .mdap_harness import MDAPHarness, MDAPConfig, RedFlagParser
+from .micro_agent import MicroAgent
 
 class TestMDAPConfig:
     """Test MDAPConfig class"""

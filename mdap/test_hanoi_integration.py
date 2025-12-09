@@ -6,7 +6,7 @@ import pytest
 import asyncio
 from unittest.mock import patch, MagicMock
 from hanoi_solver import HanoiMDAP, HanoiState, MDAPConfig
-from micro_agent import MicroAgent
+from .micro_agent import MicroAgent
 
 class TestHanoiState:
     """Test HanoiState class"""

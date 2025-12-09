@@ -1,2 +1,6 @@
 .aider*
 prompts/
+logs/
+
+.env
+__pycache__

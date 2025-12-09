@@ -1,0 +1,4 @@
+[[ ## query ## ]]
+weather in berlin
+
+Respond with a JSON object in the following order of fields: `tool_call` (must be formatted as a valid Python ToolCall).
