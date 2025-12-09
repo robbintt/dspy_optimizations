@@ -371,25 +371,18 @@ next_state = {"pegs": {"A": [], "B": [2], "C": [1]}, "num_disks": 2, "move_count
         config = MDAPConfig(k_margin=2, max_candidates=3)
         solver = HanoiMDAP(config)
         
-        # Mock to return an incomplete solution
-        with patch('mdap_harness.acompletion') as mock_acompletion:
-            mock_response = MagicMock()
-            mock_response.choices = [MagicMock()]
-            mock_response.choices[0].message.content = """move = {"from_peg": "A", "to_peg": "B"}
-next_state = {"pegs": {"A": [2], "B": [1], "C": []}, "num_disks": 2, "move_count": 1}"""
-            mock_acompletion.return_value = mock_response
-            
-            # Mock the solve_hanoi method to return an unsolved trace
-            async def mock_solve_hanoi(num_disks):
-                # Return a trace that ends in an unsolved state
-                return [
-                    HanoiState(pegs={'A': [2, 1], 'B': [], 'C': []}, num_disks=2, move_count=0),
-                    HanoiState(pegs={'A': [2], 'B': [1], 'C': []}, num_disks=2, move_count=1)
-                ]
-            
-            with patch.object(solver, 'solve_hanoi', side_effect=mock_solve_hanoi):
-                with pytest.raises(RuntimeError, match="Hanoi solver failed to reach goal state"):
-                    await solver.solve_hanoi(2)
+        # Mock the solve_hanoi method to return an unsolved trace
+        async def mock_solve_hanoi(num_disks):
+            # Return a trace that ends in an unsolved state
+            # Final state has disks on A and B, not all on C
+            return [
+                HanoiState(pegs={'A': [2, 1], 'B': [], 'C': []}, num_disks=2, move_count=0),
+                HanoiState(pegs={'A': [2], 'B': [1], 'C': []}, num_disks=2, move_count=1)
+            ]
+        
+        with patch.object(solver, 'solve_hanoi', side_effect=mock_solve_hanoi):
+            with pytest.raises(RuntimeError, match="Hanoi solver failed to reach goal state"):
+                await solver.solve_hanoi(2)
     
     @pytest.mark.asyncio
     async def test_no_extra_steps_after_goal_state(self):
