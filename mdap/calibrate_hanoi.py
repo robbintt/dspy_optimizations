@@ -92,11 +92,14 @@ def apply_moves_to_states(num_disks: int, moves: List[List[int]]):
         new_pegs_tuple = tuple(new_pegs_list)
         
         # Create new state with minimal copying
+        # Store just the previous move for prompt generation
+        previous_move = move if i > 0 else None
         new_state = HanoiState(
             pegs={'A': list(new_pegs_tuple[0]), 'B': list(new_pegs_tuple[1]), 'C': list(new_pegs_tuple[2])},
             num_disks=num_disks,
             move_count=i + 1,
-            move_history=None  # Don't store history for cache generation
+            move_history=None,  # Don't store full history
+            previous_move=previous_move  # Just store the previous move
         )
         
         states.append(new_state)

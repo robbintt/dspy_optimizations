@@ -87,6 +87,7 @@ class HanoiState:
     num_disks: int
     move_count: int = 0
     move_history: List[dict] = None  # Track move history
+    previous_move: List[int] = None  # Just the previous move [disk_id, from_peg, to_peg]
     
     def to_dict(self) -> dict:
         return {
@@ -100,7 +101,8 @@ class HanoiState:
             pegs=copy.deepcopy(self.pegs),
             num_disks=self.num_disks,
             move_count=self.move_count,
-            move_history=copy.deepcopy(self.move_history) if self.move_history else []
+            move_history=copy.deepcopy(self.move_history) if self.move_history else [],
+            previous_move=copy.deepcopy(self.previous_move) if self.previous_move else None
         )
 
 class HanoiMDAP(MicroAgent):
@@ -129,11 +131,10 @@ class HanoiMDAP(MicroAgent):
     
     def generate_step_prompt(self, state: HanoiState) -> str:
         """Generate prompt for next step using the new MDAP prompt format"""
-        # Get the previous move from the state history
+        # Get the previous move from the state
         previous_move = "None"  # Default for first move
-        if hasattr(state, 'move_history') and state.move_history is not None and len(state.move_history) > 0:
-            last_move = state.move_history[-1]
-            previous_move = f"[{last_move['disk_id']}, {last_move['from_peg']}, {last_move['to_peg']}]"
+        if hasattr(state, 'previous_move') and state.previous_move is not None:
+            previous_move = f"[{state.previous_move[0]}, {state.previous_move[1]}, {state.previous_move[2]}]"
         
         # Convert pegs from dict to list format for the paper's format
         # Map A->0, B->1, C->2
