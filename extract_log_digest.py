@@ -223,8 +223,8 @@ def main():
     
     # Extract information
     responses = extract_llm_responses(content)
-    voting = extract_voting_info(content)
     params = extract_paper_parameters(content)
+    voting = extract_voting_info(content)
     transitions = extract_state_transitions(content)
     
     # Generate digest
