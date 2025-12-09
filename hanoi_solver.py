@@ -66,6 +66,9 @@ class HanoiMDAP(MicroAgent):
         top_B = state.pegs['B'][-1] if state.pegs['B'] else "empty"
         top_C = state.pegs['C'][-1] if state.pegs['C'] else "empty"
         
+        # Log the current state for debugging
+        logger.info(f"CURRENT STATE BEFORE LLM CALL: A={state.pegs['A']}, B={state.pegs['B']}, C={state.pegs['C']}, move_count={state.move_count}")
+        
         prompt = f"""You are a Hanoi move generator. Respond with ONLY the move and next_state. No explanations, no reasoning, no other text.
 
 Solve Towers of Hanoi. Move all disks to peg C.
