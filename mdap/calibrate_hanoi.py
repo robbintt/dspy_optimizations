@@ -37,6 +37,65 @@ console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
+def generate_hanoi_solution(num_disks: int):
+    """Generate the complete optimal solution for Towers of Hanoi using recursion"""
+    def hanoi(n, source, target, auxiliary, moves):
+        """Recursive helper to generate moves"""
+        if n == 1:
+            moves.append([1, source, target])
+        else:
+            hanoi(n-1, source, auxiliary, target, moves)
+            moves.append([n, source, target])
+            hanoi(n-1, auxiliary, target, source, moves)
+    
+    moves = []
+    hanoi(num_disks, 0, 2, 1, moves)
+    return moves
+
+def apply_moves_to_states(num_disks: int, moves: List[List[int]]):
+    """Apply a sequence of moves to generate all states"""
+    states = []
+    
+    # Initial state
+    pegs = {'A': list(range(num_disks, 0, -1)), 'B': [], 'C': []}
+    state = HanoiState(pegs=pegs, num_disks=num_disks, move_history=[])
+    states.append(state)
+    
+    # Apply each move
+    for i, move in enumerate(moves):
+        disk_id, from_peg, to_peg = move
+        
+        # Create new state
+        new_pegs = {peg: list(disks) for peg, disks in state.pegs.items()}
+        from_peg_char = chr(65 + from_peg)
+        to_peg_char = chr(65 + to_peg)
+        
+        # Apply move
+        disk = new_pegs[from_peg_char].pop()
+        new_pegs[to_peg_char].append(disk)
+        
+        # Create new state object
+        new_state = HanoiState(
+            pegs=new_pegs,
+            num_disks=num_disks,
+            move_count=i + 1,
+            move_history=copy.deepcopy(state.move_history) if state.move_history else []
+        )
+        new_state.move_history.append({
+            'disk_id': disk_id,
+            'from_peg': from_peg,
+            'to_peg': to_peg
+        })
+        
+        states.append(new_state)
+        state = new_state
+        
+        # Progress counter
+        if (i + 1) % 10000 == 0:
+            print(f"Progress: {i + 1:,} states generated...")
+    
+    return states
+
 async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "calibration_cache.pkl"):
     """Generate and cache calibration states from a full 20-disc solution"""
     logger.info(f"Generating calibration cache for {num_disks}-disc Hanoi problem")
@@ -45,76 +104,15 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
     logging.getLogger('mdap_harness').setLevel(logging.WARNING)
     logging.getLogger('hanoi_solver').setLevel(logging.WARNING)
     
-    # Generate full solution for 20 discs (2^20 - 1 = 1,048,575 steps)
-    config = MDAPConfig(model="cerebras/zai-glm-4.6", k_margin=1)  # Use cerebras model for caching
-    solver = HanoiMDAP(config=config)
+    # Generate the optimal solution directly
+    logger.info("Generating optimal moves...")
+    print(f"Generating optimal solution for {num_disks} disks (expected {2**num_disks - 1:,} moves)...")
+    moves = generate_hanoi_solution(num_disks)
     
-    # Mock the LLM to generate optimal moves
-    original_step_generator = solver.step_generator
-    
-    def mock_step_generator(state):
-        """Generate optimal moves without LLM calls"""
-        optimal_move = solver.get_optimal_move(state)
-        
-        # Check if a valid move was found
-        if not optimal_move:
-            raise ValueError(f"get_optimal_move returned no valid move for state: {state.to_dict()}")
-        
-        # Generate the prompt (required by function signature, but won't be sent to LLM)
-        prompt = solver.generate_step_prompt(state)
-        
-        # Generate the predicted state for this move
-        disk_id, from_peg, to_peg = optimal_move
-        new_pegs = {peg: list(disks) for peg, disks in state.pegs.items()}
-        from_peg_char = chr(65 + from_peg)
-        to_peg_char = chr(65 + to_peg)
-        
-        if not new_pegs[from_peg_char]:
-            raise ValueError(f"Cannot move from empty peg {from_peg_char}")
-        
-        disk = new_pegs[from_peg_char].pop()
-        if new_pegs[to_peg_char] and disk > new_pegs[to_peg_char][-1]:
-            raise ValueError(f"Invalid move: placing disk {disk} on top of smaller disk {new_pegs[to_peg_char][-1]}")
-        new_pegs[to_peg_char].append(disk)
-        
-        new_state = type(state)(
-            pegs=new_pegs,
-            num_disks=state.num_disks,
-            move_count=state.move_count + 1,
-            move_history=copy.deepcopy(state.move_history) if state.move_history else []
-        )
-        new_state.move_history.append({
-            'disk_id': disk_id, 'from_peg': from_peg, 'to_peg': to_peg
-        })
-        
-        # The parser now directly returns the computed result
-        parser = lambda x: {"move": optimal_move, "predicted_state": new_state.to_dict()}
-        return prompt, parser
-
-    async def mock_execute_step(step_prompt, response_parser):
-        """Mock execute_step to return the pre-computed result without LLM calls"""
-        # The parser from our mock_step_generator holds the correct answer.
-        # We can just call it with a dummy string to get the result.
-        result = response_parser("dummy response")
-        
-        # Add progress counter every 10,000 steps
-        if hasattr(mock_execute_step, 'step_count'):
-            mock_execute_step.step_count += 1
-        else:
-            mock_execute_step.step_count = 1
-        
-        if mock_execute_step.step_count % 10000 == 0:
-            print(f"Progress: {mock_execute_step.step_count:,} steps generated...")
-        
-        return result
-
-    # Apply the mocks to bypass the LLM
-    solver.step_generator = mock_step_generator
-    solver.harness.execute_step = mock_execute_step
-    
-    logger.info("Generating full solution...")
-    print(f"Generating full solution for {num_disks} disks (expected {2**num_disks - 1:,} steps)...")
-    full_solution = await solver.solve_hanoi(num_disks)
+    # Apply moves to generate all states
+    logger.info("Applying moves to generate states...")
+    print(f"Applying {len(moves):,} moves to generate states...")
+    full_solution = apply_moves_to_states(num_disks, moves)
     
     # Sample up to 1 million states (the full solution has ~1M steps)
     max_samples = min(1000000, len(full_solution))
