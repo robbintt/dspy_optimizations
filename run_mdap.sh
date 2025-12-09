@@ -176,18 +176,21 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 file_handler.setFormatter(formatter)
 
 # Add handler to root logger
-logging.getLogger().addHandler(file_handler)
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)  # Set the root logger level
+root_logger.addHandler(file_handler)
 
 # Also add console handler to tee output to terminal
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(formatter)
-logging.getLogger().addHandler(console_handler)
+root_logger.addHandler(console_handler)
 
 # Get logger
 logger = logging.getLogger(__name__)
 
 async def solve():
+    print('DEBUG: Starting solve function')
     logger.info('Starting Hanoi solver')
     logger.info('🏗️  MDAP Hanoi Solver')
     logger.info('=' * 40)
@@ -226,7 +229,12 @@ async def solve():
         logger.error('Possible causes: API key issue, model unavailable, network problems, rate limiting')
         raise
 
-asyncio.run(solve())
+try:
+    asyncio.run(solve())
+except Exception as e:
+    print(f'ERROR: {e}')
+    import traceback
+    traceback.print_exc()
 "
 }
 
