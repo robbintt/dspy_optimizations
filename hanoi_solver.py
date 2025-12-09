@@ -79,8 +79,8 @@ Solve Towers of Hanoi. Move all disks to peg C.
 CRITICAL DISK SIZE RULE:
 - Disk numbers represent SIZE: 3 is BIGGER than 2, 2 is BIGGER than 1
 - BIGGER disks can NEVER go on SMALLER disks
-- VALID: 1 on 2, 1 on 3, 2 on 3 (smaller on larger)
-- INVALID: 2 on 1, 3 on 1, 3 on 2 (larger on smaller)
+- VALID: [2, 1], [3, 1], [3, 2] (smaller on larger)
+- INVALID: [1, 2], [1, 3], [2, 3] (larger on smaller)
 - The peg list shows [bottom...top], so RIGHTMOST number is the TOP disk
 
 FINAL ORDER ON PEG C:
