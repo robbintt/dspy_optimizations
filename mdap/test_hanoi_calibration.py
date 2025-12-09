@@ -6,6 +6,7 @@ Tests the mock step generator and optimal move logic used in calibration
 import pytest
 import asyncio
 import copy
+import os
 from unittest.mock import patch, MagicMock
 
 from hanoi_solver import HanoiMDAP, HanoiState
@@ -287,3 +288,54 @@ class TestHanoiCalibration:
         
         move = solver.get_optimal_move(state)
         assert move == [1, 0, 1]  # Should move disk 1
+    
+    @pytest.mark.asyncio
+    async def test_calibration_mock_solution_consistency(self, solver):
+        """Test that mock calibration produces consistent results"""
+        # Import here to avoid circular imports
+        from calibrate_hanoi import generate_calibration_cache
+        
+        # Test with a smaller problem for speed
+        num_disks = 5
+        cache_file = "test_calibration_cache.pkl"
+        
+        # Remove existing test cache file
+        if os.path.exists(cache_file):
+            os.remove(cache_file)
+        
+        # Generate cache
+        calibration_data = await generate_calibration_cache(num_disks=num_disks, cache_file=cache_file)
+        
+        # Verify cache structure
+        assert calibration_data is not None
+        assert 'num_disks' in calibration_data
+        assert 'states' in calibration_data
+        assert 'total_steps' in calibration_data
+        assert 'sampled_count' in calibration_data
+        
+        # Verify values
+        assert calibration_data['num_disks'] == num_disks
+        assert calibration_data['total_steps'] == (2 ** num_disks) - 1  # Number of moves
+        assert len(calibration_data['states']) == calibration_data['sampled_count']
+        assert calibration_data['sampled_count'] <= 100000  # Should be limited to 100K
+        
+        # Verify at least one state has the correct initial configuration
+        # Since we're sampling, the first state might not be the initial state
+        found_initial = False
+        for state in calibration_data['states']:
+            if (state.pegs['A'] == list(range(num_disks, 0, -1)) and 
+                state.pegs['B'] == [] and 
+                state.pegs['C'] == []):
+                found_initial = True
+                break
+        assert found_initial, "No state with initial configuration found in sample"
+        
+        # Verify last state is solved
+        final_state = calibration_data['states'][-1]
+        assert len(final_state.pegs['C']) == num_disks
+        assert len(final_state.pegs['A']) == 0
+        assert len(final_state.pegs['B']) == 0
+        
+        # Clean up test cache file
+        if os.path.exists(cache_file):
+            os.remove(cache_file)

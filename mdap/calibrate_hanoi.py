@@ -127,13 +127,17 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
     
     # Sample up to 100,000 states for faster calibration
     max_samples = min(100000, len(full_solution))
-    sampled_states = random.sample(full_solution, max_samples)
+    # Always include the first and last states
+    middle_states = full_solution[1:-1]
+    num_middle_samples = min(max_samples - 2, len(middle_states))
+    sampled_middle = random.sample(middle_states, num_middle_samples) if middle_states else []
+    sampled_states = [full_solution[0]] + sampled_middle + [full_solution[-1]]
     
     # Cache the sampled states
     calibration_data = {
         'num_disks': num_disks,
         'states': sampled_states,
-        'total_steps': len(full_solution),
+        'total_steps': len(full_solution) - 1,  # Subtract 1 to exclude initial state (moves count)
         'sampled_count': len(sampled_states)
     }
     
