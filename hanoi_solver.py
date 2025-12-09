@@ -55,28 +55,47 @@ class HanoiMDAP(MicroAgent):
     
     def generate_step_prompt(self, state: HanoiState) -> str:
         """Generate prompt for the next move"""
-        # Determine the top disk for each peg
-        top_disk_A = state.pegs['A'][-1] if state.pegs['A'] else 'empty'
-        top_disk_B = state.pegs['B'][-1] if state.pegs['B'] else 'empty'
-        top_disk_C = state.pegs['C'][-1] if state.pegs['C'] else 'empty'
+        # Create a visual representation of the state
+        def visualize_pegs(pegs):
+            max_height = max(len(p) for p in pegs.values())
+            lines = []
+            for level in range(max_height - 1, -1, -1):
+                line_parts = []
+                for peg_name in ['A', 'B', 'C']:
+                    disks = pegs[peg_name]
+                    if level < len(disks):
+                        disk_size = disks[level]
+                        line_parts.append(f"  {disk_size}  ")
+                    else:
+                        line_parts.append("  |  ")
+                lines.append("".join(line_parts))
+            lines.append("-----" * 3) # Base
+            lines.append("  A    B    C  ")
+            return "\n".join(lines)
 
-        prompt = f"""You are solving Towers of Hanoi with {state.num_disks} disks.
-Current state (Move {state.move_count}):
-- Peg A: {state.pegs['A']} (Top disk: {top_disk_A})
-- Peg B: {state.pegs['B']} (Top disk: {top_disk_B})  
-- Peg C: {state.pegs['C']} (Top disk: {top_disk_C})
+        visual_state = visualize_pegs(state.pegs)
+        
+        prompt = f"""You are solving the Towers of Hanoi puzzle. Your goal is to move all disks to peg C.
 
-Rules:
-1. Only one disk can be moved at a time
-2. A disk can only be placed on top of a larger disk or on an empty peg
-3. Goal: Move all disks from peg A to peg C
+**CRITICAL RULES:**
+- Disk numbers represent SIZE: 3 is LARGEST, 2 is MEDIUM, 1 is SMALLEST.
+- You can ONLY move the TOP disk from a peg.
+- You can NEVER place a larger disk on top of a smaller disk.
+- The goal is to move the entire tower to peg C.
 
-Your task is to choose the single best move that makes progress towards the goal. Analyze the board and move a disk that brings you closer to having all disks on peg C. Avoid undoing progress by moving a disk back to its previous position.
+**Current State (Move {state.move_count}):**
+{visual_state}
 
-Determine the next valid move. Your entire response must be a JSON object with exactly this format, and nothing else:
+**Analysis:**
+- Top disk on A: {state.pegs['A'][-1] if state.pegs['A'] else 'None'}
+- Top disk on B: {state.pegs['B'][-1] if state.pegs['B'] else 'None'}
+- Top disk on C: {state.pegs['C'][-1] if state.pegs['C'] else 'None'}
+
+**Your Task:**
+Choose the SINGLE next move that follows the rules and makes progress towards the goal. Do not undo the previous move.
+
+Respond with ONLY a JSON object. No other text.
 {{"from_peg": "A", "to_peg": "B"}}
-
-Where from_peg and to_peg are one of "A", "B", "C". Do not include any text before or after the JSON.
 """
         return prompt
     
