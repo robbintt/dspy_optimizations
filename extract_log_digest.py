@@ -128,9 +128,14 @@ def extract_paper_parameters(log_content: str) -> Dict:
         params["actual_steps"] = int(steps_match.group(1))
     else:
         # Try to extract from the last state update
-        last_state_match = re.search(r'State updated successfully: HanoiState\(pegs=[^,]+, num_disks=\d+, move_count=(\d+)\)', log_content)
+        last_state_match = re.search(r"State updated successfully: HanoiState\(pegs=\{'[^']+'\: \[[^\]]+\][^}]+\}, num_disks=\d+, move_count=(\d+)\)", log_content)
         if last_state_match:
             params["actual_steps"] = int(last_state_match.group(1))
+        else:
+            # Fallback: just look for move_count at the end of the line
+            fallback_match = re.search(r'State updated successfully:.*move_count=(\d+)', log_content)
+            if fallback_match:
+                params["actual_steps"] = int(fallback_match.group(1))
     
     moves_match = re.search(r'Solution completed in (\d+) moves', log_content)
     if moves_match:
