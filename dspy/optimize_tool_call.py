@@ -6,14 +6,14 @@ from pydantic import BaseModel, Field
 import harness
 
 #GLM_46='openai/glm-4.6',
-GLM_46='openai/z-ai/glm-4.6'
+GLM_46='cerebras/zai-glm-4.6'
 
 # --- Setup LM ---
 # Configure the language model and adapter.
 zai_glm_4_6 = dspy.LM(
     model=GLM_46,
-    api_key=os.getenv("ZAI_API_KEY", "your-api-key-here"),
-    api_base=os.getenv("ZAI_API_BASE", "your-api-base-here"),
+    api_key=os.getenv("CEREBRAS_API_KEY", os.getenv("ZAI_API_KEY", "your-api-key-here")),
+    api_base=os.getenv("CEREBRAS_API_BASE", os.getenv("ZAI_API_BASE", "https://api.cerebras.ai/v1")),
     cache=False,
     disable_reasoning=True,
 )
@@ -158,8 +158,8 @@ optimizer = GEPA(
     # You can remove `reflection_lm` if you don't have access to a different model.
     reflection_lm=dspy.LM(
         model=GLM_46,
-        api_key=os.getenv("ZAI_API_KEY", "your-api-key-here"),
-        api_base=os.getenv("ZAI_API_BASE", "your-api-base-here"),
+        api_key=os.getenv("CEREBRAS_API_KEY", os.getenv("ZAI_API_KEY", "your-api-key-here")),
+        api_base=os.getenv("CEREBRAS_API_BASE", os.getenv("ZAI_API_BASE", "https://api.cerebras.ai/v1")),
         #cache=False,
         #disable_reasoning=True,
     )
