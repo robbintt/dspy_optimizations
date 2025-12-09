@@ -34,22 +34,5 @@ else
     echo "Warning: .env file not found. Script might fail if it requires environment variables."
 fi
 
-# Create a logs directory if it doesn't exist
-LOG_DIR="logs"
-mkdir -p "$LOG_DIR"
-
-# Generate a log file name based on the script and current timestamp
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-LOG_FILE="$LOG_DIR/${SCRIPT_NAME%.py}_${TIMESTAMP}.log"
-
-echo ""
-echo "--- Running python $SCRIPT_NAME ---"
-echo "--- Output will be logged to $LOG_FILE ---"
-
-# Use python's -u flag for unbuffered output.
-# Redirect stderr (2) to stdout (1) so both are captured.
-# `tee` writes the output to the specified log file AND to the console.
-python -u "$SCRIPT_NAME" 2>&1 | tee "$LOG_FILE"
-
-echo ""
-echo "--- Script finished. Log saved to: $LOG_FILE ---"
+# Run the Python script using the extracted Python runner
+python scripts/run_script.py "$SCRIPT_NAME"
