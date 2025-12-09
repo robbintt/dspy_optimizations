@@ -65,7 +65,8 @@ Peg A: {state.pegs['A']}
 Peg B: {state.pegs['B']}
 Peg C: {state.pegs['C']}
 
-Provide the next move and the resulting state in this format:
+IMPORTANT: You must respond with ONLY the following two lines. No explanations, no reasoning, no other text.
+
 move = {{"from_peg": "X", "to_peg": "Y"}}
 next_state = {{"pegs": {{"A": [...], "B": [...], "C": [...]}}, "num_disks": {state.num_disks}, "move_count": {state.move_count + 1}}}
 """
