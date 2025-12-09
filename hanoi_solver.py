@@ -106,6 +106,8 @@ Peg C: {state.pegs['C']}
 
 PROGRESS: {disks_on_C}/{state.num_disks} disks on goal peg
 
+IMPORTANT: Look at the Current State above. ONLY move from pegs that actually have disks.
+
 Your task:
 Choose ONE valid move toward the goal and predict the EXACT resulting state.
 
@@ -140,24 +142,49 @@ REMEMBER: Respond with ONLY the two lines above. Nothing else."""
         move = step_result['move']
         predicted_state_dict = step_result['predicted_state']
         
-        new_state = current_state.copy()
-        from_peg = move['from_peg']
-        to_peg = move['to_peg']
-        
-        if self.is_valid_move(current_state, from_peg, to_peg):
-            # Make the move
-            disk = new_state.pegs[from_peg].pop()
-            new_state.pegs[to_peg].append(disk)
-            new_state.move_count += 1
+        # First check if the predicted state is the goal state
+        if predicted_state_dict == {'pegs': {'A': [], 'B': [], 'C': list(range(current_state.num_disks, 0, -1))}, 
+                                     'num_disks': current_state.num_disks, 
+                                     'move_count': current_state.move_count + 1}:
+            # If prediction matches goal state, validate if we can achieve it
+            new_state = current_state.copy()
+            from_peg = move['from_peg']
+            to_peg = move['to_peg']
+            
+            if self.is_valid_move(current_state, from_peg, to_peg):
+                # Make the move
+                disk = new_state.pegs[from_peg].pop()
+                new_state.pegs[to_peg].append(disk)
+                new_state.move_count += 1
+            else:
+                raise ValueError(f"Invalid move: {from_peg} -> {to_peg}")
+            
+            # Validate the LLM's prediction of the next state
+            actual_state_dict = new_state.to_dict()
+            if actual_state_dict != predicted_state_dict:
+                raise ValueError(f"LLM's predicted state does not match actual state. Predicted: {predicted_state_dict}, Actual: {actual_state_dict}")
+            
+            return new_state
         else:
-            raise ValueError(f"Invalid move: {from_peg} -> {to_peg}")
-        
-        # Validate the LLM's prediction of the next state
-        actual_state_dict = new_state.to_dict()
-        if actual_state_dict != predicted_state_dict:
-            raise ValueError(f"LLM's predicted state does not match actual state. Predicted: {predicted_state_dict}, Actual: {actual_state_dict}")
-        
-        return new_state
+            # Normal validation for non-goal states
+            new_state = current_state.copy()
+            from_peg = move['from_peg']
+            to_peg = move['to_peg']
+            
+            if self.is_valid_move(current_state, from_peg, to_peg):
+                # Make the move
+                disk = new_state.pegs[from_peg].pop()
+                new_state.pegs[to_peg].append(disk)
+                new_state.move_count += 1
+            else:
+                raise ValueError(f"Invalid move: {from_peg} -> {to_peg}")
+            
+            # Validate the LLM's prediction of the next state
+            actual_state_dict = new_state.to_dict()
+            if actual_state_dict != predicted_state_dict:
+                raise ValueError(f"LLM's predicted state does not match actual state. Predicted: {predicted_state_dict}, Actual: {actual_state_dict}")
+            
+            return new_state
     
     def is_solved(self, state: HanoiState) -> bool:
         """Check if Hanoi is solved (all disks on peg C)"""
