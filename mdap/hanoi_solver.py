@@ -163,7 +163,7 @@ Requirements:
 - Ensure your answer includes the next state resulting from applying the move to the current state in this EXACT FORMAT:
 ```next_state = [[...], [...], [...]]```
 
-The response must be under 1000 tokens."""
+The response must be under {max_tokens} tokens.""".format(max_tokens=self.config.max_tokens)
         
         prompt = enhanced_template.format(
             previous_move=previous_move,
