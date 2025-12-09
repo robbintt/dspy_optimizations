@@ -77,8 +77,14 @@ class HanoiMDAP(MicroAgent):
         
         prompt = f"""You are solving the Towers of Hanoi puzzle. Your goal is to move all disks to peg C.
 
+**OVERALL STRATEGY:**
+Follow this optimal strategy for {state.num_disks} disks:
+1. Move the smallest disk (1) to the auxiliary peg (B).
+2. Move the remaining disks (2 to {state.num_disks}) to the target peg (C).
+3. Move the smallest disk (1) from the auxiliary peg (B) to the target peg (C).
+
 **CRITICAL RULES:**
-- Disk numbers represent SIZE: 3 is LARGEST, 2 is MEDIUM, 1 is SMALLEST.
+- Disk numbers represent SIZE: {state.num_disks} is LARGEST, 1 is SMALLEST.
 - You can ONLY move the TOP disk from a peg.
 - You can NEVER place a larger disk on top of a smaller disk.
 - The goal is to move the entire tower to peg C.
@@ -92,7 +98,7 @@ class HanoiMDAP(MicroAgent):
 - Top disk on C: {state.pegs['C'][-1] if state.pegs['C'] else 'None'}
 
 **Your Task:**
-Choose the SINGLE next move that follows the rules and makes progress towards the goal. Do not undo the previous move.
+Based on the OVERALL STRATEGY and the current state, choose the SINGLE next move. Do not undo the previous move.
 
 Respond with ONLY a JSON object. No other text.
 {{"from_peg": "A", "to_peg": "B"}}
