@@ -187,7 +187,16 @@ def generate_digest(responses: List[Dict], voting: List[Dict],
     digest.append(f"Params: k={params.get('k_margin', 'N/A')}, max_cand={params.get('max_candidates', 'N/A')}, temp={params.get('temperature', 'N/A')}")
     digest.append("")
     
-    # Step-by-step summary
+    # Sequence of voted decisions
+    digest.append("## Sequence of Voted Decisions")
+    for i, resp in enumerate(responses, 1):
+        digest.append(f"Step {i}:")
+        digest.append(f"  Move: {resp['move']}")
+        if 'predicted_state' in resp:
+            digest.append(f"  Predicted State: {resp['predicted_state']}")
+        digest.append("")
+    
+    # Step-by-step summary with voting info
     digest.append("## Step Summary")
     for i, (resp, vote, trans) in enumerate(zip(responses, voting, transitions), 1):
         digest.append(f"Step {i}:")
