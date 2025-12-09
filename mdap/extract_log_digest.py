@@ -11,8 +11,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-def find_most_recent_log() -> Optional[str]:
-    """Find the most recent log file in the logs directory"""
+def find_most_recent_log() -> Optional[Tuple[str, str]]:
+    """Find the most recent log file in the logs directory and extract its timestamp"""
     logs_dir = Path("mdap/logs")
     if not logs_dir.exists():
         print("No logs directory found")
@@ -26,7 +26,19 @@ def find_most_recent_log() -> Optional[str]:
     
     # Sort by modification time
     most_recent = max(log_files, key=lambda f: f.stat().st_mtime)
-    return str(most_recent)
+    
+    # Extract timestamp from filename (format: mdap_harness_YYYYMMDD_HHMMSS.log)
+    filename = most_recent.name
+    timestamp_match = re.search(r'mdap_harness_(\d{8})_(\d{6})\.log', filename)
+    if timestamp_match:
+        date_part = timestamp_match.group(1)
+        time_part = timestamp_match.group(2)
+        timestamp_str = f"{date_part}_{time_part}"
+    else:
+        # Fallback to current time if timestamp not found in filename
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    return str(most_recent), timestamp_str
 
 def extract_llm_responses(log_content: str) -> List[Dict]:
     """Extract LLM parsed responses from log"""
@@ -227,10 +239,11 @@ def generate_digest(responses: List[Dict], voting: List[Dict],
 def main():
     """Main execution function"""
     # Find most recent log
-    log_file = find_most_recent_log()
-    if not log_file:
+    log_result = find_most_recent_log()
+    if not log_result:
         return
     
+    log_file, log_timestamp = log_result
     print(f"Processing log: {log_file}")
     
     # Read log content
@@ -258,9 +271,8 @@ def main():
     # Generate digest
     digest = generate_digest(responses, voting, params, transitions)
     
-    # Save digest
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    digest_file = f"docs/analysis/log_digest_{timestamp}.md"
+    # Save digest using log timestamp
+    digest_file = f"docs/analysis/log_digest_{log_timestamp}.md"
     
     os.makedirs(os.path.dirname(digest_file), exist_ok=True)
     with open(digest_file, 'w') as f:
