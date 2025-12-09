@@ -242,40 +242,75 @@ The response must be under {self.config.max_tokens} tokens."""
     
     def get_optimal_move(self, state: HanoiState) -> List[int]:
         """
-        Get the optimal move for the current state based on the even-disk strategy.
+        Get the optimal move for the current state based on the optimal strategy.
         Returns the move as [disk_id, from_peg, to_peg].
         """
-        # For even number of disks, the optimal strategy is:
-        # - Move smallest disk to the next peg in the sequence A->B->C->A
-        # - Make the only other legal move
-        # - Repeat
-        
-        # Find the smallest disk that can be moved
-        smallest_disk = None
-        from_peg = None
-        
-        # Check each peg from top to bottom for the smallest disk
-        for peg_name, peg in state.pegs.items():
-            if peg:  # If peg is not empty
-                disk = peg[-1]  # Top disk
-                if smallest_disk is None or disk < smallest_disk:
-                    smallest_disk = disk
-                    from_peg = peg_name
-        
-        if smallest_disk is None:
-            return None  # No moves possible
-        
-        # Convert peg name to index
+        # Map peg names to indices for easier calculation
         peg_indices = {'A': 0, 'B': 1, 'C': 2}
-        from_idx = peg_indices[from_peg]
         
-        # For even number of disks, move smallest disk in reverse direction
-        if state.num_disks % 2 == 0:
-            to_idx = (from_idx - 1) % 3
+        # Determine the move based on the optimal strategy
+        # Rule 1: If the previous move was NOT disk 1, move disk 1.
+        # Rule 2: If the previous move WAS disk 1, make the only other legal move.
+        
+        previous_move_was_disk_1 = False
+        if state.move_history:
+            last_move = state.move_history[-1]
+            if last_move['disk_id'] == 1:
+                previous_move_was_disk_1 = True
+
+        if not previous_move_was_disk_1:
+            # --- Rule 1: Move disk 1 ---
+            # Find the current peg of disk 1
+            disk_1_peg_name = None
+            for peg_name, peg in state.pegs.items():
+                if peg and peg[-1] == 1:
+                    disk_1_peg_name = peg_name
+                    break
+            
+            if disk_1_peg_name is None:
+                return None # Should not happen in a valid state
+
+            from_idx = peg_indices[disk_1_peg_name]
+            
+            # Determine direction based on the number of disks
+            if state.num_disks % 2 == 0:  # Even number of disks: counter-clockwise (A->C->B->A)
+                to_idx = (from_idx - 1) % 3
+            else:  # Odd number of disks: clockwise (A->B->C->A)
+                to_idx = (from_idx + 1) % 3
+                
+            return [1, from_idx, to_idx]
+
         else:
-            to_idx = (from_idx + 1) % 3
-        
-        return [smallest_disk, from_idx, to_idx]
+            # --- Rule 2: Make the only other legal move ---
+            # Find all possible moves that do not involve disk 1
+            possible_moves = []
+            for from_peg_name, from_peg in state.pegs.items():
+                if not from_peg:
+                    continue
+                # Skip if the top disk is disk 1
+                if from_peg[-1] == 1:
+                    continue
+                
+                moving_disk = from_peg[-1]
+                from_idx = peg_indices[from_peg_name]
+
+                for to_peg_name, to_peg in state.pegs.items():
+                    if from_peg_name == to_peg_name:
+                        continue
+                    
+                    # Check if move is valid (can't place larger on smaller)
+                    if to_peg and moving_disk > to_peg[-1]:
+                        continue
+                    
+                    to_idx = peg_indices[to_peg_name]
+                    possible_moves.append([moving_disk, from_idx, to_idx])
+            
+            # In the optimal strategy, there will be exactly one such move.
+            if len(possible_moves) == 1:
+                return possible_moves[0]
+            
+            # This should not happen if the state is on the optimal path
+            return None
     
     def step_generator(self, state: HanoiState) -> Tuple[str, Callable]:
         """Generate prompt and parser for current step"""
