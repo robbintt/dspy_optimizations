@@ -17,7 +17,7 @@ class TestMDAPConfig:
         """Test default configuration values"""
         config = MDAPConfig()
         assert config.model == "cerebras/zai-glm-4.6"
-        assert config.k_margin == 3
+        assert config.k_margin == 6  # Updated default from paper's findings
         assert config.max_candidates == 10
         assert config.temperature == 0.1
         assert config.max_retries == 3
@@ -45,12 +45,14 @@ class TestRedFlagParser:
     
     def test_valid_move_response(self):
         """Test parsing a valid move response"""
-        response = '{"from_peg": "A", "to_peg": "B"}'
+        response = """move = {"from_peg": "A", "to_peg": "B"}
+next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count": 1}"""
         result = RedFlagParser.parse_move_state_flag(response)
         
         assert result is not None
-        assert result['from_peg'] == 'A'
-        assert result['to_peg'] == 'B'
+        assert result['move']['from_peg'] == 'A'
+        assert result['move']['to_peg'] == 'B'
+        assert result['predicted_state']['pegs']['B'] == [1]
     
     def test_valid_move_response_dict(self):
         """Test parsing a valid move response as dict"""
@@ -128,9 +130,12 @@ class TestMDAPHarness:
         """Test first-to-ahead-by-K when winner is found"""
         # Mock responses
         mock_responses = [
-            '{"from_peg": "A", "to_peg": "B"}',  # Valid
-            '{"from_peg": "A", "to_peg": "B"}',  # Same valid response
-            '{"from_peg": "A", "to_peg": "C"}',  # Different valid response
+            """move = {"from_peg": "A", "to_peg": "B"}
+next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count": 1}""",  # Valid
+            """move = {"from_peg": "A", "to_peg": "B"}
+next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count": 1}""",  # Same valid response
+            """move = {"from_peg": "A", "to_peg": "C"}
+next_state = {"pegs": {"A": [], "B": [], "C": [1]}, "num_disks": 1, "move_count": 1}""",  # Different valid response
         ]
         
         with patch('mdap_harness.acompletion') as mock_acompletion:
@@ -146,7 +151,7 @@ class TestMDAPHarness:
                 RedFlagParser.parse_move_state_flag
             )
             
-            assert result['from_peg'] == 'A'
+            assert result['move']['from_peg'] == 'A'
             assert result['to_peg'] == 'B'
     
     @pytest.mark.asyncio
@@ -155,10 +160,14 @@ class TestMDAPHarness:
         # Mock responses - first few are invalid, then valid
         mock_responses = [
             'invalid json',  # Invalid JSON
-            '{"from_peg": "A", "to_peg": "A"}',  # Same peg move
-            '{"from_peg": "A", "to_peg": "B"}',  # Valid
-            '{"from_peg": "A", "to_peg": "B"}',  # Same valid response
-            '{"from_peg": "A", "to_peg": "B"}',  # Same valid response
+            """move = {"from_peg": "A", "to_peg": "A"}
+next_state = {"pegs": {"A": [1], "B": [], "C": []}, "num_disks": 1, "move_count": 1}""",  # Same peg move
+            """move = {"from_peg": "A", "to_peg": "B"}
+next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count": 1}""",  # Valid
+            """move = {"from_peg": "A", "to_peg": "B"}
+next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count": 1}""",  # Same valid response
+            """move = {"from_peg": "A", "to_peg": "B"}
+next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count": 1}""",  # Same valid response
         ]
         
         with patch('mdap_harness.acompletion') as mock_acompletion:
@@ -187,8 +196,8 @@ class TestMDAPHarness:
                 timeout=10.0
             )
             
-            assert result['from_peg'] == 'A'
-            assert result['to_peg'] == 'B'
+            assert result['move']['from_peg'] == 'A'
+            assert result['move']['to_peg'] == 'B'
     
     @pytest.mark.asyncio
     async def test_first_to_ahead_by_k_no_valid_candidates(self, harness):
@@ -301,6 +310,17 @@ class TestMDAPHarness:
 
 class TestMDAPCalibration:
     """Tests for the calibration functions"""
+
+    @pytest.fixture
+    def harness(self):
+        """Create test harness for calibration tests"""
+        return MDAPHarness(MDAPConfig(
+            model="test-model",
+            k_margin=2,
+            max_candidates=5,
+            temperature=0.1,
+            max_retries=2
+        ))
 
     @pytest.mark.asyncio
     async def test_estimate_per_step_success_rate(self, harness):
