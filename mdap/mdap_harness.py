@@ -620,7 +620,8 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
         logger.info(f"Estimating per-step success rate for {self.config.model} on {len(states)} pre-generated states...")
         successful_steps = 0
         
-        for i, state in enumerate(states):
+        try:
+            for i, state in enumerate(states):
             logger.info(f"Testing pre-generated state {i+1}/{len(states)}")
             
             try:
@@ -652,6 +653,13 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
             except Exception as e:
                 # A failure here means the step was unsuccessful
                 logger.error(f"Estimation for state {i+1} failed: {e}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
+        
+        except Exception as e:
+            logger.error(f"Unexpected error in estimate_per_step_success_rate_from_states: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
         
         p_estimate = successful_steps / len(states) if states else 0.0
         
