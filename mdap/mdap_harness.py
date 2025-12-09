@@ -622,11 +622,13 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
         
         try:
             for i, state in enumerate(states):
-            logger.info(f"Testing pre-generated state {i+1}/{len(states)}")
-            
-            try:
-                # Get the optimal move for this state
-                optimal_move = agent.get_optimal_move(state)
+                logger.info(f"Testing pre-generated state {i+1}/{len(states)}")
+                logger.info(f"State type: {type(state)}")
+                logger.info(f"State: {state}")
+                
+                try:
+                    # Get the optimal move for this state
+                    optimal_move = agent.get_optimal_move(state)
                 logger.info(f"Optimal move for state {i+1}: {optimal_move}")
                 
                 # Get step prompt and parser
