@@ -133,7 +133,13 @@ class HanoiMDAP(MicroAgent):
         """Generate prompt for next step using the new MDAP prompt format"""
         # Get the previous move from the state
         previous_move = "None"  # Default for first move
-        if hasattr(state, 'previous_move') and state.previous_move is not None:
+        
+        # Check move_history first as it's the primary record of moves
+        if state.move_history and len(state.move_history) > 0:
+            last_move = state.move_history[-1]
+            previous_move = f"[{last_move['disk_id']}, {last_move['from_peg']}, {last_move['to_peg']}]"
+        # Fallback to previous_move for backward compatibility
+        elif state.previous_move is not None:
             previous_move = f"[{state.previous_move[0]}, {state.previous_move[1]}, {state.previous_move[2]}]"
         
         # Convert pegs from dict to list format for the paper's format
