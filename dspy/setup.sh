@@ -67,11 +67,17 @@ pip install -r requirements.txt
 echo ""
 echo "--- Environment variables setup ---"
 if [ ! -f .env ]; then
-    echo "Creating .env file from .env.example..."
+    echo "Creating .env file from root .env.example..."
     cp ../.env.example .env
     echo "IMPORTANT: Please fill in your API key and base URL in the .env file."
 else
     echo ".env file already exists. Skipping creation."
+fi
+
+# Also create a symlink to root .env if it exists
+if [ -f ../.env ] && [ ! -f .env ]; then
+    echo "Creating symlink to root .env file..."
+    ln -s ../.env .env
 fi
 
 echo ""
