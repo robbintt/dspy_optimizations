@@ -39,7 +39,11 @@ def extract_llm_responses(log_content: str) -> List[Dict]:
     
     for i, match in enumerate(matches, 1):
         try:
-            response_data = json.loads(match)
+            # Convert Python-style single quotes to JSON double quotes
+            # This is a simple approach - replace single quotes with double quotes
+            # but be careful not to replace quotes inside strings
+            json_str = match.replace("'", '"')
+            response_data = json.loads(json_str)
             responses.append({
                 "step": i,
                 "move": response_data.get("move", []),
