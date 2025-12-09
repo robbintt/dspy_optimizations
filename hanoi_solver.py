@@ -72,7 +72,9 @@ class HanoiMDAP(MicroAgent):
         # Log the current state for debugging
         logger.info(f"CURRENT STATE BEFORE LLM CALL: A={state.pegs['A']}, B={state.pegs['B']}, C={state.pegs['C']}, move_count={state.move_count}")
         
-        prompt = f"""You are a Hanoi move generator. Respond with ONLY the move and next_state. No explanations, no reasoning, no other text.
+        prompt = f"""You are a Hanoi move generator. You have {self.config.thinking_budget} tokens for thinking if needed.
+
+Respond with ONLY the move and next_state. Use thinking tokens if the model supports them, but keep the final response concise.
 
 Solve Towers of Hanoi. Move all disks to peg C.
 

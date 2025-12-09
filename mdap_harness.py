@@ -45,7 +45,10 @@ class MDAPConfig:
 
     # Set appropriate max_completion_tokens limits. For focused responses, consider using lower values.
     # Note: LiteLLM uses the 'max_tokens' parameter, which maps to 'max_completion_tokens' in the API.
-    max_tokens: int = int(os.getenv("MDAP_MAX_TOKENS", "100"))
+    max_tokens: int = int(os.getenv("MDAP_MAX_TOKENS", "500"))
+    
+    # Thinking budget for models that support reasoning/thinking
+    thinking_budget: int = int(os.getenv("MDAP_THINKING_BUDGET", "200"))
 
     # Disable Reasoning with the nonstandard disable_reasoning: True parameter.
     # This is different from the 'thinking' parameter that Z.ai uses in their API.
