@@ -290,10 +290,17 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                     first_vote = False
                 logger.info(f"Making LLM call with temperature={temperature}")
                 
+                # Build messages for chat completion
+                system_prompt, user_prompt = prompt
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
+                
                 # Build completion parameters, including optional model-specific ones
                 completion_params = {
                     "model": self.config.model,
-                    "messages": [{"role": "user", "content": prompt}],
+                    "messages": messages,
                     "temperature": temperature,
                     "max_tokens": self.config.max_tokens,
                 }
