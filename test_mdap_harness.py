@@ -299,6 +299,99 @@ class TestMDAPHarness:
             assert trace[0]["step"] == 0
             assert trace[-1]["step"] == 3
 
+class TestMDAPCalibration:
+    """Tests for the calibration functions"""
+
+    @pytest.mark.asyncio
+    async def test_estimate_per_step_success_rate(self, harness):
+        """Test the per-step success rate estimation"""
+        class MockAgent(MicroAgent):
+            def create_initial_state(self, *args, **kwargs):
+                return {'step': 0, 'max_steps': 10}
+            
+            def generate_step_prompt(self, state):
+                return f"Step {state['step']}"
+            
+            def update_state(self, current_state, step_result):
+                current_state['step'] += 1
+                return current_state
+            
+            def is_solved(self, state):
+                return state['step'] >= state['max_steps']
+            
+            def step_generator(self, state):
+                return self.generate_step_prompt(state), lambda x: {'move': 'ok'}
+
+        # Mock the first_to_ahead_by_k to simulate a 70% success rate
+        success_count = 0
+        async def mock_first_to_ahead_by_k(prompt, parser):
+            nonlocal success_count
+            # Simulate 7 successes out of 10 calls
+            if success_count < 7:
+                success_count += 1
+                return {'move': 'ok'}
+            else:
+                raise Exception("Simulated LLM failure")
+        
+        harness.first_to_ahead_by_k = mock_first_to_ahead_by_k
+        agent = MockAgent()
+        
+        p_estimate = await harness.estimate_per_step_success_rate(agent, num_disks=3, sample_steps=10)
+        
+        assert p_estimate == 0.7
+
+    def test_calculate_k_min(self, harness):
+        """Test the k_min calculation with known values"""
+        # Test with a high success rate
+        k_min = harness.calculate_k_min(p=0.9, num_disks=3, target_reliability=0.95)
+        # For 3 disks, s=7. With p=0.9, k should be small
+        assert k_min >= 1
+        
+        # Test with a lower success rate
+        k_min_low = harness.calculate_k_min(p=0.6, num_disks=4, target_reliability=0.95)
+        # For 4 disks, s=15. With p=0.6, k should be larger
+        assert k_min_low > k_min
+        
+        # Test edge case with p <= 0.5
+        k_min_edge = harness.calculate_k_min(p=0.5, num_disks=3, target_reliability=0.95)
+        assert k_min_edge == 20  # Should return the high default value
+        
+        # Test with p=1 (perfect model)
+        k_min_perfect = harness.calculate_k_min(p=1.0, num_disks=3, target_reliability=0.95)
+        # Should handle the edge case and return a reasonable default
+        assert k_min_perfect >= 1
+
+    @pytest.mark.asyncio
+    async def test_estimate_per_step_success_rate_zero_success(self, harness):
+        """Test estimation when model fails all steps"""
+        class MockAgent(MicroAgent):
+            def create_initial_state(self, *args, **kwargs):
+                return {'step': 0}
+            
+            def generate_step_prompt(self, state):
+                return "Always fail"
+            
+            def update_state(self, current_state, step_result):
+                return current_state
+            
+            def is_solved(self, state):
+                return False
+            
+            def step_generator(self, state):
+                return self.generate_step_prompt(state), lambda x: {'move': 'ok'}
+
+        # Mock to always fail
+        async def mock_first_to_ahead_by_k(prompt, parser):
+            raise Exception("Always fails")
+        
+        harness.first_to_ahead_by_k = mock_first_to_ahead_by_k
+        agent = MockAgent()
+        
+        p_estimate = await harness.estimate_per_step_success_rate(agent, num_disks=3, sample_steps=10)
+        
+        assert p_estimate == 0.0
+
+
 class TestMDAPIntegration:
     """Integration tests for MDAP framework"""
     
