@@ -47,7 +47,7 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
             return pickle.load(f)
     
     # Generate full solution for 20 discs (2^20 - 1 = 1,048,575 steps)
-    config = MDAPConfig(model="dummy", k_margin=1)  # Use dummy model for caching
+    config = MDAPConfig(model="cerebras/zai-glm-4.6", k_margin=1)  # Use cerebras model for caching
     solver = HanoiMDAP(config=config)
     
     # Mock the LLM to generate optimal moves
