@@ -44,18 +44,17 @@ class TestRedFlagParser:
     """Test RedFlagParser class"""
     
     def test_valid_move_response(self):
-        """Test parsing a valid move response"""
-        response = """move = {"from_peg": "A", "to_peg": "B"}
-next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count": 1}"""
+        """Test parsing a valid move response in paper's format"""
+        response = """move = [1, 0, 1]
+next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}"""
         result = RedFlagParser.parse_move_state_flag(response)
         
         assert result is not None
-        assert result['move']['from_peg'] == 'A'
-        assert result['move']['to_peg'] == 'B'
-        assert result['predicted_state']['pegs']['B'] == [1]
+        assert result['move'] == [1, 0, 1]
+        assert result['predicted_state']['pegs'] == [[], [1], []]
     
     def test_valid_move_response_dict(self):
-        """Test parsing a valid move response as dict"""
+        """Test parsing a valid move response as dict (legacy format)"""
         response = {"from_peg": "A", "to_peg": "C"}
         result = RedFlagParser.parse_move_state_flag(response)
         
@@ -77,32 +76,31 @@ next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count"
     
     def test_missing_fields(self):
         """Test parsing response with missing fields"""
-        response = '{"from_peg": "A"}'  # Missing to_peg
+        response = 'move = [1, 0]'  # Missing to_peg
         result = RedFlagParser.parse_move_state_flag(response)
         assert result is None
     
     def test_none_fields(self):
         """Test parsing response with None fields"""
-        response = '{"from_peg": null, "to_peg": "B"}'
+        response = 'move = [1, null, 1]'
         result = RedFlagParser.parse_move_state_flag(response)
         assert result is None
     
     def test_invalid_peg_values(self):
         """Test parsing response with invalid peg values"""
-        response = '{"from_peg": "D", "to_peg": "B"}'  # D is not valid
+        response = 'move = [1, 3, 1]'  # Peg 3 is not valid
         result = RedFlagParser.parse_move_state_flag(response)
         assert result is None
     
     def test_same_peg_move(self):
         """Test parsing response moving to same peg"""
-        response = '{"from_peg": "A", "to_peg": "A"}'
+        response = 'move = [1, 0, 0]'
         result = RedFlagParser.parse_move_state_flag(response)
         assert result is None
     
     def test_too_long_response(self):
         """Test parsing overly long response"""
-        long_data = {"from_peg": "A", "to_peg": "B", "extra": "x" * 500}
-        response = json.dumps(long_data)
+        response = 'move = [1, 0, 1]\n' + 'x' * 1000
         result = RedFlagParser.parse_move_state_flag(response)
         assert result is None
 
@@ -130,12 +128,12 @@ class TestMDAPHarness:
         """Test first-to-ahead-by-K when winner is found"""
         # Mock responses
         mock_responses = [
-            """move = {"from_peg": "A", "to_peg": "B"}
-next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count": 1}""",  # Valid
-            """move = {"from_peg": "A", "to_peg": "B"}
-next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count": 1}""",  # Same valid response
-            """move = {"from_peg": "A", "to_peg": "C"}
-next_state = {"pegs": {"A": [], "B": [], "C": [1]}, "num_disks": 1, "move_count": 1}""",  # Different valid response
+            """move = [1, 0, 1]
+next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}""",  # Valid
+            """move = [1, 0, 1]
+next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}""",  # Same valid response
+            """move = [1, 0, 2]
+next_state = {"pegs": [[], [], [1]], "num_disks": 1, "move_count": 1}""",  # Different valid response
         ]
         
         with patch('mdap_harness.acompletion') as mock_acompletion:
@@ -151,8 +149,7 @@ next_state = {"pegs": {"A": [], "B": [], "C": [1]}, "num_disks": 1, "move_count"
                 RedFlagParser.parse_move_state_flag
             )
             
-            assert result['move']['from_peg'] == 'A'
-            assert result['move']['to_peg'] == 'B'
+            assert result['move'] == [1, 0, 1]
     
     @pytest.mark.asyncio
     async def test_first_to_ahead_by_k_red_flagged(self, harness):
@@ -160,14 +157,14 @@ next_state = {"pegs": {"A": [], "B": [], "C": [1]}, "num_disks": 1, "move_count"
         # Mock responses - first few are invalid, then valid
         mock_responses = [
             'invalid json',  # Invalid JSON
-            """move = {"from_peg": "A", "to_peg": "A"}
-next_state = {"pegs": {"A": [1], "B": [], "C": []}, "num_disks": 1, "move_count": 1}""",  # Same peg move
-            """move = {"from_peg": "A", "to_peg": "B"}
-next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count": 1}""",  # Valid
-            """move = {"from_peg": "A", "to_peg": "B"}
-next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count": 1}""",  # Same valid response
-            """move = {"from_peg": "A", "to_peg": "B"}
-next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count": 1}""",  # Same valid response
+            """move = [1, 0, 0]
+next_state = {"pegs": [[1], [], []], "num_disks": 1, "move_count": 1}""",  # Same peg move
+            """move = [1, 0, 1]
+next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}""",  # Valid
+            """move = [1, 0, 1]
+next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}""",  # Same valid response
+            """move = [1, 0, 1]
+next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}""",  # Same valid response
         ]
         
         with patch('mdap_harness.acompletion') as mock_acompletion:
@@ -196,8 +193,7 @@ next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count"
                 timeout=10.0
             )
             
-            assert result['move']['from_peg'] == 'A'
-            assert result['move']['to_peg'] == 'B'
+            assert result['move'] == [1, 0, 1]
     
     @pytest.mark.asyncio
     async def test_first_to_ahead_by_k_no_valid_candidates(self, harness):
@@ -227,15 +223,14 @@ next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count"
     async def test_execute_step_success(self, harness):
         """Test successful step execution"""
         with patch.object(harness, 'first_to_ahead_by_k') as mock_voting:
-            mock_voting.return_value = {"from_peg": "A", "to_peg": "B"}
+            mock_voting.return_value = {"move": [1, 0, 1], "predicted_state": {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}}
             
             result = await harness.execute_step(
                 "test prompt",
                 RedFlagParser.parse_move_state_flag
             )
             
-            assert result['from_peg'] == 'A'
-            assert result['to_peg'] == 'B'
+            assert result['move'] == [1, 0, 1]
             mock_voting.assert_called_once()
     
     @pytest.mark.asyncio
@@ -245,7 +240,7 @@ next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count"
             # Fail first time, succeed second time
             mock_voting.side_effect = [
                 Exception("First failure"),
-                {"from_peg": "A", "to_peg": "B"}
+                {"move": [1, 0, 1], "predicted_state": {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}}
             ]
             
             result = await harness.execute_step(
@@ -253,8 +248,7 @@ next_state = {"pegs": {"A": [], "B": [1], "C": []}, "num_disks": 1, "move_count"
                 RedFlagParser.parse_move_state_flag
             )
             
-            assert result['from_peg'] == 'A'
-            assert result['to_peg'] == 'B'
+            assert result['move'] == [1, 0, 1]
             assert mock_voting.call_count == 2
     
     @pytest.mark.asyncio

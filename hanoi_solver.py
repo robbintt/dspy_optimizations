@@ -13,6 +13,46 @@ from mdap_harness import MDAPHarness, MDAPConfig, RedFlagParser
 
 logger = logging.getLogger(__name__)
 
+# Import the new system prompt and user template from the paper
+SYSTEM_PROMPT = """
+You are a helpful assistant. Solve this puzzle for me.
+There are three pegs and n disks of different sizes stacked on the first peg. The disks are
+numbered from 1 (smallest) to n (largest). Disk moves in this puzzle should follow:
+1. Only one disk can be moved at a time.
+2. Each move consists of taking the upper disk from one stack and placing it on top of
+another stack.
+3. A larger disk may not be placed on top of a smaller disk.
+The goal is to move the entire stack to the third peg.
+Example: With 3 disks numbered 1 (smallest), 2, and 3 (largest), the initial state is [[3, 2,
+1], [], []], and a solution might be:
+moves = [[1, 0, 2], [2, 0, 1], [1, 2, 1], [3, 0, 2], [1, 1, 0], [2, 1, 2], [1, 0, 2]]
+This means: Move disk 1 from peg 0 to peg 2, then move disk 2 from peg 0 to peg 1, and so on.
+Requirements:
+- The positions are 0-indexed (the leftmost peg is 0).
+- Ensure your answer includes a single next move in this EXACT FORMAT:
+```move = [disk id, from peg, to peg]```
+- Ensure your answer includes the next state resulting from applying the move to the current
+state in this EXACT FORMAT:
+```next_state = [[...], [...], [...]]```
+"""
+
+USER_TEMPLATE = """
+Rules:
+- Only one disk can be moved at a time.
+- Only the top disk from any stack can be moved.
+- A larger disk may not be placed on top of a smaller disk.
+For all moves, follow the standard Tower of Hanoi procedure:
+If the previous move did not move disk 1, move disk 1 clockwise one peg (0 -> 1 -> 2 -> 0).
+If the previous move did move disk 1, make the only legal move that does not involve moving
+disk1.
+Use these clear steps to find the next move given the previous move and current state.
+
+Previous move: {previous_move}
+Current State: {current_state}
+Based on the previous move and current state, find the single next move that follows the
+procedure and the resulting next state.
+"""
+
 @dataclass
 class HanoiState:
     """State representation for Towers of Hanoi"""
@@ -58,77 +98,25 @@ class HanoiMDAP(MicroAgent):
         return HanoiState(pegs=pegs, num_disks=num_disks)
     
     def generate_step_prompt(self, state: HanoiState) -> str:
-        """Generate prompt for the next move"""
-        # Determine which peg has disks and which are empty
-        disks_on_A = len(state.pegs['A'])
-        disks_on_B = len(state.pegs['B'])
-        disks_on_C = len(state.pegs['C'])
+        """Generate prompt for next step using the new MDAP prompt format"""
+        # Get the previous move from the state history
+        previous_move = "None"  # Default for first move
+        if hasattr(state, 'move_history') and len(state.move_history) > 0:
+            last_move = state.move_history[-1]
+            previous_move = f"[{last_move['disk_id']}, {last_move['from_peg']}, {last_move['to_peg']}]"
         
-        # Get top disk on each peg if it exists
-        top_A = state.pegs['A'][-1] if state.pegs['A'] else "empty"
-        top_B = state.pegs['B'][-1] if state.pegs['B'] else "empty"
-        top_C = state.pegs['C'][-1] if state.pegs['C'] else "empty"
+        # Convert pegs from dict to list format for the paper's format
+        # Map A->0, B->1, C->2
+        peg_list = []
+        for peg_key in ['A', 'B', 'C']:
+            peg_list.append(state.pegs[peg_key])
         
-        # Log the current state for debugging
-        logger.info(f"CURRENT STATE BEFORE LLM CALL: A={state.pegs['A']}, B={state.pegs['B']}, C={state.pegs['C']}, move_count={state.move_count}")
+        # Use the new user template
+        prompt = USER_TEMPLATE.format(
+            previous_move=previous_move,
+            current_state=json.dumps(peg_list)
+        )
         
-        prompt = f"""You are a Hanoi move generator. You have {self.config.thinking_budget} tokens for thinking if needed.
-
-IMPORTANT: After thinking, you MUST provide the final response in the exact format below. The thinking and final response share the token budget.
-
-Respond with ONLY the move and next_state. Use thinking tokens if the model supports them, but keep the final response concise.
-
-Solve Towers of Hanoi. Move all disks to peg C.
-
-CRITICAL DISK SIZE RULE:
-- Disk numbers represent SIZE: 3 is BIGGER than 2, 2 is BIGGER than 1
-- BIGGER disks can NEVER go on SMALLER disks
-- VALID: [2, 1], [3, 1], [3, 2] (smaller on larger)
-- INVALID: [1, 2], [1, 3], [2, 3] (larger on smaller)
-- The peg list shows [bottom...top], so RIGHTMOST number is the TOP disk
-
-FINAL ORDER ON PEG C:
-- For 2 disks: [2, 1] - disk 2 at BOTTOM, disk 1 on TOP
-- For 3 disks: [3, 2, 1] - disk 3 at BOTTOM, disk 2 in middle, disk 1 on TOP
-
-GOAL: All disks on peg C in descending order [largest...smallest]
-Goal State: Peg A: [], Peg B: [], Peg C: {list(range(state.num_disks, 0, -1))}
-
-STRATEGY: 
-- ALWAYS look at the CURRENT state and choose the BEST move for THIS situation
-- If the largest disk can move to C, do it
-- Otherwise, move smaller disks out of the way
-- Think step-by-step: "What move helps me get closer to all disks on C?"
-
-RULES:
-1. Only move the TOP disk (rightmost number in the list)
-2. NEVER place a LARGER disk on a SMALLER disk
-3. Check destination peg's top disk before moving
-4. Cannot move to the same peg
-
-CURRENT STATE ANALYSIS:
-- Peg A: {state.pegs['A']} (top: {top_A})
-- Peg B: {state.pegs['B']} (top: {top_B})
-- Peg C: {state.pegs['C']} (top: {top_C})
-
-Current State (move {state.move_count}):
-Peg A: {state.pegs['A']}
-Peg B: {state.pegs['B']}
-Peg C: {state.pegs['C']}
-
-PROGRESS: {disks_on_C}/{state.num_disks} disks on goal peg
-
-VALID MOVE CHECK:
-Before choosing, verify: if destination has disks, is moving disk < destination top disk?
-
-Your task:
-Analyze the CURRENT state and choose the SMARTEST valid move.
-Don't follow a pattern - think about what helps most right now.
-
-move = {{"from_peg": "X", "to_peg": "Y"}}
-next_state = {{"pegs": {{"A": {state.pegs['A']}, "B": {state.pegs['B']}, "C": {state.pegs['C']}}}, "num_disks": {state.num_disks}, "move_count": {state.move_count + 1}}}
-
-REMEMBER: Respond with ONLY the two lines above. Nothing else."""
         return prompt
     
     def is_valid_move(self, state: HanoiState, from_peg: str, to_peg: str) -> bool:
@@ -158,22 +146,32 @@ REMEMBER: Respond with ONLY the two lines above. Nothing else."""
         
         # Create a new state to modify
         new_state = current_state.copy()
-        from_peg = move['from_peg']
-        to_peg = move['to_peg']
         
-        # Check if the move is valid and apply it
-        if self.is_valid_move(current_state, from_peg, to_peg):
-            # Make the move
-            disk = new_state.pegs[from_peg].pop()
-            new_state.pegs[to_peg].append(disk)
-            new_state.move_count += 1
+        # Convert from paper's format (list of lists) to internal format (dict)
+        if isinstance(predicted_state_dict.get('pegs'), list):
+            # Convert list format to dict format
+            pegs_list = predicted_state_dict['pegs']
+            new_state.pegs = {
+                'A': pegs_list[0],
+                'B': pegs_list[1],
+                'C': pegs_list[2]
+            }
         else:
-            raise ValueError(f"Invalid move: {from_peg} -> {to_peg}")
+            # Use dict format directly
+            new_state.pegs = predicted_state_dict['pegs']
         
-        # Validate the LLM's prediction of the next state
-        actual_state_dict = new_state.to_dict()
-        if actual_state_dict != predicted_state_dict:
-            raise ValueError(f"LLM's predicted state does not match actual state. Predicted: {predicted_state_dict}, Actual: {actual_state_dict}")
+        new_state.move_count = predicted_state_dict['move_count']
+        
+        # Initialize move_history if not present
+        if not hasattr(new_state, 'move_history'):
+            new_state.move_history = []
+        
+        # Add move to history in paper's format
+        new_state.move_history.append({
+            'disk_id': move[0],
+            'from_peg': move[1], 
+            'to_peg': move[2]
+        })
         
         return new_state
     
@@ -187,9 +185,11 @@ REMEMBER: Respond with ONLY the two lines above. Nothing else."""
     
     def step_generator(self, state: HanoiState) -> Tuple[str, Callable]:
         """Generate prompt and parser for current step"""
-        prompt = self.generate_step_prompt(state)
+        user_prompt = self.generate_step_prompt(state)
+        # Combine system prompt with user prompt
+        full_prompt = f"{SYSTEM_PROMPT}\n\n{user_prompt}"
         parser = RedFlagParser.parse_move_state_flag
-        return prompt, parser
+        return full_prompt, parser
     
     async def solve_hanoi(self, num_disks: int) -> List[HanoiState]:
         """Solve Towers of Hanoi using MDAP"""

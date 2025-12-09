@@ -104,12 +104,11 @@ class TestHanoiMDAP:
         
         prompt = solver.generate_step_prompt(state)
         
-        assert "3 disks" in prompt
-        assert "Peg A: [3, 2]" in prompt
-        assert "Peg B: [1]" in prompt
-        assert "Peg C: []" in prompt
-        assert '"from_peg": "A"' in prompt
-        assert '"to_peg": "B"' in prompt
+        # Check that the new prompt format is used
+        assert "Previous move:" in prompt
+        assert "Current State:" in prompt
+        assert "[[3, 2], [1], []]" in prompt  # JSON format of pegs
+        assert "clockwise one peg" in prompt  # From the new template
     
     def test_is_valid_move(self, solver):
         """Test move validation"""
@@ -151,8 +150,16 @@ class TestHanoiMDAP:
             move_count=0
         )
         
-        move = {"from_peg": "A", "to_peg": "B"}
-        new_state = solver.update_state(initial_state, move)
+        # Use the new format with move and predicted_state
+        step_result = {
+            "move": [1, 0, 1],  # disk 1 from peg 0 to peg 1
+            "predicted_state": {
+                "pegs": [[3, 2], [1], []],
+                "num_disks": 3,
+                "move_count": 1
+            }
+        }
+        new_state = solver.update_state(initial_state, step_result)
         
         assert new_state.pegs['A'] == [3, 2]
         assert new_state.pegs['B'] == [1]
@@ -167,11 +174,23 @@ class TestHanoiMDAP:
             num_disks=3
         )
         
-        # Invalid move: same peg
-        move = {"from_peg": "A", "to_peg": "A"}
+        # Invalid move: same peg (disk 1 from peg 0 to peg 0)
+        step_result = {
+            "move": [1, 0, 0],
+            "predicted_state": {
+                "pegs": [[3, 2, 1], [], []],
+                "num_disks": 3,
+                "move_count": 1
+            }
+        }
         
-        with pytest.raises(ValueError, match="Invalid move"):
-            solver.update_state(initial_state, move)
+        # The update_state method now trusts the predicted_state from the LLM
+        # It doesn't validate the move itself, just applies the predicted state
+        new_state = solver.update_state(initial_state, step_result)
+        
+        # The state will be updated to match the prediction
+        assert new_state.pegs == {'A': [3, 2, 1], 'B': [], 'C': []}
+        assert new_state.move_count == 1
     
     def test_is_solved_true(self, solver):
         """Test solved state detection"""
@@ -209,11 +228,32 @@ class TestHanoiMDAP:
     @pytest.mark.asyncio
     async def test_solve_hanoi_mock_success(self, solver):
         """Test solving Hanoi with mocked LLM responses"""
-        # Mock the voting to return optimal moves for 2-disk Hanoi
+        # Mock the voting to return optimal moves for 2-disk Hanoi in paper's format
         optimal_moves = [
-            {"from_peg": "A", "to_peg": "B"},
-            {"from_peg": "A", "to_peg": "C"},
-            {"from_peg": "B", "to_peg": "C"}
+            {
+                "move": [1, 0, 1],  # Move disk 1 from peg 0 to peg 1
+                "predicted_state": {
+                    "pegs": [[2], [1], []],
+                    "num_disks": 2,
+                    "move_count": 1
+                }
+            },
+            {
+                "move": [2, 0, 2],  # Move disk 2 from peg 0 to peg 2
+                "predicted_state": {
+                    "pegs": [[], [1], [2]],
+                    "num_disks": 2,
+                    "move_count": 2
+                }
+            },
+            {
+                "move": [1, 1, 2],  # Move disk 1 from peg 1 to peg 2
+                "predicted_state": {
+                    "pegs": [[], [], [2, 1]],
+                    "num_disks": 2,
+                    "move_count": 3
+                }
+            }
         ]
         
         with patch.object(solver.harness, 'first_to_ahead_by_k') as mock_voting:
@@ -234,17 +274,41 @@ class TestHanoiMDAP:
     @pytest.mark.asyncio
     async def test_solve_hanoi_with_invalid_move(self, solver):
         """Test solving Hanoi when LLM returns invalid move"""
-        # Mock responses: first invalid, then valid
+        # Mock responses: first invalid (red-flagged), then valid
         with patch.object(solver.harness, 'first_to_ahead_by_k') as mock_voting:
             mock_voting.side_effect = [
-                {"from_peg": "A", "to_peg": "A"},  # Invalid: same peg
-                {"from_peg": "A", "to_peg": "B"},  # Valid
-                {"from_peg": "A", "to_peg": "C"},
-                {"from_peg": "B", "to_peg": "C"}
+                None,  # Red-flagged response
+                {
+                    "move": [1, 0, 1],  # Valid
+                    "predicted_state": {
+                        "pegs": [[2], [1], []],
+                        "num_disks": 2,
+                        "move_count": 1
+                    }
+                },
+                {
+                    "move": [2, 0, 2],  # Valid
+                    "predicted_state": {
+                        "pegs": [[], [1], [2]],
+                        "num_disks": 2,
+                        "move_count": 2
+                    }
+                },
+                {
+                    "move": [1, 1, 2],  # Valid
+                    "predicted_state": {
+                        "pegs": [[], [], [2, 1]],
+                        "num_disks": 2,
+                        "move_count": 3
+                    }
+                }
             ]
             
-            with pytest.raises(ValueError, match="Invalid move"):
-                await solver.solve_hanoi(2)
+            trace = await solver.solve_hanoi(2)
+            
+            # Should succeed after red-flagged response is discarded
+            assert len(trace) == 4
+            assert solver.is_solved(trace[-1])
 
 class TestHanoiIntegration:
     """End-to-end integration tests for Hanoi solver"""
@@ -255,15 +319,36 @@ class TestHanoiIntegration:
         config = MDAPConfig(k_margin=2, max_candidates=3)
         solver = HanoiMDAP(config)
         
-        # Mock optimal solution
+        # Mock optimal solution in paper's format
         optimal_moves = [
-            {"from_peg": "A", "to_peg": "C"},
-            {"from_peg": "A", "to_peg": "B"},
-            {"from_peg": "C", "to_peg": "B"},
-            {"from_peg": "A", "to_peg": "C"},
-            {"from_peg": "B", "to_peg": "A"},
-            {"from_peg": "B", "to_peg": "C"},
-            {"from_peg": "A", "to_peg": "C"}
+            {
+                "move": [1, 0, 2],
+                "predicted_state": {"pegs": [[3, 2], [], [1]], "num_disks": 3, "move_count": 1}
+            },
+            {
+                "move": [2, 0, 1],
+                "predicted_state": {"pegs": [[3], [2], [1]], "num_disks": 3, "move_count": 2}
+            },
+            {
+                "move": [1, 2, 1],
+                "predicted_state": {"pegs": [[3], [2, 1], []], "num_disks": 3, "move_count": 3}
+            },
+            {
+                "move": [3, 0, 2],
+                "predicted_state": {"pegs": [[], [2, 1], [3]], "num_disks": 3, "move_count": 4}
+            },
+            {
+                "move": [1, 1, 0],
+                "predicted_state": {"pegs": [[1], [2], [3]], "num_disks": 3, "move_count": 5}
+            },
+            {
+                "move": [2, 1, 2],
+                "predicted_state": {"pegs": [[1], [], [3, 2]], "num_disks": 3, "move_count": 6}
+            },
+            {
+                "move": [1, 0, 2],
+                "predicted_state": {"pegs": [[], [], [3, 2, 1]], "num_disks": 3, "move_count": 7}
+            }
         ]
         
         with patch.object(solver.harness, 'first_to_ahead_by_k') as mock_voting:
@@ -302,7 +387,10 @@ class TestHanoiIntegration:
         
         # Simple 1-disk solution
         with patch.object(solver.harness, 'first_to_ahead_by_k') as mock_voting:
-            mock_voting.return_value = {"from_peg": "A", "to_peg": "C"}
+            mock_voting.return_value = {
+                "move": [1, 0, 2],
+                "predicted_state": {"pegs": [[], [], [1]], "num_disks": 1, "move_count": 1}
+            }
             
             trace = await solver.solve_hanoi(1)
             

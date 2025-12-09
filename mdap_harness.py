@@ -61,12 +61,102 @@ class RedFlagParser:
     @staticmethod
     def parse_move_state_flag(response: Union[str, Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """
-        Parse and validate a move and next_state response.
+        Parse and validate a move and next_state response using the paper's format.
+        Non-repairing extractor: If the extractor fails, we discard per red flagging.
         Returns None if response is flagged (invalid).
         """
         try:
-            # Handle dict input (legacy format)
-            if isinstance(response, dict):
+            # Handle string input (paper's format)
+            if isinstance(response, str):
+                # Red flag 1: Check length (overly long responses)
+                if len(response) > 1000:
+                    logger.warning(f"Response too long: {len(response)} chars")
+                    return None
+
+                # Parse the multi-part response
+                lines = response.strip().split('\n')
+                move_line = None
+                state_line = None
+
+                for line in lines:
+                    if line.startswith("move ="):
+                        move_line = line
+                    elif line.startswith("next_state ="):
+                        state_line = line
+                
+                if not move_line or not state_line:
+                    logger.warning("Response missing 'move' or 'next_state' line")
+                    return None
+
+                # Extract JSON from the lines
+                try:
+                    move_json = move_line.split("=", 1)[1].strip()
+                    # Remove any code block markers
+                    move_json = move_json.replace('```', '').strip()
+                    move_data = json.loads(move_json)
+                except (json.JSONDecodeError, IndexError) as e:
+                    logger.warning(f"Failed to parse move JSON: {e}")
+                    return None
+
+                try:
+                    state_json = state_line.split("=", 1)[1].strip()
+                    # Remove any code block markers
+                    state_json = state_json.replace('```', '').strip()
+                    predicted_state = json.loads(state_json)
+                except (json.JSONDecodeError, IndexError) as e:
+                    logger.warning(f"Failed to parse next_state JSON: {e}")
+                    return None
+
+                # Red flag 2: Check move structure (paper format: [disk_id, from_peg, to_peg])
+                if not isinstance(move_data, list) or len(move_data) != 3:
+                    logger.warning("Move is not a valid list of 3 elements")
+                    return None
+                
+                disk_id, from_peg, to_peg = move_data
+                
+                # Red flag 3: Check for empty or None critical fields
+                if None in move_data:
+                    logger.warning("Move contains None fields")
+                    return None
+                
+                # Red flag 4: Check valid values
+                if not isinstance(disk_id, int) or disk_id < 1:
+                    logger.warning(f"Invalid disk_id: {disk_id}")
+                    return None
+                if not isinstance(from_peg, int) or from_peg not in [0, 1, 2]:
+                    logger.warning(f"Invalid from_peg: {from_peg}")
+                    return None
+                if not isinstance(to_peg, int) or to_peg not in [0, 1, 2]:
+                    logger.warning(f"Invalid to_peg: {to_peg}")
+                    return None
+                
+                # Red flag 5: Check not moving to same peg
+                if from_peg == to_peg:
+                    logger.warning(f"Cannot move from {from_peg} to same peg")
+                    return None
+
+                # Red flag 6: Check predicted state structure
+                if not isinstance(predicted_state, dict) or 'pegs' not in predicted_state:
+                    logger.warning("Predicted state is not a valid dictionary")
+                    return None
+                
+                # Red flag 7: Check pegs structure
+                pegs = predicted_state['pegs']
+                if not isinstance(pegs, list) or len(pegs) != 3:
+                    logger.warning("Pegs must be a list of 3 lists")
+                    return None
+                if not all(isinstance(peg, list) for peg in pegs):
+                    logger.warning("Each peg must be a list")
+                    return None
+
+                # Return the move and the predicted state for later validation
+                return {
+                    "move": move_data,
+                    "predicted_state": predicted_state
+                }
+            
+            # Handle dict input (legacy format) - still support for backward compatibility
+            elif isinstance(response, dict):
                 # Red flag 2: Check move structure
                 if not isinstance(response, dict) or 'from_peg' not in response or 'to_peg' not in response:
                     logger.warning("Dict response is not a valid move dictionary")
@@ -94,74 +184,6 @@ class RedFlagParser:
                     "predicted_state": None  # Not available in dict format
                 }
             
-            # Handle string input (new format)
-            # Red flag 1: Check length (overly long responses)
-            if len(response) > 1000:  # Increased threshold for multi-part response
-                logger.warning(f"Response too long: {len(response)} chars")
-                return None
-
-            # Parse the multi-part response
-            lines = response.strip().split('\n')
-            move_line = None
-            state_line = None
-
-            for line in lines:
-                if line.startswith("move ="):
-                    move_line = line
-                elif line.startswith("next_state ="):
-                    state_line = line
-            
-            if not move_line or not state_line:
-                logger.warning("Response missing 'move' or 'next_state' line")
-                return None
-
-            # Extract JSON from the lines
-            try:
-                move_json = move_line.split("=", 1)[1].strip()
-                move_data = json.loads(move_json)
-            except (json.JSONDecodeError, IndexError) as e:
-                logger.warning(f"Failed to parse move JSON: {e}")
-                return None
-
-            try:
-                state_json = state_line.split("=", 1)[1].strip()
-                predicted_state = json.loads(state_json)
-            except (json.JSONDecodeError, IndexError) as e:
-                logger.warning(f"Failed to parse next_state JSON: {e}")
-                return None
-
-            # Red flag 2: Check move structure
-            if not isinstance(move_data, dict) or 'from_peg' not in move_data or 'to_peg' not in move_data:
-                logger.warning("Move is not a valid dictionary")
-                return None
-            
-            # Red flag 3: Check for empty or None critical fields
-            if move_data['from_peg'] is None or move_data['to_peg'] is None:
-                logger.warning("Move contains None fields")
-                return None
-            
-            # Red flag 4: Check valid peg values
-            valid_pegs = ['A', 'B', 'C']
-            if move_data['from_peg'] not in valid_pegs or move_data['to_peg'] not in valid_pegs:
-                logger.warning(f"Invalid peg values: {move_data}")
-                return None
-            
-            # Red flag 5: Check not moving to same peg
-            if move_data['from_peg'] == move_data['to_peg']:
-                logger.warning(f"Cannot move from {move_data['from_peg']} to same peg")
-                return None
-
-            # Red flag 6: Check predicted state structure
-            if not isinstance(predicted_state, dict) or 'pegs' not in predicted_state:
-                logger.warning("Predicted state is not a valid dictionary")
-                return None
-
-            # Return the move and the predicted state for later validation
-            return {
-                "move": move_data,
-                "predicted_state": predicted_state
-            }
-            
         except Exception as e:
             logger.warning(f"Validation error: {e}")
             return None
@@ -185,7 +207,7 @@ class MDAPHarness:
         candidates = []
         
         async def get_candidate():
-            """Get a single candidate response"""
+            """Get a single candidate response with non-repairing extractor"""
             try:
                 # Build completion parameters, including optional model-specific ones
                 completion_params = {
@@ -213,7 +235,14 @@ class MDAPHarness:
                 if content is None:
                     logger.warning(f"LLM returned None content. Full response: {response}")
                     return None
-                return content.strip()
+                
+                # Apply red flagging (non-repairing extractor)
+                parsed_response = response_parser(content.strip())
+                if parsed_response is None:
+                    logger.info("Response red-flagged, discarding without repair")
+                    return None
+                
+                return parsed_response
             except Exception as e:
                 logger.error(f"LLM call failed: {e}")
                 return None
@@ -222,19 +251,13 @@ class MDAPHarness:
         attempts = 0
         while len(candidates) < self.config.max_candidates and attempts < self.config.max_candidates:
             attempts += 1
-            # Get new candidate
-            raw_response = await get_candidate()
-            if raw_response is None:
+            # Get new candidate (already parsed and red-flagged)
+            parsed_response = await get_candidate()
+            if parsed_response is None:
                 continue
 
-            # Add this line to log the raw response
-            logger.info(f"LLM Raw Response: {raw_response}")
-                
-            # Apply red-flagging
-            parsed_response = response_parser(raw_response)
-            if parsed_response is None:
-                logger.info("Response red-flagged, continuing...")
-                continue
+            # Add this line to log the parsed response
+            logger.info(f"LLM Parsed Response: {parsed_response}")
             
             # Convert to hashable for voting
             response_key = json.dumps(parsed_response, sort_keys=True)
