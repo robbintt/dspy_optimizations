@@ -158,9 +158,40 @@ solve_hanoi() {
     print_status "Solving Towers of Hanoi with $disks disks..."
     python -c "
 import asyncio
+import logging
+import os
+from datetime import datetime
 from hanoi_solver import HanoiMDAP, MDAPConfig
 
+# Setup logging to file with timestamps (same as example_hanoi.py)
+LOGS_DIR = 'logs'
+os.makedirs(LOGS_DIR, exist_ok=True)
+timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+log_file = os.path.join(LOGS_DIR, f'solve_hanoi_{timestamp}.log')
+
+# Configure file handler for solve logs
+file_handler = logging.FileHandler(log_file)
+file_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+
+# Add handler to root logger
+logging.getLogger().addHandler(file_handler)
+
+# Also add console handler to tee output to terminal
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(formatter)
+logging.getLogger().addHandler(console_handler)
+
+# Get logger
+logger = logging.getLogger(__name__)
+
 async def solve():
+    logger.info('Starting Hanoi solver')
+    logger.info('🏗️  MDAP Hanoi Solver')
+    logger.info('=' * 40)
+    
     config = MDAPConfig(
         model='cerebras/zai-glm-4.6',
         k_margin=3,
@@ -168,18 +199,32 @@ async def solve():
         temperature=0.1
     )
     
+    logger.info(f'Created solver with config: model={config.model}, k_margin={config.k_margin}')
     solver = HanoiMDAP(config)
-    trace = await solver.solve_hanoi($disks)
     
-    final_state = trace[-1]
-    print(f'✅ Solved $disks-disk Hanoi in {final_state.move_count} moves!')
-    print(f'Optimal solution: {2**$disks - 1} moves')
-    
-    if final_state.move_count == 2**$disks - 1:
-        print('🎯 Found optimal solution!')
-    else:
-        extra = final_state.move_count - (2**$disks - 1)
-        print(f'Used {extra} extra moves')
+    try:
+        logger.info(f'Attempting to solve {disks}-disk Towers of Hanoi')
+        trace = await solver.solve_hanoi($disks)
+        
+        final_state = trace[-1]
+        logger.info(f'Solution completed in {final_state.move_count} moves')
+        logger.info(f'Solution trace: {len(trace)} states')
+        logger.info(f'✅ Solved in {final_state.move_count} moves!')
+        logger.info(f'Optimal solution: {2**$disks - 1} moves')
+        
+        if final_state.move_count == 2**$disks - 1:
+            logger.info('🎯 Found optimal solution!')
+        else:
+            extra = final_state.move_count - (2**$disks - 1)
+            logger.info(f'Used {extra} extra moves')
+        
+        logger.info(f'Initial state: {trace[0].pegs}')
+        logger.info(f'Final state:   {trace[-1].pegs}')
+        
+    except Exception as e:
+        logger.error(f'Failed to solve Hanoi: {e}')
+        logger.error('Possible causes: API key issue, model unavailable, network problems, rate limiting')
+        raise
 
 asyncio.run(solve())
 "
