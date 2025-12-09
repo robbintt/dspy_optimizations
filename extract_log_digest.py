@@ -50,7 +50,7 @@ def extract_llm_responses(log_content: str) -> List[Dict]:
     
     return responses
 
-def extract_voting_info(log_content: str) -> List[Dict]:
+def extract_voting_info(log_content: str, params: Dict) -> List[Dict]:
     """Extract voting information for each step"""
     voting_info = []
     
@@ -224,7 +224,7 @@ def main():
     # Extract information
     responses = extract_llm_responses(content)
     params = extract_paper_parameters(content)
-    voting = extract_voting_info(content)
+    voting = extract_voting_info(content, params)
     transitions = extract_state_transitions(content)
     
     # Generate digest
