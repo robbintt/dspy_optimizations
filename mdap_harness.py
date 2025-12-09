@@ -53,7 +53,7 @@ class MDAPConfig:
     # Disable Reasoning with the nonstandard disable_reasoning: True parameter.
     # This is different from the 'thinking' parameter that Z.ai uses in their API.
     # Set to None to omit the parameter from the API call.
-    disable_reasoning: Optional[bool] = os.getenv("MDAP_DISABLE_REASONING", "false").lower() == "true"
+    disable_reasoning: Optional[bool] = os.getenv("MDAP_DISABLE_REASONING", "true").lower() == "true"
 
 class RedFlagParser:
     """Red-flagging parser to filter invalid responses before voting"""
