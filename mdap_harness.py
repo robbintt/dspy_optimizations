@@ -158,12 +158,19 @@ class RedFlagParser:
                     return None
 
                 # Red flag 6: Check predicted state structure
-                if not isinstance(predicted_state, dict) or 'pegs' not in predicted_state:
-                    logger.warning("Predicted state is not a valid dictionary")
+                # Handle both {"pegs": [...]} format and direct [...] format
+                if isinstance(predicted_state, dict) and 'pegs' in predicted_state:
+                    pegs = predicted_state['pegs']
+                elif isinstance(predicted_state, list):
+                    # LLM returned pegs list directly
+                    pegs = predicted_state
+                    # Convert to expected dict format for consistency
+                    predicted_state = {'pegs': pegs}
+                else:
+                    logger.warning(f"Predicted state is not a valid dictionary or list: {type(predicted_state)}")
                     return None
                 
                 # Red flag 7: Check pegs structure
-                pegs = predicted_state['pegs']
                 if not isinstance(pegs, list) or len(pegs) != 3:
                     logger.warning("Pegs must be a list of 3 lists")
                     return None
