@@ -59,7 +59,20 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
         prompt = solver.generate_step_prompt(state)
         
         # Generate the predicted state for this move
-        new_state = solver.update_state(state, {"move": optimal_move})
+        # Apply the move directly to get the new state
+        disk_id, from_peg, to_peg = optimal_move
+        new_pegs = {peg: list(disks) for peg, disks in state.pegs.items()}
+        
+        # Move the disk
+        disk = new_pegs[chr(65 + from_peg)].pop(0)
+        new_pegs[chr(65 + to_peg)].insert(0, disk)
+        
+        # Create new state object
+        new_state = type(state)(
+            pegs=new_pegs,
+            num_disks=state.num_disks,
+            move_count=state.move_count + 1
+        )
         
         return prompt, lambda x: {
             "move": optimal_move,
