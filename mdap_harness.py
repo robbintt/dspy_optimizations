@@ -60,6 +60,7 @@ class MDAPConfig:
     temperature: float = float(os.getenv("MDAP_TEMPERATURE", "0.1"))
     max_retries: int = 3
     cost_threshold: Optional[float] = None
+    max_response_length: int = int(os.getenv("MDAP_MAX_RESPONSE_LENGTH", "1000"))  # Max response length in chars
 
     # --- Model Behavior Options ---
     # Options to control model output, particularly for Cerebras/zai-glm-4.6
@@ -91,7 +92,7 @@ class RedFlagParser:
             # Handle string input (paper's format)
             if isinstance(response, str):
                 # Red flag 1: Check length (overly long responses)
-                if len(response) > 1000:
+                if len(response) > self.config.max_response_length:
                     logger.warning(f"Response too long: {len(response)} chars")
                     return None
 
