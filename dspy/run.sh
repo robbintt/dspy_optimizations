@@ -31,6 +31,11 @@ if [ -f ".env" ]; then
     set -a
     source .env
     set +a
+elif [ -f "../.env" ]; then
+    echo "--- Loading environment variables from root .env ---"
+    set -a
+    source ../.env
+    set +a
 else
     echo "Warning: .env file not found. Script might fail if it requires environment variables."
 fi

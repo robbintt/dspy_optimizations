@@ -5,7 +5,7 @@ echo "--- Setting up Python virtual environment ---"
 # Create virtualenvs directory if it doesn't exist
 mkdir -p ~/virtualenvs
 
-VENV_PATH="$HOME/virtualenvs/mdap_venv"
+VENV_PATH="$HOME/virtualenvs/dspy_venv"
 if [ ! -d "$VENV_PATH" ]; then
     echo "Creating Python virtual environment in ~/virtualenvs/mdap_venv..."
     python3 -m venv "$VENV_PATH"
