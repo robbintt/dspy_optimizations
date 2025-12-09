@@ -340,7 +340,7 @@ class TestMDAPCalibration:
                 return state['step'] >= state['max_steps']
             
             def step_generator(self, state):
-                return self.generate_step_prompt(state), lambda x: {'move': 'ok'}
+                return self.generate_step_prompt(state), RedFlagParser.parse_move_state_flag
 
         # Mock the first_to_ahead_by_k to simulate a 70% success rate
         success_count = 0
@@ -349,7 +349,9 @@ class TestMDAPCalibration:
             # Simulate 7 successes out of 10 calls
             if success_count < 7:
                 success_count += 1
-                return {'move': {'from_peg': 'A', 'to_peg': 'B'}, 'predicted_state': {'pegs': {}}}
+                # Return a valid response that the parser will accept
+                response = {"from_peg": "A", "to_peg": "B"}
+                return parser(response)
             else:
                 raise Exception("Simulated LLM failure")
         

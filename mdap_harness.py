@@ -56,12 +56,42 @@ class RedFlagParser:
     """Red-flagging parser to filter invalid responses before voting"""
     
     @staticmethod
-    def parse_move_state_flag(response: str) -> Optional[Dict[str, Any]]:
+    def parse_move_state_flag(response: Union[str, Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """
         Parse and validate a move and next_state response.
         Returns None if response is flagged (invalid).
         """
         try:
+            # Handle dict input (legacy format)
+            if isinstance(response, dict):
+                # Red flag 2: Check move structure
+                if not isinstance(response, dict) or 'from_peg' not in response or 'to_peg' not in response:
+                    logger.warning("Dict response is not a valid move dictionary")
+                    return None
+                
+                # Red flag 3: Check for empty or None critical fields
+                if response['from_peg'] is None or response['to_peg'] is None:
+                    logger.warning("Dict response contains None fields")
+                    return None
+                
+                # Red flag 4: Check valid peg values
+                valid_pegs = ['A', 'B', 'C']
+                if response['from_peg'] not in valid_pegs or response['to_peg'] not in valid_pegs:
+                    logger.warning(f"Dict response has invalid peg values: {response}")
+                    return None
+                
+                # Red flag 5: Check not moving to same peg
+                if response['from_peg'] == response['to_peg']:
+                    logger.warning(f"Dict response cannot move from {response['from_peg']} to same peg")
+                    return None
+                
+                # Return in the expected format
+                return {
+                    "move": response,
+                    "predicted_state": None  # Not available in dict format
+                }
+            
+            # Handle string input (new format)
             # Red flag 1: Check length (overly long responses)
             if len(response) > 1000:  # Increased threshold for multi-part response
                 logger.warning(f"Response too long: {len(response)} chars")
