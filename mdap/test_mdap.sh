@@ -216,6 +216,9 @@ main() {
     activate_venv
     check_dependencies
     
+    # Change to script directory to ensure tests run from correct location
+    cd "$SCRIPT_DIR"
+    
     # Parse command
     case "${1:-help}" in
         "unit")
