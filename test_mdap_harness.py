@@ -348,17 +348,24 @@ class TestMDAPCalibration:
                 return self.generate_step_prompt(state), RedFlagParser.parse_move_state_flag
 
         # Mock the first_to_ahead_by_k to simulate a 70% success rate
+        # We need to return exactly 7 successes and 3 failures in a specific pattern
+        success_pattern = [True, True, True, False, True, True, False, True, False, True]
         call_count = 0
         async def mock_first_to_ahead_by_k(prompt, parser):
             nonlocal call_count
-            call_count += 1
-            # Simulate 7 successes out of 10 calls
-            if call_count <= 7:
-                # Return a valid response that the parser will accept
+            if call_count < len(success_pattern):
+                result = success_pattern[call_count]
+                call_count += 1
+                if result:
+                    # Return a valid response that the parser will accept
+                    response = {"from_peg": "A", "to_peg": "B"}
+                    return parser(response)
+                else:
+                    raise Exception("Simulated LLM failure")
+            else:
+                # Default to success for any additional calls
                 response = {"from_peg": "A", "to_peg": "B"}
                 return parser(response)
-            else:
-                raise Exception("Simulated LLM failure")
         
         harness.first_to_ahead_by_k = mock_first_to_ahead_by_k
         agent = MockAgent()
