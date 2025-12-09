@@ -3,6 +3,7 @@ Towers of Hanoi solver using MDAP harness
 Demonstrates MAKER framework on a classic recursive problem
 """
 
+import json
 from typing import List, Tuple, Callable, Any
 from dataclasses import dataclass
 import copy
