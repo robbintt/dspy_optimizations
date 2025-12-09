@@ -12,7 +12,7 @@ import logging
 import os
 import sys
 from datetime import datetime
-from hanoi_solver import HanoiMDAP, MDAPConfig
+from .hanoi_solver import HanoiMDAP, MDAPConfig
 
 # Setup logging to file with timestamps
 LOGS_DIR = os.path.join(os.path.dirname(__file__), "logs")
