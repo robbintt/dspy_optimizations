@@ -3,7 +3,7 @@ import dspy
 import os
 from datetime import datetime
 from pydantic import BaseModel, Field
-import harness
+from . import harness
 
 #GLM_46='openai/glm-4.6',
 GLM_46='openai/z-ai/glm-4.6'
