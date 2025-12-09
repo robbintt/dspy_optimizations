@@ -24,15 +24,15 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 file_handler.setFormatter(formatter)
 
 # Create a specific logger for calibrate_hanoi to avoid conflicts
-calibrate_logger = logging.getLogger('calibrate_hanoi')
-calibrate_logger.setLevel(logging.INFO)
-calibrate_logger.addHandler(file_handler)
+logger = logging.getLogger('calibrate_hanoi')
+logger.setLevel(logging.INFO)
+logger.addHandler(file_handler)
 
 # Also add console handler to tee output to terminal
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(formatter)
-calibrate_logger.addHandler(console_handler)
+logger.addHandler(console_handler)
 
 async def main():
     logger.info("Starting Hanoi MDAP calibration")
