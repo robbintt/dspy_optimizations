@@ -254,6 +254,8 @@ class MDAPHarness:
         Samples candidates until one leads by K votes
         """
         logger.info(f"Starting first-to-ahead-by-K with k_margin={self.config.k_margin}, max_candidates={self.config.max_candidates}")
+        logger.info(f"Prompt type: {type(prompt)}, length: {len(prompt) if prompt else 'None'}")
+        logger.info(f"Response parser type: {type(response_parser)}")
         votes = Counter()
         candidates = []
         first_vote = True  # Track if this is the first vote
@@ -368,6 +370,12 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
         while len(candidates) < self.config.max_candidates and attempts < self.config.max_candidates:
             attempts += 1
             logger.info(f"Attempting to get candidate {attempts}/{self.config.max_candidates}")
+            
+            # Check if prompt is valid
+            if not prompt or not isinstance(prompt, str):
+                logger.error(f"Invalid prompt: {prompt}")
+                return None
+            
             # Get new candidate (already parsed and red-flagged)
             parsed_response = await get_candidate()
             if parsed_response is None:
@@ -622,9 +630,12 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                 
                 # Get step prompt and parser
                 step_prompt, response_parser = agent.step_generator(state)
-            
+                logger.info(f"Step prompt type: {type(step_prompt)}")
+                logger.info(f"Response parser type: {type(response_parser)}")
+                
                 # We only need one successful candidate to check against optimal
                 logger.info(f"Step prompt for state {i+1}: {step_prompt[:200]}...")
+                logger.info(f"About to call first_to_ahead_by_k...")
                 step_result = await self.first_to_ahead_by_k(step_prompt, response_parser)
                 logger.info(f"State {i+1} LLM call successful")
                 

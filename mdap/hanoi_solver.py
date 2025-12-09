@@ -330,6 +330,8 @@ The response must be under {self.config.max_tokens} tokens."""
         full_prompt = f"{SYSTEM_PROMPT}\n\n{user_prompt}"
         parser = self.harness.red_flag_parser.parse_move_state_flag
         logger.info(f"Generated step prompt for state with move_count={state.move_count}")
+        logger.info(f"Full prompt length: {len(full_prompt)} characters")
+        logger.info(f"Parser function: {parser}")
         return full_prompt, parser
     
     async def solve_hanoi(self, num_disks: int) -> List[HanoiState]:
