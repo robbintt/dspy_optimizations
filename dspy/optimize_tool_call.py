@@ -3,7 +3,7 @@ import dspy
 import os
 from datetime import datetime
 from pydantic import BaseModel, Field
-from . import harness
+import harness
 
 #GLM_46='openai/glm-4.6',
 GLM_46='openai/z-ai/glm-4.6'
@@ -52,7 +52,7 @@ Available tools:
   {
     "name": "tavily_search",
     "description": "Search the web for a given query.",
-    "parameters": {"$schema":"http:\/\/json-schema.org\/draft-07\/schema#","required":["query","max_results"],"properties":{"query":{"type":"string"},"max_results":{"type":"integer"},"search_depth":{"default":"advanced","type":"string"}},"additionalProperties":false,"type":"object"}
+    "parameters": {"$schema":"http://json-schema.org/draft-07/schema#","required":["query","max_results"],"properties":{"query":{"type":"string"},"max_results":{"type":"integer"},"search_depth":{"default":"advanced","type":"string"}},"additionalProperties":false,"type":"object"}
   }
 ]
 </tools>"""
