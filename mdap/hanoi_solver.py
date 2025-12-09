@@ -236,7 +236,12 @@ class HanoiMDAP(MicroAgent):
         # Rule 2: If the previous move WAS disk 1, make the only other legal move.
         
         previous_move_was_disk_1 = False
-        if state.move_history and len(state.move_history) > 0:
+        # Check previous_move first (for calibration states)
+        if state.previous_move is not None and len(state.previous_move) > 0:
+            if state.previous_move[0] == 1:
+                previous_move_was_disk_1 = True
+        # Fallback to move_history for backward compatibility
+        elif state.move_history and len(state.move_history) > 0:
             last_move = state.move_history[-1]
             if last_move['disk_id'] == 1:
                 previous_move_was_disk_1 = True
