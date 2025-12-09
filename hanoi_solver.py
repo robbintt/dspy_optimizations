@@ -4,11 +4,14 @@ Demonstrates MAKER framework on a classic recursive problem
 """
 
 import json
+import logging
 from typing import List, Tuple, Callable, Any
 from dataclasses import dataclass
 import copy
 from micro_agent import MicroAgent
 from mdap_harness import MDAPHarness, MDAPConfig, RedFlagParser
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class HanoiState:
