@@ -57,6 +57,8 @@ Requirements:
 - Ensure your answer includes the next state resulting from applying the move to the current
 state in this EXACT FORMAT:
 ```next_state = [[...], [...], [...]]```
+
+The response must be under 1000 tokens.
 """
 
 USER_TEMPLATE = """
