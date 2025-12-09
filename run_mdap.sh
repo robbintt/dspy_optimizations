@@ -172,7 +172,7 @@ async def solve():
     trace = await solver.solve_hanoi($disks)
     
     final_state = trace[-1]
-    print(f'✅ Solved {disks}-disk Hanoi in {final_state.move_count} moves!')
+    print(f'✅ Solved $disks-disk Hanoi in {final_state.move_count} moves!')
     print(f'Optimal solution: {2**$disks - 1} moves')
     
     if final_state.move_count == 2**$disks - 1:
