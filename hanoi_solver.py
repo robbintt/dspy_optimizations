@@ -93,16 +93,15 @@ Follow this optimal strategy for {state.num_disks} disks:
 **Current State (Move {state.move_count}):**
 {visual_state}
 
-**Analysis:**
-- Top disk on A: {state.pegs['A'][-1] if state.pegs['A'] else 'None'}
-- Top disk on B: {state.pegs['B'][-1] if state.pegs['B'] else 'None'}
-- Top disk on C: {state.pegs['C'][-1] if state.pegs['C'] else 'None'}
-
 **Your Task:**
-Based on the OVERALL STRATEGY and the current state, choose the SINGLE next move. Do not undo the previous move.
+Based on the OVERALL STRATEGY and the current state, choose the SINGLE next move and predict the resulting state. Do not undo the previous move.
 
-Respond with ONLY a JSON object. No other text.
-{{"from_peg": "A", "to_peg": "B"}}
+Your response must be in the following format, with no other text:
+move = <move>
+next_state = <next_state>
+
+Where <move> is a JSON object {{"from_peg": "A", "to_peg": "B"}}
+and <next_state> is a JSON object {{"pegs": {{"A": [...], "B": [...], "C": [...]}}, "num_disks": {state.num_disks}, "move_count": {state.move_count + 1}}}
 """
         return prompt
     
@@ -127,10 +126,13 @@ Respond with ONLY a JSON object. No other text.
         return True
     
     def update_state(self, current_state: HanoiState, step_result: dict) -> HanoiState:
-        """Update Hanoi state based on move"""
+        """Update Hanoi state based on move and validate against prediction"""
+        move = step_result['move']
+        predicted_state_dict = step_result['predicted_state']
+        
         new_state = current_state.copy()
-        from_peg = step_result['from_peg']
-        to_peg = step_result['to_peg']
+        from_peg = move['from_peg']
+        to_peg = move['to_peg']
         
         if self.is_valid_move(current_state, from_peg, to_peg):
             # Make the move
@@ -139,6 +141,11 @@ Respond with ONLY a JSON object. No other text.
             new_state.move_count += 1
         else:
             raise ValueError(f"Invalid move: {from_peg} -> {to_peg}")
+        
+        # Validate the LLM's prediction of the next state
+        actual_state_dict = new_state.to_dict()
+        if actual_state_dict != predicted_state_dict:
+            raise ValueError(f"LLM's predicted state does not match actual state. Predicted: {predicted_state_dict}, Actual: {actual_state_dict}")
         
         return new_state
     

@@ -57,48 +57,77 @@ class RedFlagParser:
     @staticmethod
     def parse_move_state_flag(response: str) -> Optional[Dict[str, Any]]:
         """
-        Parse and validate a move response.
+        Parse and validate a move and next_state response.
         Returns None if response is flagged (invalid).
         """
         try:
-            # Try to parse as JSON
-            if isinstance(response, str):
-                data = json.loads(response)
-            else:
-                data = response
-            
             # Red flag 1: Check length (overly long responses)
-            if len(str(data)) > 500:  # Configurable threshold
-                logger.warning(f"Response too long: {len(str(data))} chars")
+            if len(response) > 1000:  # Increased threshold for multi-part response
+                logger.warning(f"Response too long: {len(response)} chars")
                 return None
+
+            # Parse the multi-part response
+            lines = response.strip().split('\n')
+            move_line = None
+            state_line = None
+
+            for line in lines:
+                if line.startswith("move ="):
+                    move_line = line
+                elif line.startswith("next_state ="):
+                    state_line = line
             
-            # Red flag 2: Check required fields exist
-            if not isinstance(data, dict):
-                logger.warning("Response is not a dictionary")
+            if not move_line or not state_line:
+                logger.warning("Response missing 'move' or 'next_state' line")
+                return None
+
+            # Extract JSON from the lines
+            try:
+                move_json = move_line.split("=", 1)[1].strip()
+                move_data = json.loads(move_json)
+            except (json.JSONDecodeError, IndexError) as e:
+                logger.warning(f"Failed to parse move JSON: {e}")
+                return None
+
+            try:
+                state_json = state_line.split("=", 1)[1].strip()
+                predicted_state = json.loads(state_json)
+            except (json.JSONDecodeError, IndexError) as e:
+                logger.warning(f"Failed to parse next_state JSON: {e}")
+                return None
+
+            # Red flag 2: Check move structure
+            if not isinstance(move_data, dict) or 'from_peg' not in move_data or 'to_peg' not in move_data:
+                logger.warning("Move is not a valid dictionary")
                 return None
             
             # Red flag 3: Check for empty or None critical fields
-            for field in ['from_peg', 'to_peg']:
-                if field not in data or data[field] is None:
-                    logger.warning(f"Missing or None field: {field}")
-                    return None
+            if move_data['from_peg'] is None or move_data['to_peg'] is None:
+                logger.warning("Move contains None fields")
+                return None
             
             # Red flag 4: Check valid peg values
             valid_pegs = ['A', 'B', 'C']
-            if data['from_peg'] not in valid_pegs or data['to_peg'] not in valid_pegs:
-                logger.warning(f"Invalid peg values: {data}")
+            if move_data['from_peg'] not in valid_pegs or move_data['to_peg'] not in valid_pegs:
+                logger.warning(f"Invalid peg values: {move_data}")
                 return None
             
             # Red flag 5: Check not moving to same peg
-            if data['from_peg'] == data['to_peg']:
-                logger.warning(f"Cannot move from {data['from_peg']} to same peg")
+            if move_data['from_peg'] == move_data['to_peg']:
+                logger.warning(f"Cannot move from {move_data['from_peg']} to same peg")
                 return None
+
+            # Red flag 6: Check predicted state structure
+            if not isinstance(predicted_state, dict) or 'pegs' not in predicted_state:
+                logger.warning("Predicted state is not a valid dictionary")
+                return None
+
+            # Return the move and the predicted state for later validation
+            return {
+                "move": move_data,
+                "predicted_state": predicted_state
+            }
             
-            return data
-            
-        except json.JSONDecodeError as e:
-            logger.warning(f"JSON parsing failed: {e}")
-            return None
         except Exception as e:
             logger.warning(f"Validation error: {e}")
             return None
