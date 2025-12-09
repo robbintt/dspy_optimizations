@@ -3,6 +3,8 @@ import argparse
 import logging
 import os
 import sys
+import random
+import pickle
 from datetime import datetime
 
 # Add the project root to the path to import modules
@@ -34,35 +36,100 @@ console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
+async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "calibration_cache.pkl"):
+    """Generate and cache calibration states from a full 20-disc solution"""
+    logger.info(f"Generating calibration cache for {num_disks}-disc Hanoi problem")
+    
+    # Check if cache already exists
+    if os.path.exists(cache_file):
+        logger.info(f"Loading existing calibration cache from {cache_file}")
+        with open(cache_file, 'rb') as f:
+            return pickle.load(f)
+    
+    # Generate full solution for 20 discs (2^20 - 1 = 1,048,575 steps)
+    config = MDAPConfig(model="dummy", k_margin=1)  # Use dummy model for caching
+    solver = HanoiMDAP(config=config)
+    
+    # Mock the LLM to generate optimal moves
+    original_step_generator = solver.step_generator
+    
+    def mock_step_generator(state):
+        """Generate optimal moves without LLM calls"""
+        optimal_move = solver.get_optimal_move(state)
+        prompt = solver.generate_step_prompt(state)
+        return prompt, lambda x: {"from_peg": chr(65 + optimal_move[0]), 
+                                "to_peg": chr(65 + optimal_move[1])}
+    
+    solver.step_generator = mock_step_generator
+    
+    logger.info("Generating full solution...")
+    full_solution = await solver.solve_hanoi(num_disks)
+    
+    # Sample up to 1 million states (the full solution has ~1M steps)
+    max_samples = min(1000000, len(full_solution))
+    sampled_states = random.sample(full_solution, max_samples)
+    
+    # Cache the sampled states
+    calibration_data = {
+        'num_disks': num_disks,
+        'states': sampled_states,
+        'total_steps': len(full_solution),
+        'sampled_count': len(sampled_states)
+    }
+    
+    with open(cache_file, 'wb') as f:
+        pickle.dump(calibration_data, f)
+    
+    logger.info(f"Cached {len(sampled_states)} calibration states to {cache_file}")
+    logger.info(f"Full solution has {len(full_solution)} steps")
+    
+    return calibration_data
+
 async def main():
     logger.info("Starting Hanoi MDAP calibration")
     parser = argparse.ArgumentParser(description="Calibrate k_margin for the Hanoi MDAP solver.")
-    parser.add_argument("num_disks", type=int, help="Number of disks for the Hanoi problem to calibrate on.")
     parser.add_argument("--model", type=str, default=os.getenv("MDAP_DEFAULT_MODEL", "cerebras/zai-glm-4.6"), help="The model to calibrate.")
-    parser.add_argument("--sample_steps", type=int, default=10, help="Number of steps to use for estimating the per-step success rate.")
+    parser.add_argument("--sample_steps", type=int, default=20, help="Number of steps to use for estimating the per-step success rate.")
     parser.add_argument("--target_reliability", type=float, default=0.95, help="Target reliability (t) for the calculation.")
+    parser.add_argument("--cache_file", type=str, default="calibration_cache.pkl", help="Path to calibration cache file.")
+    parser.add_argument("--regenerate_cache", action="store_true", help="Regenerate the calibration cache.")
     
     args = parser.parse_args()
 
     logger.info(f"Calibration parameters:")
     logger.info(f"  Model: {args.model}")
-    logger.info(f"  Problem: {args.num_disks}-disk Towers of Hanoi")
+    logger.info(f"  Problem: 20-disk Towers of Hanoi (following paper)")
     logger.info(f"  Sample Steps: {args.sample_steps}")
     logger.info(f"  Target Reliability: {args.target_reliability}")
+    logger.info(f"  Cache File: {args.cache_file}")
 
     logger.info(f"🔧 Calibrating k_margin for model: {args.model}")
-    logger.info(f"   Problem: {args.num_disks}-disk Towers of Hanoi")
+    logger.info(f"   Problem: 20-disk Towers of Hanoi (following paper)")
     logger.info(f"   Sample Steps: {args.sample_steps}")
     logger.info(f"   Target Reliability: {args.target_reliability}")
     logger.info("-" * 20)
+
+    # Generate or load calibration cache
+    if args.regenerate_cache or not os.path.exists(args.cache_file):
+        calibration_data = await generate_calibration_cache(cache_file=args.cache_file)
+    else:
+        with open(args.cache_file, 'rb') as f:
+            calibration_data = pickle.load(f)
+        logger.info(f"Loaded calibration cache with {calibration_data['sampled_count']} states")
 
     # Use a temporary config for calibration with lower k_margin for testing
     config = MDAPConfig(model=args.model, k_margin=1) # Use k_margin=1 for calibration to avoid overconfidence
     solver = HanoiMDAP(config=config)
     
-    # 1. Estimate per-step success rate
+    # 1. Estimate per-step success rate using random subset
     logger.info("Step 1: Estimating per-step success rate")
-    p_estimate = await solver.harness.estimate_per_step_success_rate(solver, args.num_disks, args.sample_steps)
+    
+    # Randomly sample states for calibration
+    calibration_states = random.sample(calibration_data['states'], 
+                                      min(args.sample_steps, len(calibration_data['states'])))
+    
+    p_estimate = await solver.harness.estimate_per_step_success_rate_from_states(
+        solver, calibration_states)
 
     if p_estimate == 0:
         logger.error("Calibration failed: Model could not solve any of the sample steps")
@@ -74,7 +141,7 @@ async def main():
     
     # 2. Calculate the optimal k_margin
     logger.info("Step 2: Calculating optimal k_margin")
-    k_min = solver.harness.calculate_k_min(p_estimate, args.num_disks, args.target_reliability)
+    k_min = solver.harness.calculate_k_min(p_estimate, 20, args.target_reliability)
     
     logger.info("Calibration completed successfully")
     logger.info(f"Results: p={p_estimate:.4f}, k_margin={k_min}")
@@ -84,7 +151,7 @@ async def main():
     logger.info(f"Recommended k_margin: {k_min}")
     logger.info("\nTo use this value, run the solver with the environment variable set:")
     logger.info(f"export MDAP_K_MARGIN={k_min}")
-    logger.info(f"./run_mdap.sh example {args.num_disks}")
+    logger.info(f"./run_mdap.sh example 20")
 
 
 if __name__ == "__main__":
