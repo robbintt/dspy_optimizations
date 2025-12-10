@@ -259,7 +259,8 @@ async def main():
         thinking_budget=model_config['model']['thinking_budget'],
         cost_per_input_token=model_config['model']['cost_per_input_token'],
         cost_per_output_token=model_config['model']['cost_per_output_token'],
-        max_response_length=model_config['model']['max_response_length']
+        max_response_length=model_config['model']['max_response_length'],
+        enable_harness_logging=False  # Disable separate harness log file
     )
     solver = HanoiMDAP(config=config)
     

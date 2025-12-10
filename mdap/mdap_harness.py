@@ -25,20 +25,10 @@ import msgspec
 # directly with msgspec.convert.
 # --- END: msgspec Models ---
 
-# Setup logging to file with timestamps
-LOGS_DIR = os.path.join(os.path.dirname(__file__), "logs")
-os.makedirs(LOGS_DIR, exist_ok=True)
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-log_file = os.path.join(LOGS_DIR, f"mdap_harness_{timestamp}.log")
-
-# Configure file handler for MDAP logs
-file_handler = logging.FileHandler(log_file)
-file_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-
-# Add handler to root logger
-logging.getLogger().addHandler(file_handler)
+# Setup logging to file with timestamps (only if enabled by config)
+# This check must happen after MDAPConfig is instantiated
+# We will check the config object later in the MDAPHarness constructor
+# For now, we defer adding the file handler.
 
 # Also add console handler to tee output to terminal
 console_handler = logging.StreamHandler()
@@ -103,6 +93,7 @@ class MDAPConfig:
         
         # Other settings
         self.mock_mode = os.getenv("MDAP_MOCK_MODE", "false").lower() == "true"
+        self.enable_harness_logging = kwargs.get('enable_harness_logging', True)
 
 class RedFlagParser:
     """Red-flagging parser to filter invalid responses before voting"""
@@ -208,6 +199,19 @@ class MDAPHarness:
         self.total_output_tokens = 0
         self.total_api_calls = 0
         self.temperature_first_vote = 0.6
+        
+        # Add file handler for harness logging if enabled
+        if self.config.enable_harness_logging:
+            LOGS_DIR = os.path.join(os.path.dirname(__file__), "logs")
+            os.makedirs(LOGS_DIR, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_file = os.path.join(LOGS_DIR, f"mdap_harness_{timestamp}.log")
+
+            file_handler = logging.FileHandler(log_file)
+            file_handler.setLevel(logging.INFO)
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            file_handler.setFormatter(formatter)
+            logging.getLogger().addHandler(file_handler)
         
     async def first_to_ahead_by_k(self, 
                                  prompt: str, 
