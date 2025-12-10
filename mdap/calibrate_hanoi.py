@@ -11,10 +11,10 @@ from datetime import datetime
 from typing import List
 
 # Add the project root to the path to import modules
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from .hanoi_solver import HanoiMDAP, HanoiState
-from .mdap_harness import MDAPConfig
+from mdap.hanoi_solver import HanoiMDAP, HanoiState
+from mdap.mdap_harness import MDAPConfig
 
 def load_model_config(config_path: str = "config/models.yaml") -> dict:
     """Load model configuration from YAML file"""
