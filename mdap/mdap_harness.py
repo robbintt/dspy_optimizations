@@ -768,6 +768,17 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
         total_steps = (2 ** num_disks) - 1
         if total_steps == 0: return 1
 
+        # Handle the special case where p=1 (perfect success rate)
+        if p >= 0.9999:  # Account for floating point precision
+            # With perfect success rate, we only need k=1 for any reliability
+            if num_disks < 10:
+                logger.warning(f"⚠️  Perfect success rate (p={p:.4f}) on only {num_disks} disks. ")
+                logger.warning(f"   This may not be representative of performance on larger problems.")
+                logger.warning(f"   Consider re-running calibration with more disks (e.g., --sample_steps 10 or 20)")
+                logger.warning(f"   for a more reliable k_margin estimate.")
+            logger.info(f"Perfect success rate (p={p:.4f}), using k_min=1")
+            return 1
+
         # From the paper: k_min = ceil( ln(t^(-m/s) - 1) / ln((1-p)/p) )
         # For MAD, m=1, so t^(-1/s)
         try:
