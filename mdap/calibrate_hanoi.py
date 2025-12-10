@@ -6,6 +6,7 @@ import sys
 import random
 import pickle
 import copy
+import yaml
 from datetime import datetime
 from typing import List
 
@@ -14,6 +15,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from hanoi_solver import HanoiMDAP, HanoiState
 from mdap_harness import MDAPConfig
+
+def load_model_config(config_path: str = "mdap/config/models.yaml") -> dict:
+    """Load model configuration from YAML file"""
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    return config
 
 # Setup logging to file with timestamps
 LOGS_DIR = "logs"
@@ -158,8 +165,13 @@ async def generate_calibration_cache(num_disks: int = 20, cache_file: str = "cal
 
 async def main():
     logger.info("Starting Hanoi MDAP calibration")
+    
+    # Load model configuration
+    model_config = load_model_config()
+    default_model = model_config['model']['name']
+    
     parser = argparse.ArgumentParser(description="Calibrate k_margin for the Hanoi MDAP solver.")
-    parser.add_argument("--model", type=str, default=os.getenv("MDAP_DEFAULT_MODEL", "cerebras/zai-glm-4.6"), help="The model to calibrate.")
+    parser.add_argument("--model", type=str, default=os.getenv("MDAP_DEFAULT_MODEL", default_model), help="The model to calibrate.")
     parser.add_argument("--sample_steps", type=int, default=20, help="Number of steps to use for estimating the per-step success rate.")
     parser.add_argument("--target_reliability", type=float, default=0.95, help="Target reliability (t) for the calculation.")
     parser.add_argument("--cache_file", type=str, default="calibration_cache.pkl", help="Path to calibration cache file.")
@@ -189,7 +201,12 @@ async def main():
         logger.info(f"Loaded calibration cache with {calibration_data['sampled_count']} states")
 
     # Use a temporary config for calibration with lower k_margin for testing
-    config = MDAPConfig(model=args.model, k_margin=1) # Use k_margin=1 for calibration to avoid overconfidence
+    # Pass the full model configuration
+    config = MDAPConfig(
+        model=args.model, 
+        k_margin=1,  # Use k_margin=1 for calibration to avoid overconfidence
+        **model_config['model']
+    )
     solver = HanoiMDAP(config=config)
     
     # 1. Estimate per-step success rate using random subset
