@@ -239,9 +239,13 @@ def main():
     if not steps:
         print("ERROR: Could not extract step details from the log.")
         print("\nDebug: Checking for step patterns in log:")
-        print(f"  - 'Testing pre-generated state': {'Found' if 'Testing pre-generated state' in content else 'NOT FOUND'}")
-        print(f"  - 'Optimal move for state': {'Found' if 'Optimal move for state' in content else 'NOT FOUND'}")
+        print(f"  - 'Estimation loop iteration': {'Found' if 'Estimation loop iteration' in content else 'NOT FOUND'}")
+        print(f"  - 'Optimal move for step': {'Found' if 'Optimal move for step' in content else 'NOT FOUND'}")
         print(f"  - 'RAW LLM RESPONSE': {'Found' if 'RAW LLM RESPONSE' in content else 'NOT FOUND'}")
+        print(f"  - 'LLM Parsed Response': {'Found' if 'LLM Parsed Response' in content else 'NOT FOUND'}")
+        print(f"  - 'Step .*: LLM move matches': {'Found' if re.search(r'Step \d+: LLM move matches', content) else 'NOT FOUND'}")
+        print("\nFirst 20 lines of log:")
+        print("\n".join(content.split('\n')[:20]))
         return
 
     report = generate_analysis_markdown(summary, steps)
