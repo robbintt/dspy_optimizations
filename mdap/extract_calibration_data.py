@@ -11,15 +11,16 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 def find_most_recent_log() -> Optional[str]:
-    """Find the most recent log file in the logs directory."""
+    """Find the most recent calibration log file in the logs directory."""
     logs_dir = Path("logs")
     if not logs_dir.exists():
         print("No logs directory found")
         return None
     
-    log_files = list(logs_dir.glob("*.log"))
+    # Look specifically for calibrate_hanoi_*.log files
+    log_files = list(logs_dir.glob("calibrate_hanoi_*.log"))
     if not log_files:
-        print("No log files found")
+        print("No calibrate_hanoi log files found")
         return None
     
     most_recent = max(log_files, key=lambda f: f.stat().st_mtime)
