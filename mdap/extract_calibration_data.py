@@ -130,6 +130,9 @@ def extract_step_details(log_content: str) -> List[Dict]:
         red_flag_match = re.search(r'RED FLAG: (.*)', line)
         if red_flag_match and current_step:
             current_step.setdefault('red_flags', []).append(red_flag_match.group(1))
+            # If a response is discarded, mark the step as red-flagged
+            if "Response discarded by red-flag parser" in red_flag_match.group(1):
+                current_step['status'] = 'RED_FLAGGED'
 
     # Add the last step
     if current_step:
@@ -169,6 +172,18 @@ def generate_analysis_markdown(summary: Dict, steps: List[Dict]) -> str:
     
     failed_steps = [s for s in steps if s.get('status') == 'FAILURE']
     successful_steps = [s for s in steps if s.get('status') == 'SUCCESS']
+
+    red_flagged_steps = [s for s in steps if s.get('status') == 'RED_FLAGGED']
+    if red_flagged_steps:
+        report.append("### 🚩 Red-Flagged Steps")
+        for step in red_flagged_steps:
+            report.append(f"\n#### Step {step['step']}: RED_FLAGGED")
+            report.append(f"- **Reason:** All candidates were discarded by the red-flag parser.")
+            if 'red_flags' in step:
+                report.append(f"- **Red Flags:**")
+                for flag in step['red_flags']:
+                    report.append(f"  - {flag}")
+        report.append("\n---\n")
 
     if failed_steps:
         report.append("### ❌ Failed Steps")
@@ -252,11 +267,13 @@ def main():
         # Update summary with counts from parsed steps
         successful_steps = len([s for s in steps if s.get('status') == 'SUCCESS'])
         failed_steps = len([s for s in steps if s.get('status') == 'FAILURE'])
+        red_flagged_steps = len([s for s in steps if s.get('status') == 'RED_FLAGGED'])
         total_valid_steps = successful_steps + failed_steps
         
         summary['successful_steps'] = successful_steps
         summary['total_valid_steps'] = total_valid_steps
         summary['failed_steps'] = failed_steps
+        summary['red_flagged_steps'] = red_flagged_steps
         
         report = generate_analysis_markdown(summary, steps)
     
