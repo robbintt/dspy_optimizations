@@ -51,6 +51,9 @@ except ImportError:
 # Configure LiteLLM logging from environment
 litellm.set_verbose = os.getenv("LITELLM_LOG", "INFO").upper() == "DEBUG"
 
+# Drop unsupported OpenAI params from LLM calls
+litellm.drop_params = True
+
 # Don't call basicConfig here since handlers are already configured above
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
