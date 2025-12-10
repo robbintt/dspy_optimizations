@@ -124,84 +124,87 @@ class RedFlagParser:
     
     def __init__(self, config: MDAPConfig):
         self.config = config
-    
-    def parse_move_state_flag(self, response: Union[str, Dict[str, Any]], usage: Optional[Any] = None) -> Optional[Dict[str, Any]]:
+
+    def _extract_content_blocks(self, response: str) -> Tuple[Optional[str], Optional[str]]:
         """
-        Parse and validate a move and next_state response using Pydantic.
+        Extracts the raw 'move = ...' and 'next_state = ...' lines from a response.
+        Uses strict parsing first, then falls back to regex for code blocks.
+        """
+        # Stage 1: Try to find lines with strict matching
+        lines = response.strip().split('\n')
+        move_line = None
+        state_line = None
+
+        for line in lines:
+            if line.strip().startswith("move ="):
+                move_line = line
+            elif line.strip().startswith("next_state ="):
+                state_line = line
+        
+        # Stage 2: If strict matching fails, use regex to find content in code blocks
+        if not move_line or not state_line:
+            import re
+            logger.info("Strict matching failed, trying regex fallback for code blocks.")
+            
+            if not move_line:
+                move_match = re.search(r'```(?:python)?\s*move\s*=\s*(\[[^\]]+\])\s*```', response, re.IGNORECASE | re.DOTALL)
+                if move_match:
+                    move_line = f"move = {move_match.group(1)}"
+            
+            if not state_line:
+                state_match = re.search(r'```(?:python)?\s*next_state\s*=\s*(\[[^\]]+\])\s*```', response, re.IGNORECASE | re.DOTALL)
+                if state_match:
+                    state_line = f"next_state = {state_match.group(1)}"
+        
+        return move_line, state_line
+
+    def _parse_and_validate_with_pydantic(self, move_line: str, state_line: str) -> Optional[Dict[str, Any]]:
+        """
+        Extracts JSON from lines and validates them using Pydantic models.
+        """
+        try:
+            move_json_str = move_line.split("=", 1)[1].strip()
+            state_json_str = state_line.split("=", 1)[1].strip()
+        except IndexError:
+            logger.warning("RED FLAG: Malformed 'move' or 'next_state' line")
+            return None
+        
+        try:
+            move_model = Move.model_validate_json(move_json_str)
+            state_model = NextState.model_validate_json(state_json_str)
+        except (ValidationError, json.JSONDecodeError) as e:
+            logger.warning(f"RED FLAG: Pydantic validation failed: {e}")
+            return None
+
+        return {
+            "move": [move_model.disk_id, move_model.from_peg, move_model.to_peg],
+            "predicted_state": {"pegs": state_model.root}
+        }
+
+    def parse_move_state_flag(self, response: str, usage: Optional[Any] = None) -> Optional[Dict[str, Any]]:
+        """
+        Parse and validate a move and next_state response.
         Returns None if response is flagged (invalid).
         """
         try:
-            if isinstance(response, str):
-                # Red flag 1: Check token limit
-                if usage and hasattr(usage, 'completion_tokens'):
-                    if usage.completion_tokens > self.config.max_response_length:
-                        logger.warning(f"RED FLAG: Response too long: {usage.completion_tokens} tokens")
-                        return None
-                else:
-                    if len(response) > self.config.max_response_length * 4:
-                        logger.warning(f"RED FLAG: Response too long (fallback): {len(response)} chars")
-                        return None
-
-                # Extract move and state lines
-                lines = response.strip().split('\n')
-                move_line = None
-                state_line = None
-
-                for line in lines:
-                    if line.strip().startswith("move ="):
-                        move_line = line
-                    elif line.strip().startswith("next_state ="):
-                        state_line = line
-                
-                if not move_line or not state_line:
-                    logger.warning("RED FLAG: Response missing required 'move' or 'next_state' fields")
+            # Red flag 1: Check token limit
+            if usage and hasattr(usage, 'completion_tokens'):
+                token_count = usage.completion_tokens
+                if token_count > self.config.max_response_length:
+                    logger.warning(f"RED FLAG: Response too long: {token_count} tokens > {self.config.max_response_length}")
+                    return None
+            else:
+                if len(response) > self.config.max_response_length * 4:
+                    logger.warning(f"RED FLAG: Response too long (fallback): {len(response)} chars")
                     return None
 
-                # Extract JSON strings from the lines
-                try:
-                    move_json_str = move_line.split("=", 1)[1].strip()
-                    state_json_str = state_line.split("=", 1)[1].strip()
-                except IndexError:
-                    logger.warning("RED FLAG: Malformed 'move' or 'next_state' line")
-                    return None
-                
-                # Use Pydantic for robust parsing and validation
-                try:
-                    move_model = Move.model_validate_json(move_json_str)
-                    state_model = NextState.model_validate_json(state_json_str)
-                except (ValidationError, json.JSONDecodeError) as e:
-                    logger.warning(f"RED FLAG: Pydantic validation failed: {e}")
-                    return None
+            move_line, state_line = self._extract_content_blocks(response)
 
-                # Format the output to be compatible with existing code
-                return {
-                    "move": [move_model.disk_id, move_model.from_peg, move_model.to_peg],
-                    "predicted_state": {"pegs": state_model.root}
-                }
+            if not move_line or not state_line:
+                logger.warning("RED FLAG: Response missing required 'move' or 'next_state' fields after all parsing attempts.")
+                return None
             
-            # Handle legacy dict input for backward compatibility
-            elif isinstance(response, dict):
-                if not isinstance(response, dict) or 'from_peg' not in response or 'to_peg' not in response:
-                    logger.warning("Dict response is not a valid move dictionary")
-                    return None
-                
-                if response['from_peg'] is None or response['to_peg'] is None:
-                    logger.warning("Dict response contains None fields")
-                    return None
-                
-                valid_pegs = ['A', 'B', 'C']
-                if response['from_peg'] not in valid_pegs or response['to_peg'] not in valid_pegs:
-                    logger.warning(f"Dict response has invalid peg values: {response}")
-                    return None
-                
-                if response['from_peg'] == response['to_peg']:
-                    logger.warning(f"Dict response cannot move from {response['from_peg']} to same peg")
-                    return None
-                
-                return {
-                    "move": response,
-                    "predicted_state": None
-                }
+            return self._parse_and_validate_with_pydantic(move_line, state_line)
 
         except Exception as e:
             logger.warning(f"Validation error: {e}")
