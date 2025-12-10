@@ -23,20 +23,23 @@ from pydantic import BaseModel, Field, ValidationError, model_validator
 # --- START: New Pydantic Models for Response Parsing ---
 
 class Move(BaseModel):
-    """Represents a single move in the Hanoi puzzle."""
-    disk_id: int = Field(..., ge=1)
-    from_peg: int = Field(..., ge=0, le=2)
-    to_peg: int = Field(..., ge=0, le=2)
+    """Represents a single move as a list of [disk_id, from_peg, to_peg]."""
+    root: List[int] = Field(..., min_length=3, max_length=3)
 
     @model_validator(mode='after')
-    def check_pegs_are_different(self) -> 'Move':
-        if self.from_peg == self.to_peg:
+    def check_move_validity(self) -> 'Move':
+        disk_id, from_peg, to_peg = self.root
+        if not (1 <= disk_id):
+            raise ValueError("disk_id must be >= 1")
+        if not (0 <= from_peg <= 2 and 0 <= to_peg <= 2):
+            raise ValueError("peg indices must be between 0 and 2")
+        if from_peg == to_peg:
             raise ValueError("from_peg and to_peg cannot be the same")
         return self
 
 class NextState(BaseModel):
-    """Represents the pegs configuration, a list of lists."""
-    root: List[List[int]]
+    """Represents the pegs configuration as a list of three lists."""
+    root: List[List[int]] = Field(..., min_length=3, max_length=3)
 
 # --- END: New Pydantic Models ---
 
@@ -165,7 +168,7 @@ class RedFlagParser:
             return None
 
         return {
-            "move": [move_model.disk_id, move_model.from_peg, move_model.to_peg],
+            "move": move_model.root,
             "predicted_state": {"pegs": state_model.root}
         }
 
