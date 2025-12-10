@@ -32,15 +32,22 @@ os.makedirs(LOGS_DIR, exist_ok=True)
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 log_file = os.path.join(LOGS_DIR, f"calibrate_hanoi_{timestamp}.log")
 
-# Configure file handler for calibration logs
-file_handler = logging.FileHandler(log_file)
-file_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-
 # Create a specific logger for calibrate_hanoi to avoid conflicts
 logger = logging.getLogger('calibrate_hanoi')
 logger.setLevel(logging.INFO)
+logger.propagate = False  # Prevent propagation to root logger
+
+# Clear any existing handlers to avoid duplicates
+if logger.handlers:
+    logger.handlers.clear()
+
+# Configure formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Configure file handler for calibration logs
+file_handler = logging.FileHandler(log_file)
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 # Also add console handler to tee output to terminal
