@@ -69,7 +69,12 @@ class MDAPConfig:
         mdap_defaults = config['mdap_defaults']
         
         # Model settings (allow override via kwargs)
-        self.model = kwargs.get('model', model_config['name'])
+        # If model doesn't include provider, add it from config
+        model = kwargs.get('model', model_config['name'])
+        if '/' not in model:
+            self.model = f"{model_config['provider']}/{model}"
+        else:
+            self.model = model
         self.temperature = kwargs.get('temperature', model_config.get('temperature', 0.6))
         self.max_tokens = kwargs.get('max_tokens', model_config.get('max_tokens', 2048))
         self.cost_per_input_token = model_config.get('cost_per_input_token', 0.00015)
