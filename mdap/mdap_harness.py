@@ -18,7 +18,7 @@ from pathlib import Path
 import yaml
 import litellm
 from litellm import completion, acompletion
-from pydantic import BaseModel, Field, ValidationError, model_validator
+import msgspec
 
 # --- START: msgspec Models for Response Parsing ---
 
