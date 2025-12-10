@@ -190,6 +190,15 @@ def generate_analysis_markdown(summary: Dict, steps: List[Dict]) -> str:
                     report.append(f"  - {flag}")
         report.append("\n---\n")
 
+    red_flagged_steps = [s for s in steps if s.get('status') == 'RED_FLAGGED']
+    if red_flagged_steps:
+        report.append("### 🚩 Red-Flagged Steps")
+        for step in red_flagged_steps:
+            report.append(f"\n#### Step {step['step']}: RED_FLAGGED")
+            report.append(f"- **Reason:** All candidates were discarded by the red-flag parser.")
+            report.append(f"- **Red Flags:** {len(step.get('red_flags', []))}")
+        report.append("\n---\n")
+
     if failed_steps:
         report.append("### ❌ Failed Steps")
         for step in failed_steps:
@@ -208,6 +217,7 @@ def generate_analysis_markdown(summary: Dict, steps: List[Dict]) -> str:
             report.append(f"- **Optimal Move:** `{step.get('optimal_move', 'N/A')}`")
             report.append(f"- **LLM Move:** `{step.get('llm_move', 'N/A')}`")
             report.append(f"- **Voting:** Winner found with {step.get('winning_votes', 'N/A')} votes after {step.get('candidates_sampled', 'N/A')} candidates.")
+            report.append(f"- **Red Flags:** {len(step.get('red_flags', []))}")
         if len(successful_steps) > 5:
             report.append(f"\n... and {len(successful_steps) - 5} other successful steps.")
             
