@@ -230,7 +230,7 @@ def main():
         print("Warning: No harness log file found. Step-by-step analysis will not be available.")
     
     # Check if this is actually a calibration log by looking for key phrases
-    if "Estimating per-step success rate" not in content and "Calibration Result" not in content:
+    if "Estimating per-step success rate" not in cal_content and "Calibration Result" not in cal_content:
         print("Warning: This does not appear to be a calibration log. Exiting.")
         return
 
