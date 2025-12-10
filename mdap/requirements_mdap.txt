@@ -11,7 +11,7 @@ python-dotenv>=1.0.0
 PyYAML>=6.0
 
 # Data validation and parsing
-pydantic>=2.0.0
+msgspec>=0.20.0
 
 # Testing framework
 pytest>=7.0.0
