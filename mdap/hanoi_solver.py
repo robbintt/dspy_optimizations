@@ -56,10 +56,10 @@ This means: Move disk 1 from peg 0 to peg 2, then move disk 2 from peg 0 to peg 
 Requirements:
 - The positions are 0-indexed (the leftmost peg is 0).
 - Ensure your answer includes a single next move in this EXACT FORMAT:
-```move = [disk id, from peg, to peg]```
+‘‘‘move = [disk id, from peg, to peg]‘‘‘
 - Ensure your answer includes the next state resulting from applying the move to the current
 state in this EXACT FORMAT:
-```next_state = [[...], [...], [...]]```
+‘‘‘next_state = [[...], [...], [...]]‘‘‘
 The response must be under {token_limit} tokens.
 """
 
