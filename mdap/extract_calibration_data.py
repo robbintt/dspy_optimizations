@@ -226,11 +226,28 @@ def main():
         print("Warning: This does not appear to be a calibration log. Exiting.")
         return
 
+    print("Extracting calibration summary...")
     summary = extract_calibration_summary(content)
-    steps = extract_step_details(content)
+    print(f"Summary extracted: {bool(summary)}")
     
-    if not summary or not steps:
-        print("Could not extract calibration data from the log.")
+    print("Extracting step details...")
+    steps = extract_step_details(content)
+    print(f"Steps extracted: {len(steps) if steps else 0}")
+    
+    if not summary:
+        print("ERROR: Could not extract calibration summary from the log.")
+        print("\nDebug: Checking for key patterns in log:")
+        print(f"  - 'Estimated per-step success rate': {'Found' if 'Estimated per-step success rate' in content else 'NOT FOUND'}")
+        print(f"  - 'Recommended k_margin': {'Found' if 'Recommended k_margin' in content else 'NOT FOUND'}")
+        print(f"  - 'Final count:': {'Found' if 'Final count:' in content else 'NOT FOUND'}")
+        return
+    
+    if not steps:
+        print("ERROR: Could not extract step details from the log.")
+        print("\nDebug: Checking for step patterns in log:")
+        print(f"  - 'Testing pre-generated state': {'Found' if 'Testing pre-generated state' in content else 'NOT FOUND'}")
+        print(f"  - 'Optimal move for state': {'Found' if 'Optimal move for state' in content else 'NOT FOUND'}")
+        print(f"  - 'RAW LLM RESPONSE': {'Found' if 'RAW LLM RESPONSE' in content else 'NOT FOUND'}")
         return
 
     report = generate_analysis_markdown(summary, steps)
