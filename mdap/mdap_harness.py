@@ -671,26 +671,11 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
         Smooth k calculation that doesn't jump from 1 to 20.
         Based on the paper's insights about graduated penalties.
         """
-        if p >= 0.9999:
-            # With perfect success rate, we only need k=1 for any reliability
-            if num_disks < 10:
-                logger.warning(f"⚠️  Perfect success rate (p={p:.4f}) on only {num_disks} disks. ")
-                logger.warning(f"   This may not be representative of performance on larger problems.")
-                logger.warning(f"   Consider re-running calibration with more disks (e.g., --sample_steps 10 or 20)")
-                logger.warning(f"   for a more reliable k_margin estimate.")
-            logger.info(f"Perfect success rate (p={p:.4f}), using k_min=1")
-            return 1
-        elif p <= 0.5:
-            # Graduated penalty instead of jumping to 20
-            if p < 0.3:
-                logger.warning(f"Very low success rate (p={p:.4f}), using k=15")
-                return 15
-            elif p < 0.4:
-                logger.warning(f"Low success rate (p={p:.4f}), using k=10")
-                return 10
-            else:
-                logger.warning(f"Moderate-low success rate (p={p:.4f}), using k=7")
-                return 7
+        if p <= 0.5:
+            logger.error(f"Per-step success rate p={p:.4f} is too low for reliable voting. The model may not be suitable for this task.")
+            # Returning a high k to reflect the massive number of votes needed, if it's even possible.
+            # The paper's formula is undefined for p <= 0.5.
+            return 20 
         
         # Use the paper's formula for intermediate values
         total_steps = (2 ** num_disks) - 1

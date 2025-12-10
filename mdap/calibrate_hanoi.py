@@ -217,6 +217,7 @@ async def main():
     parser.add_argument("--sample_steps", type=int, default=20, help="Number of steps to use for estimating the per-step success rate.")
     parser.add_argument("--target_reliability", type=float, default=0.95, help="Target reliability (t) for the calculation.")
     parser.add_argument("--cache_file", type=str, default="calibration_cache.pkl", help="Path to calibration cache file.")
+    parser.add_argument("--target_disks", type=int, default=20, help="Number of disks in the final target problem for k_margin calculation.")
     parser.add_argument("--regenerate_cache", action="store_true", help="Regenerate the calibration cache.")
     
     args = parser.parse_args()
@@ -224,6 +225,7 @@ async def main():
     logger.info(f"Calibration parameters:")
     logger.info(f"  Model: {args.model}")
     logger.info(f"  Problem: 20-disk Towers of Hanoi (following paper)")
+    logger.info(f"  Target Problem Size for k_margin: {args.target_disks} disks")
     logger.info(f"  Sample Steps: {args.sample_steps}")
     logger.info(f"  Target Reliability: {args.target_reliability}")
     logger.info(f"  Cache File: {args.cache_file}")
@@ -294,10 +296,8 @@ async def main():
     logger.info(f"Estimated per-step success rate: {p_estimate:.4f}")
     
     # 2. Calculate the optimal k_margin
-    logger.info("Step 2: Calculating optimal k_margin")
-    # Use the actual disk count being tested, not always 20
-    disk_count_for_k = max(3, min(5, sample_size))
-    k_min = solver.harness.calculate_k_min(p_estimate, disk_count_for_k, args.target_reliability)
+    logger.info(f"Step 2: Calculating optimal k_margin for target problem ({args.target_disks} disks)")
+    k_min = solver.harness.calculate_k_min(p_estimate, args.target_disks, args.target_reliability)
     
     # Add confidence interval estimation for p
     if sample_size > 0:
