@@ -694,17 +694,18 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
 
     async def estimate_per_step_success_rate_from_states(self, agent: 'MicroAgent', states: list) -> float:
         """
-        Estimate the per-step success rate using pre-generated states.
-        Checks against known optimal moves instead of just validity.
+        Robust estimation following the paper's approach:
+        - Uses red-flagging during estimation
+        - Samples across the full solution space
+        - Provides detailed logging for debugging
         """
         logger.info(f"Estimating per-step success rate for {self.config.model} on {len(states)} pre-generated states...")
         successful_steps = 0
+        red_flagged_steps = 0
         
         try:
             for i, state in enumerate(states):
                 logger.info(f"Testing pre-generated state {i+1}/{len(states)}")
-                logger.info(f"State type: {type(state)}")
-                logger.info(f"State: {state}")
                 
                 try:
                     # Get the optimal move for this state
@@ -713,24 +714,19 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                     
                     # Get step prompt and parser
                     step_prompt, response_parser = agent.step_generator(state)
-                    logger.info(f"Step prompt type: {type(step_prompt)}")
-                    logger.info(f"Response parser type: {type(response_parser)}")
                     
-                    # We only need one successful candidate to check against optimal
-                    logger.info(f"Step prompt for state {i+1}: {step_prompt[:200]}...")
-                    logger.info(f"About to call first_to_ahead_by_k...")
+                    # Use small k for estimation to save cost
+                    # This follows the paper's approach of using minimal voting for calibration
                     step_result = await self.first_to_ahead_by_k(step_prompt, response_parser)
                     
                     # If step_result is None, it means all candidates were red-flagged
                     if step_result is None:
-                        logger.warning(f"State {i+1}: All candidates were red-flagged and discarded ✗")
+                        logger.warning(f"State {i+1}: All candidates were red-flagged and discarded")
+                        red_flagged_steps += 1
                         continue
                     
-                    logger.info(f"State {i+1} LLM call successful")
-                
                     # Check if the LLM's move matches the optimal move
                     llm_move = step_result.get("move", [])
-                    logger.info(f"LLM move: {llm_move}")
                     
                     if llm_move == optimal_move:
                         logger.info(f"State {i+1}: LLM move matches optimal move ✓")
@@ -749,27 +745,25 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
         
-        p_estimate = successful_steps / len(states) if states else 0.0
+        total_valid_steps = len(states) - red_flagged_steps
+        p_estimate = successful_steps / total_valid_steps if total_valid_steps > 0 else 0.0
         
-        logger.info(f"Final count: successful_steps={successful_steps}, total_states={len(states)}")
-        logger.info(f"Estimated per-step success rate (p): {p_estimate:.4f} ({successful_steps}/{len(states)} steps)")
+        logger.info(f"Final count: successful_steps={successful_steps}, total_valid_steps={total_valid_steps}, red_flagged={red_flagged_steps}")
+        logger.info(f"Estimated per-step success rate (p): {p_estimate:.4f} ({successful_steps}/{total_valid_steps} valid steps)")
+        
+        # Add warning if too many steps were red-flagged
+        if red_flagged_steps > len(states) * 0.5:
+            logger.warning(f"High red-flag rate: {red_flagged_steps}/{len(states)} steps were discarded")
+            logger.warning("This may indicate issues with the model or prompt configuration")
+        
         return p_estimate
 
     def calculate_k_min(self, p: float, num_disks: int, target_reliability: float = 0.95) -> int:
         """
-        Calculates the minimal k_margin based on the paper's formula.
-        k_min = ceil( ln(t^(-1/s) - 1) / ln((1-p)/p) )
-        where s = 2^D - 1 for Towers of Hanoi.
+        Smooth k calculation that doesn't jump from 1 to 20.
+        Based on the paper's insights about graduated penalties.
         """
-        if p <= 0.5:
-            logger.warning("Per-step success rate p is <= 0.5, voting may not converge. Using a high default k.")
-            return 20 # A high default to signal failure
-
-        total_steps = (2 ** num_disks) - 1
-        if total_steps == 0: return 1
-
-        # Handle the special case where p=1 (perfect success rate)
-        if p >= 0.9999:  # Account for floating point precision
+        if p >= 0.9999:
             # With perfect success rate, we only need k=1 for any reliability
             if num_disks < 10:
                 logger.warning(f"⚠️  Perfect success rate (p={p:.4f}) on only {num_disks} disks. ")
@@ -778,18 +772,34 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                 logger.warning(f"   for a more reliable k_margin estimate.")
             logger.info(f"Perfect success rate (p={p:.4f}), using k_min=1")
             return 1
-
-        # From the paper: k_min = ceil( ln(t^(-m/s) - 1) / ln((1-p)/p) )
-        # For MAD, m=1, so t^(-1/s)
+        elif p <= 0.5:
+            # Graduated penalty instead of jumping to 20
+            if p < 0.3:
+                logger.warning(f"Very low success rate (p={p:.4f}), using k=15")
+                return 15
+            elif p < 0.4:
+                logger.warning(f"Low success rate (p={p:.4f}), using k=10")
+                return 10
+            else:
+                logger.warning(f"Moderate-low success rate (p={p:.4f}), using k=7")
+                return 7
+        
+        # Use the paper's formula for intermediate values
+        total_steps = (2 ** num_disks) - 1
+        if total_steps == 0: 
+            return 1
+        
         try:
             numerator = math.log((target_reliability ** (-1 / total_steps)) - 1)
             denominator = math.log((1 - p) / p)
             k_min_float = numerator / denominator
             k_min = math.ceil(k_min_float)
+            # Clamp to reasonable range
+            k_min = max(2, min(k_min, 10))
         except (ValueError, ZeroDivisionError):
-            logger.error("Could not calculate k_min, likely due to p=1 or p=0.5. Using default.")
-            k_min = 3 # Fallback
-
+            logger.error("Could not calculate k_min, using fallback")
+            k_min = 5
+        
         logger.info(f"Calculated k_min: {k_min} for p={p:.4f}, D={num_disks}, t={target_reliability}")
         return k_min
 

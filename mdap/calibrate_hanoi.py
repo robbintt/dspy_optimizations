@@ -64,6 +64,35 @@ def generate_hanoi_solution(num_disks: int):
     hanoi(num_disks, 0, 2, 1, moves)
     return moves
 
+def get_sample_size(num_disks: int) -> int:
+    """
+    Return appropriate sample size based on problem complexity.
+    Following the paper's approach: larger samples for bigger problems.
+    """
+    if num_disks <= 5:
+        return min(10, 2**num_disks - 1)
+    elif num_disks <= 10:
+        return 20
+    else:
+        return min(50, 2**num_disks - 1)  # Cap at 50 samples
+
+def sample_states_evenly(states: list, sample_size: int) -> list:
+    """
+    Sample states evenly across the solution to get diverse difficulty levels.
+    This follows the paper's approach of sampling across the full solution space.
+    """
+    if len(states) <= sample_size:
+        return states
+    
+    # Sample evenly across the solution: beginning, middle, end
+    indices = []
+    step_size = len(states) / (sample_size + 1)
+    for i in range(sample_size):
+        idx = min(int((i + 1) * step_size), len(states) - 1)
+        indices.append(idx)
+    
+    return [states[i] for i in indices]
+
 def apply_moves_to_states(num_disks: int, moves: List[List[int]]):
     """Apply a sequence of moves to generate all states efficiently"""
     states = []
@@ -228,29 +257,23 @@ async def main():
     # 1. Estimate per-step success rate using random subset
     logger.info("Step 1: Estimating per-step success rate")
     
+    # Determine appropriate sample size based on problem complexity
+    # Following the paper's approach: larger samples for bigger problems
+    sample_size = get_sample_size(args.sample_steps)
+    
     # For small sample sizes, generate states from appropriately sized problems
-    # Use minimum 3 disks to avoid edge cases with very simple problems
-    if args.sample_steps <= 10:
+    if sample_size <= 20:
         # Use at least 3 disks for calibration to avoid trivial edge cases
-        disk_count = max(3, min(5, args.sample_steps))
-        logger.info(f"Generating fresh states for {disk_count}-disk calibration (sample_steps={args.sample_steps})")
+        disk_count = max(3, min(5, sample_size))
+        logger.info(f"Generating fresh states for {disk_count}-disk calibration (sample_size={sample_size})")
         moves = generate_hanoi_solution(disk_count)
         full_solution = apply_moves_to_states(disk_count, moves)
         # Sample states evenly across the solution to get diverse difficulty levels
-        if len(full_solution) > args.sample_steps:
-            # Sample evenly across the solution: beginning, middle, end
-            indices = []
-            step_size = len(full_solution) // (args.sample_steps + 1)
-            for i in range(args.sample_steps):
-                idx = min((i + 1) * step_size, len(full_solution) - 1)
-                indices.append(idx)
-            calibration_states = [full_solution[i] for i in indices]
-        else:
-            calibration_states = full_solution
+        calibration_states = sample_states_evenly(full_solution, sample_size)
     else:
         # Use cached 20-disk states for larger calibrations
-        calibration_states = random.sample(calibration_data['states'], 
-                                          min(args.sample_steps, len(calibration_data['states'])))
+        # Sample evenly across the full solution space
+        calibration_states = sample_states_evenly(calibration_data['states'], sample_size)
     
     p_estimate = await solver.harness.estimate_per_step_success_rate_from_states(
         solver, calibration_states)
@@ -266,8 +289,30 @@ async def main():
     # 2. Calculate the optimal k_margin
     logger.info("Step 2: Calculating optimal k_margin")
     # Use the actual disk count being tested, not always 20
-    disk_count_for_k = max(3, min(5, args.sample_steps))
+    disk_count_for_k = max(3, min(5, sample_size))
     k_min = solver.harness.calculate_k_min(p_estimate, disk_count_for_k, args.target_reliability)
+    
+    # Add confidence interval estimation for p
+    if sample_size > 0:
+        import math
+        # Wilson score interval for binomial proportion
+        z = 1.96  # 95% confidence
+        n = sample_size
+        p_hat = p_estimate
+        denominator = 1 + z**2/n
+        centre_adjusted = p_hat + z**2/(2*n)
+        margin = z * math.sqrt((p_hat*(1-p_hat) + z**2/(4*n))/n)
+        
+        ci_lower = (centre_adjusted - margin) / denominator
+        ci_upper = (centre_adjusted + margin) / denominator
+        
+        logger.info(f"95% confidence interval for p: [{ci_lower:.4f}, {ci_upper:.4f}")
+        
+        # Early stopping warning if p is too low
+        if p_estimate < 0.3:
+            logger.error(f"🚨 CRITICAL: Model performance dropped to {p_estimate:.1%}")
+            logger.error(f"   This model may not be suitable for problems larger than {disk_count_for_k-1} disks")
+            logger.error(f"   Consider using a more capable model or reducing problem complexity")
     
     logger.info("Calibration completed successfully")
     logger.info(f"Results: p={p_estimate:.4f}, k_margin={k_min}")
