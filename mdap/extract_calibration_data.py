@@ -92,7 +92,7 @@ def extract_step_details(log_content: str) -> List[Dict]:
             if current_step: # Save previous step if it exists
                 steps.append(current_step)
             step_counter += 1
-            current_step = {'step': step_counter, 'status': 'PENDING'}
+            current_step = {'step': step_counter, 'status': 'PENDING', 'red_flags': []}
 
         # Extract optimal move
         optimal_match = re.search(r'Optimal move for state (\d+): (\[.*?\])', line)
@@ -127,16 +127,21 @@ def extract_step_details(log_content: str) -> List[Dict]:
             current_step['optimal_move'] = json.loads(failure_match.group(3))
 
         # Check for red flags
-        red_flag_match = re.search(r'RED FLAG: (.*)', line)
+        red_flag_match = re.search(r'RED FLAG: Response discarded by red-flag parser', line)
         if red_flag_match and current_step:
-            current_step.setdefault('red_flags', []).append(red_flag_match.group(1))
-            # If a response is discarded, mark the step as red-flagged
-            if "Response discarded by red-flag parser" in red_flag_match.group(1):
-                current_step['status'] = 'RED_FLAGGED'
+            current_step['red_flags'].append("Response discarded by red-flag parser")
 
     # Add the last step
     if current_step:
         steps.append(current_step)
+
+    # Post-process steps to determine final status based on red flags
+    for step in steps:
+        if step.get('red_flags') and len(step['red_flags']) > 0:
+            # If a step had red flags, it means all candidates were discarded.
+            # The step is ultimately red-flagged if it never reached a success/failure state.
+            if step.get('status') == 'PENDING':
+                step['status'] = 'RED_FLAGGED'
 
     return steps
 
