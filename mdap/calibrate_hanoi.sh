@@ -32,3 +32,5 @@ cd "$SCRIPT_DIR"
 exec python calibrate_hanoi.py "$@"
 
 echo "[SUCCESS] Done!"
+echo "[INFO] To analyze the results, run: ./mdap/extract_calibration_data.py"
+echo "[INFO] The full report will be saved to: docs/analysis/calibration_data_analysis.md"
