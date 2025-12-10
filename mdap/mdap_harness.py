@@ -26,6 +26,16 @@ class Move(BaseModel):
     """Represents a single move as a list of [disk_id, from_peg, to_peg]."""
     root: List[int] = Field(..., min_length=3, max_length=3)
 
+    # This allows the model to be created directly from a list, e.g., Move([1, 2, 0])
+    model_config = {'extra': 'forbid'}
+
+    def __init__(self, **data):
+        # If the data is already a list, wrap it in the 'root' key for Pydantic
+        if isinstance(data, list):
+            super().__init__(root=data)
+        else:
+            super().__init__(**data)
+
     @model_validator(mode='after')
     def check_move_validity(self) -> 'Move':
         disk_id, from_peg, to_peg = self.root
