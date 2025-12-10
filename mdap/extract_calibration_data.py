@@ -197,10 +197,7 @@ def generate_analysis_markdown(summary: Dict, steps: List[Dict]) -> str:
             report.append(f"- **Optimal Move:** `{step.get('optimal_move', 'N/A')}`")
             report.append(f"- **LLM Move:** `{step.get('llm_move', 'N/A')}`")
             report.append(f"- **Voting:** Winner found with {step.get('winning_votes', 'N/A')} votes after {step.get('candidates_sampled', 'N/A')} candidates.")
-            if 'red_flags' in step:
-                report.append(f"- **Red Flags:**")
-                for flag in step['red_flags']:
-                    report.append(f"  - {flag}")
+            report.append(f"- **Red Flags:** {len(step.get('red_flags', []))}")
         report.append("\n---\n")
 
     if successful_steps:
