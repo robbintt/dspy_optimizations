@@ -13,22 +13,32 @@ from typing import Dict, List, Optional, Tuple
 def find_most_recent_log() -> Optional[str]:
     """Find the most recent calibration log file in the logs directory."""
     # Check both project root logs and mdap/logs directories
-    logs_dir = Path("logs")
-    if not logs_dir.exists():
-        # Try mdap/logs as fallback
-        logs_dir = Path("mdap/logs")
+    log_dirs = [Path("logs"), Path("mdap/logs")]
+    
+    for logs_dir in log_dirs:
+        print(f"Checking directory: {logs_dir.absolute()}")
         if not logs_dir.exists():
-            print("No logs directory found in either 'logs/' or 'mdap/logs/'")
-            return None
+            print(f"  Directory does not exist")
+            continue
+        
+        # List all .log files for debugging
+        all_logs = list(logs_dir.glob("*.log"))
+        print(f"  Found {len(all_logs)} .log files:")
+        for log in all_logs:
+            print(f"    - {log.name}")
+        
+        # Look specifically for calibrate_hanoi_*.log files
+        log_files = list(logs_dir.glob("calibrate_hanoi_*.log"))
+        if log_files:
+            print(f"  Found {len(log_files)} calibration log files")
+            most_recent = max(log_files, key=lambda f: f.stat().st_mtime)
+            print(f"  Using most recent: {most_recent.name}")
+            return str(most_recent)
+        else:
+            print("  No calibrate_hanoi_*.log files found in this directory")
     
-    # Look specifically for calibrate_hanoi_*.log files
-    log_files = list(logs_dir.glob("calibrate_hanoi_*.log"))
-    if not log_files:
-        print("No calibrate_hanoi log files found")
-        return None
-    
-    most_recent = max(log_files, key=lambda f: f.stat().st_mtime)
-    return str(most_recent)
+    print("No calibrate_hanoi log files found in any checked directory")
+    return None
 
 def extract_calibration_summary(log_content: str) -> Dict:
     """Extract the final summary from the calibration log."""
