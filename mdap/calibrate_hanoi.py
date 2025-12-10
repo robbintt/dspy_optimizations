@@ -16,9 +16,13 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from hanoi_solver import HanoiMDAP, HanoiState
 from mdap_harness import MDAPConfig
 
-def load_model_config(config_path: str = "mdap/config/models.yaml") -> dict:
+def load_model_config(config_path: str = "config/models.yaml") -> dict:
     """Load model configuration from YAML file"""
-    with open(config_path, 'r') as f:
+    # Get the directory where this script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    full_path = os.path.join(script_dir, config_path)
+    
+    with open(full_path, 'r') as f:
         config = yaml.safe_load(f)
     return config
 
