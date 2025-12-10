@@ -86,8 +86,8 @@ def extract_step_details(log_content: str) -> List[Dict]:
     step_counter = 0
     
     for i, line in enumerate(lines):
-        # Start of a new step - look for estimation loop
-        state_match = re.search(r'Estimation loop iteration (\d+)/(\d+)', line)
+        # Start of a new step - look for state testing
+        state_match = re.search(r'Testing pre-generated state (\d+)/(\d+)', line)
         if state_match:
             if current_step: # Save previous step if it exists
                 steps.append(current_step)
@@ -95,7 +95,7 @@ def extract_step_details(log_content: str) -> List[Dict]:
             current_step = {'step': step_counter, 'status': 'PENDING'}
 
         # Extract optimal move
-        optimal_match = re.search(r'Optimal move for step (\d+): (\[.*?\])', line)
+        optimal_match = re.search(r'Optimal move for state (\d+): (\[.*?\])', line)
         if optimal_match and current_step:
             current_step['optimal_move'] = json.loads(optimal_match.group(2))
 
@@ -125,11 +125,11 @@ def extract_step_details(log_content: str) -> List[Dict]:
             current_step['candidates_sampled'] = int(vote_match.group(2))
 
         # Determine success or failure
-        success_match = re.search(r'Step (\d+): LLM move matches optimal move ✓', line)
+        success_match = re.search(r'State (\d+): LLM move matches optimal move ✓', line)
         if success_match and current_step:
             current_step['status'] = 'SUCCESS'
         
-        failure_match = re.search(r'Step (\d+): LLM move (\[.*?\]) != optimal move (\[.*?\]) ✗', line)
+        failure_match = re.search(r'State (\d+): LLM move (\[.*?\]) != optimal move (\[.*?\]) ✗', line)
         if failure_match and current_step:
             current_step['status'] = 'FAILURE'
             current_step['llm_move'] = json.loads(failure_match.group(2))
