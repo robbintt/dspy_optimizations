@@ -21,13 +21,8 @@ from litellm import completion, acompletion
 import msgspec
 
 # --- START: msgspec Models for Response Parsing ---
-
-# Define a type alias for the move, which is just a list of 3 integers.
-Move = msgspec.def_type("Move", List[int])
-
-# Define a type alias for the state, which is a list of 3 lists of integers.
-NextState = msgspec.def_type("NextState", List[List[int]])
-
+# No explicit type definitions needed. We will use standard typing types
+# directly with msgspec.convert.
 # --- END: msgspec Models ---
 
 # Setup logging to file with timestamps
@@ -149,8 +144,8 @@ class RedFlagParser:
         
         try:
             # msgspec.convert decodes JSON and validates against the type in one step
-            move = msgspec.convert(json.loads(move_json_str), type=Move)
-            state = msgspec.convert(json.loads(state_json_str), type=NextState)
+            move = msgspec.convert(json.loads(move_json_str), type=List[int])
+            state = msgspec.convert(json.loads(state_json_str), type=List[List[int]])
 
             # Add custom validation logic
             if len(move) != 3 or len(state) != 3:
