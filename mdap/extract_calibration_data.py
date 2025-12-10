@@ -264,7 +264,12 @@ def generate_summary_report(summary: Dict) -> str:
 
     # Results Section
     report.append("## Results")
-    report.append(f"- **Estimated per-step success rate (p):** `{summary.get('p_estimate', 'N/A'):.4f}`")
+    p_val = summary.get('p_estimate', 'N/A')
+    if isinstance(p_val, (int, float)):
+        p_formatted = f"{p_val:.4f}"
+    else:
+        p_formatted = str(p_val)
+    report.append(f"- **Estimated per-step success rate (p):** `{p_formatted}`")
     report.append(f"- **Recommended k_margin:** `{summary.get('k_margin', 'N/A')}`")
     report.append(f"- **Total Steps Tested:** {summary.get('total_valid_steps', 0)}")
     report.append(f"- **Successful Steps:** {summary.get('successful_steps', 0)}")
