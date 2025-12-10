@@ -249,6 +249,15 @@ def main():
         # Generate a summary report even without step details
         report = generate_summary_report(summary)
     else:
+        # Update summary with counts from parsed steps
+        successful_steps = len([s for s in steps if s.get('status') == 'SUCCESS'])
+        failed_steps = len([s for s in steps if s.get('status') == 'FAILURE'])
+        total_valid_steps = successful_steps + failed_steps
+        
+        summary['successful_steps'] = successful_steps
+        summary['total_valid_steps'] = total_valid_steps
+        summary['failed_steps'] = failed_steps
+        
         report = generate_analysis_markdown(summary, steps)
     
     # Save to a file
