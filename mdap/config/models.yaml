@@ -2,7 +2,7 @@
 # Configuration for cerebras/zai-glm-4.6
 
 model:
-  name: "cerebras/zai-glm-4.6"
+  name: "zai-glm-4.6"
   provider: "cerebras"
   type: "chat"
   
