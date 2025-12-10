@@ -83,6 +83,7 @@ class MDAPConfig:
         
         # Cerebras-specific options
         self.disable_reasoning = model_config.get('disable_reasoning', None)
+        self.reasoning_effort = model_config.get('reasoning_effort', None)
         self.thinking_budget = model_config.get('thinking_budget', 200)
         
         # MDAP framework settings (allow override via kwargs, then env vars)
@@ -356,6 +357,10 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                 # Add disable_reasoning if specified in the config and not None
                 if self.config.disable_reasoning is not None:
                     completion_params["disable_reasoning"] = self.config.disable_reasoning
+                
+                # Add reasoning_effort if specified in the config and not None
+                if hasattr(self.config, 'reasoning_effort') and self.config.reasoning_effort is not None:
+                    completion_params["reasoning_effort"] = self.config.reasoning_effort
                 
                 # Time the API call
                 api_start = time.time()

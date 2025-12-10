@@ -16,6 +16,7 @@ model:
   # Cerebras-specific options
   # Set to null to disable sending this parameter to models that don't support it
   disable_reasoning: null
+  reasoning_effort: "low"
   thinking_budget: 200
   
   # Cost tracking (per million tokens)
