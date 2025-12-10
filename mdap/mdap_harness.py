@@ -58,7 +58,7 @@ logger.setLevel(logging.INFO)
 class MDAPConfig:
     """Configuration for MDAP execution"""
     
-    def __init__(self):
+    def __init__(self, **kwargs):
         # Load configuration from YAML
         config_file = Path(__file__).parent / "config" / "models.yaml"
         
@@ -68,10 +68,10 @@ class MDAPConfig:
         model_config = config['model']
         mdap_defaults = config['mdap_defaults']
         
-        # Model settings
-        self.model = model_config['name']
-        self.temperature = model_config.get('temperature', 0.6)
-        self.max_tokens = model_config.get('max_tokens', 2048)
+        # Model settings (allow override via kwargs)
+        self.model = kwargs.get('model', model_config['name'])
+        self.temperature = kwargs.get('temperature', model_config.get('temperature', 0.6))
+        self.max_tokens = kwargs.get('max_tokens', model_config.get('max_tokens', 2048))
         self.cost_per_input_token = model_config.get('cost_per_input_token', 0.00015)
         self.cost_per_output_token = model_config.get('cost_per_output_token', 0.0006)
         self.max_response_length = model_config.get('max_response_length', 750)
@@ -80,9 +80,9 @@ class MDAPConfig:
         self.disable_reasoning = model_config.get('disable_reasoning', None)
         self.thinking_budget = model_config.get('thinking_budget', 200)
         
-        # MDAP framework settings (can still be overridden by env vars)
-        self.k_margin = int(os.getenv("MDAP_K_MARGIN", str(mdap_defaults['k_margin'])))
-        self.max_candidates = int(os.getenv("MDAP_MAX_CANDIDATES", str(mdap_defaults['max_candidates'])))
+        # MDAP framework settings (allow override via kwargs, then env vars)
+        self.k_margin = kwargs.get('k_margin', int(os.getenv("MDAP_K_MARGIN", str(mdap_defaults['k_margin']))))
+        self.max_candidates = kwargs.get('max_candidates', int(os.getenv("MDAP_MAX_CANDIDATES", str(mdap_defaults['max_candidates']))))
         self.max_retries = mdap_defaults['max_retries']
         self.cost_threshold = mdap_defaults['cost_threshold']
         
