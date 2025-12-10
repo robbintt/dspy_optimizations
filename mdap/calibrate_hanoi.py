@@ -216,7 +216,7 @@ async def main():
         top_p=model_config['model']['top_p'],
         frequency_penalty=model_config['model']['frequency_penalty'],
         presence_penalty=model_config['model']['presence_penalty'],
-        disable_reasoning=model_config['model']['disable_reasoning'],
+        disable_reasoning=model_config['model'].get('disable_reasoning'),
         thinking_budget=model_config['model']['thinking_budget'],
         cost_per_input_token=model_config['model']['cost_per_input_token'],
         cost_per_output_token=model_config['model']['cost_per_output_token'],

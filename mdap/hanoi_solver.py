@@ -327,6 +327,10 @@ class HanoiMDAP(MicroAgent):
         logger.info(f"System prompt length: {len(system_prompt)} characters")
         logger.info(f"User prompt length: {len(user_prompt)} characters")
         logger.info(f"Parser function: {parser}")
+        if self.config.disable_reasoning is not None:
+            logger.info(f"disable_reasoning will be sent to model: {self.config.disable_reasoning}")
+        else:
+            logger.info(f"disable_reasoning is None, will not be sent to model")
         return (system_prompt, user_prompt), parser
     
     async def solve_hanoi(self, num_disks: int) -> List[HanoiState]:

@@ -353,7 +353,7 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                     "max_tokens": self.config.max_tokens,
                 }
 
-                # Add disable_reasoning if specified in the config
+                # Add disable_reasoning if specified in the config and not None
                 if self.config.disable_reasoning is not None:
                     completion_params["disable_reasoning"] = self.config.disable_reasoning
                 
