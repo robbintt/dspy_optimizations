@@ -83,24 +83,30 @@ def extract_step_details(log_content: str) -> List[Dict]:
     lines = log_content.split('\n')
     
     current_step = {}
+    step_counter = 0
     
-    for line in lines:
-        # Start of a new step
-        state_match = re.search(r'Testing pre-generated state (\d+)/(\d+)', line)
+    for i, line in enumerate(lines):
+        # Start of a new step - look for estimation loop
+        state_match = re.search(r'Estimation loop iteration (\d+)/(\d+)', line)
         if state_match:
             if current_step: # Save previous step if it exists
                 steps.append(current_step)
-            step_num = int(state_match.group(1))
-            current_step = {'step': step_num, 'status': 'PENDING'}
+            step_counter += 1
+            current_step = {'step': step_counter, 'status': 'PENDING'}
 
         # Extract optimal move
-        optimal_match = re.search(r'Optimal move for state \d+: (\[.*?\])', line)
+        optimal_match = re.search(r'Optimal move for step (\d+): (\[.*?\])', line)
         if optimal_match and current_step:
-            current_step['optimal_move'] = json.loads(optimal_match.group(1))
+            current_step['optimal_move'] = json.loads(optimal_match.group(2))
 
         # Extract raw LLM response
         if "RAW LLM RESPONSE" in line and current_step:
-            current_step['raw_response_start_index'] = lines.index(line)
+            # Find the end of the response block
+            end_idx = i + 1
+            while end_idx < len(lines) and not lines[end_idx].startswith('---'):
+                end_idx += 1
+            raw_response_block = "\n".join(lines[i+1 : end_idx])
+            current_step['raw_response'] = raw_response_block.strip()
             
         # Extract parsed LLM response
         parsed_match = re.search(r'LLM Parsed Response: ({.*})', line)
@@ -119,15 +125,15 @@ def extract_step_details(log_content: str) -> List[Dict]:
             current_step['candidates_sampled'] = int(vote_match.group(2))
 
         # Determine success or failure
-        success_match = re.search(r'State \d+: LLM move matches optimal move ✓', line)
+        success_match = re.search(r'Step (\d+): LLM move matches optimal move ✓', line)
         if success_match and current_step:
             current_step['status'] = 'SUCCESS'
         
-        failure_match = re.search(r'State \d+: LLM move (\[.*?\]) != optimal move (\[.*?\]) ✗', line)
+        failure_match = re.search(r'Step (\d+): LLM move (\[.*?\]) != optimal move (\[.*?\]) ✗', line)
         if failure_match and current_step:
             current_step['status'] = 'FAILURE'
-            current_step['llm_move'] = json.loads(failure_match.group(1))
-            current_step['optimal_move'] = json.loads(failure_match.group(2))
+            current_step['llm_move'] = json.loads(failure_match.group(2))
+            current_step['optimal_move'] = json.loads(failure_match.group(3))
 
         # Check for red flags
         red_flag_match = re.search(r'RED FLAG: (.*)', line)
@@ -137,18 +143,6 @@ def extract_step_details(log_content: str) -> List[Dict]:
     # Add the last step
     if current_step:
         steps.append(current_step)
-        
-    # Now, extract the raw response text for each step
-    for i, step in enumerate(steps):
-        if 'raw_response_start_index' in step:
-            start_idx = step['raw_response_start_index']
-            # Find the end of the response block
-            end_idx = start_idx + 1
-            while end_idx < len(lines) and not lines[end_idx].startswith('---'):
-                end_idx += 1
-            raw_response_block = "\n".join(lines[start_idx+1 : end_idx])
-            step['raw_response'] = raw_response_block.strip()
-            del step['raw_response_start_index']
 
     return steps
 
