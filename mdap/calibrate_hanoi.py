@@ -265,7 +265,9 @@ async def main():
     
     # 2. Calculate the optimal k_margin
     logger.info("Step 2: Calculating optimal k_margin")
-    k_min = solver.harness.calculate_k_min(p_estimate, 20, args.target_reliability)
+    # Use the actual disk count being tested, not always 20
+    disk_count_for_k = max(3, min(5, args.sample_steps))
+    k_min = solver.harness.calculate_k_min(p_estimate, disk_count_for_k, args.target_reliability)
     
     logger.info("Calibration completed successfully")
     logger.info(f"Results: p={p_estimate:.4f}, k_margin={k_min}")
