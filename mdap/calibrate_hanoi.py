@@ -246,6 +246,10 @@ async def main():
             calibration_data = pickle.load(f)
         logger.info(f"Using existing calibration cache with {calibration_data['sampled_count']} states")
 
+    # Determine if we should enable harness logging
+    # Enable by default for detailed analysis, disable only when using cache
+    enable_harness_log = not args.use_cache
+
     # Use a temporary config for calibration with lower k_margin for testing
     # Pass the full model configuration
     config = MDAPConfig(
@@ -262,7 +266,7 @@ async def main():
         cost_per_input_token=model_config['model']['cost_per_input_token'],
         cost_per_output_token=model_config['model']['cost_per_output_token'],
         max_response_length=model_config['model']['max_response_length'],
-        enable_harness_logging=False  # Disable separate harness log file
+        enable_harness_logging=enable_harness_log  # Enable/disable based on cache usage
     )
     solver = HanoiMDAP(config=config)
     
