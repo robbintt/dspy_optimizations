@@ -218,25 +218,22 @@ def main():
     
     if not summary:
         print("ERROR: Could not extract calibration summary from the log.")
-        print("\nDebug: Checking for key patterns in log:")
-        print(f"  - 'Estimated per-step success rate': {'Found' if 'Estimated per-step success rate' in content else 'NOT FOUND'}")
-        print(f"  - 'Recommended k_margin': {'Found' if 'Recommended k_margin' in content else 'NOT FOUND'}")
-        print(f"  - 'Final count:': {'Found' if 'Final count:' in content else 'NOT FOUND'}")
         return
     
+    # If no step details found, it's likely using cached calibration
     if not steps:
-        print("ERROR: Could not extract step details from the log.")
-        print("\nDebug: Checking for step patterns in log:")
-        print(f"  - 'Estimation loop iteration': {'Found' if 'Estimation loop iteration' in content else 'NOT FOUND'}")
-        print(f"  - 'Optimal move for step': {'Found' if 'Optimal move for step' in content else 'NOT FOUND'}")
-        print(f"  - 'RAW LLM RESPONSE': {'Found' if 'RAW LLM RESPONSE' in content else 'NOT FOUND'}")
-        print(f"  - 'LLM Parsed Response': {'Found' if 'LLM Parsed Response' in content else 'NOT FOUND'}")
-        print(f"  - 'Step .*: LLM move matches': {'Found' if re.search(r'Step \d+: LLM move matches', content) else 'NOT FOUND'}")
-        print("\nFirst 20 lines of log:")
-        print("\n".join(content.split('\n')[:20]))
-        return
-
-    report = generate_analysis_markdown(summary, steps)
+        if "Loaded calibration cache" in content:
+            print("\nNote: This calibration used cached states.")
+            print("Step-by-step LLM interactions are not available in this log.")
+            print("To see detailed step analysis, re-run calibration with --regenerate_cache")
+        else:
+            print("\nNote: Step details not found in this log file.")
+            print("The detailed LLM interactions may be in a separate harness log file.")
+        
+        # Generate a summary report even without step details
+        report = generate_summary_report(summary)
+    else:
+        report = generate_analysis_markdown(summary, steps)
     
     # Save to a file
     output_file = f"docs/analysis/calibration_data_analysis.md"
@@ -247,6 +244,55 @@ def main():
     print(f"\nCalibration analysis report saved to: {output_file}\n")
     print("="*50)
     print(report)
+
+def generate_summary_report(summary: Dict) -> str:
+    """Generate a summary report when step details aren't available."""
+    report = []
+    report.append("# Calibration Summary\n")
+    
+    # Configuration Section
+    report.append("## Configuration")
+    report.append(f"- **Model:** `{summary.get('model', 'N/A')}`")
+    report.append(f"- **Target Problem Size:** {summary.get('target_disks', 'N/A')} disks")
+    report.append(f"- **Calibration Sample Size:** {summary.get('sample_steps', 'N/A')} steps")
+    report.append("\n---\n")
+
+    # Results Section
+    report.append("## Results")
+    report.append(f"- **Estimated per-step success rate (p):** `{summary.get('p_estimate', 'N/A'):.4f}`")
+    report.append(f"- **Recommended k_margin:** `{summary.get('k_margin', 'N/A')}`")
+    report.append(f"- **Total Steps Tested:** {summary.get('total_valid_steps', 0)}")
+    report.append(f"- **Successful Steps:** {summary.get('successful_steps', 0)}")
+    report.append(f"- **Failed Steps:** {summary.get('total_valid_steps', 0) - summary.get('successful_steps', 0)}")
+    report.append(f"- **Red-Flagged Steps:** {summary.get('red_flagged_steps', 0)}")
+    report.append("\n---\n")
+
+    # Analysis Section
+    p = summary.get('p_estimate', 0)
+    k = summary.get('k_margin', 0)
+    
+    report.append("## Analysis")
+    if p > 0.95:
+        report.append(f"✅ **Excellent performance** (p={p:.3f}). The model is highly reliable.")
+    elif p > 0.8:
+        report.append(f"✅ **Good performance** (p={p:.3f}). The model is reliable with moderate voting.")
+    elif p > 0.6:
+        report.append(f"⚠️ **Moderate performance** (p={p:.3f}). Requires significant voting (k={k}).")
+    elif p > 0.5:
+        report.append(f"❌ **Poor performance** (p={p:.3f}). Barely better than random, high k needed.")
+    else:
+        report.append(f"❌ **Very poor performance** (p={p:.3f}). Model may not be suitable for this task.")
+    
+    report.append("\n### Recommendations")
+    if p < 0.6:
+        report.append("- Consider using a more capable model")
+        report.append("- Check if red-flagging is too strict")
+        report.append("- Review prompt engineering")
+    elif k > 10:
+        report.append(f"- High k_margin ({k}) will result in significant API costs")
+        report.append("- Consider optimizing for better per-step accuracy")
+    
+    return "\n".join(report)
 
 if __name__ == "__main__":
     main()
