@@ -12,10 +12,14 @@ from typing import Dict, List, Optional, Tuple
 
 def find_most_recent_log() -> Optional[str]:
     """Find the most recent calibration log file in the logs directory."""
+    # Check both project root logs and mdap/logs directories
     logs_dir = Path("logs")
     if not logs_dir.exists():
-        print("No logs directory found")
-        return None
+        # Try mdap/logs as fallback
+        logs_dir = Path("mdap/logs")
+        if not logs_dir.exists():
+            print("No logs directory found in either 'logs/' or 'mdap/logs/'")
+            return None
     
     # Look specifically for calibrate_hanoi_*.log files
     log_files = list(logs_dir.glob("calibrate_hanoi_*.log"))
