@@ -20,38 +20,15 @@ import litellm
 from litellm import completion, acompletion
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
-# --- START: New Pydantic Models for Response Parsing ---
+# --- START: msgspec Models for Response Parsing ---
 
-class Move(BaseModel):
-    """Represents a single move as a list of [disk_id, from_peg, to_peg]."""
-    root: List[int] = Field(..., min_length=3, max_length=3)
+# Define a type alias for the move, which is just a list of 3 integers.
+Move = msgspec.def_type("Move", List[int])
 
-    # This allows the model to be created directly from a list, e.g., Move([1, 2, 0])
-    model_config = {'extra': 'forbid'}
+# Define a type alias for the state, which is a list of 3 lists of integers.
+NextState = msgspec.def_type("NextState", List[List[int]])
 
-    def __init__(self, **data):
-        # If the data is already a list, wrap it in the 'root' key for Pydantic
-        if isinstance(data, list):
-            super().__init__(root=data)
-        else:
-            super().__init__(**data)
-
-    @model_validator(mode='after')
-    def check_move_validity(self) -> 'Move':
-        disk_id, from_peg, to_peg = self.root
-        if not (1 <= disk_id):
-            raise ValueError("disk_id must be >= 1")
-        if not (0 <= from_peg <= 2 and 0 <= to_peg <= 2):
-            raise ValueError("peg indices must be between 0 and 2")
-        if from_peg == to_peg:
-            raise ValueError("from_peg and to_peg cannot be the same")
-        return self
-
-class NextState(BaseModel):
-    """Represents the pegs configuration as a list of three lists."""
-    root: List[List[int]] = Field(..., min_length=3, max_length=3)
-
-# --- END: New Pydantic Models ---
+# --- END: msgspec Models ---
 
 # Setup logging to file with timestamps
 LOGS_DIR = os.path.join(os.path.dirname(__file__), "logs")
@@ -159,9 +136,9 @@ class RedFlagParser:
         
         return move_line, state_line
 
-    def _parse_and_validate_with_pydantic(self, move_line: str, state_line: str) -> Optional[Dict[str, Any]]:
+    def _parse_and_validate_with_msgspec(self, move_line: str, state_line: str) -> Optional[Dict[str, Any]]:
         """
-        Extracts JSON from lines and validates them using Pydantic models.
+        Extracts JSON from lines and validates them using msgspec.
         """
         try:
             move_json_str = move_line.split("=", 1)[1].strip()
@@ -171,15 +148,29 @@ class RedFlagParser:
             return None
         
         try:
-            move_model = Move.model_validate_json(move_json_str)
-            state_model = NextState.model_validate_json(state_json_str)
-        except (ValidationError, json.JSONDecodeError) as e:
-            logger.warning(f"RED FLAG: Pydantic validation failed: {e}")
+            # msgspec.convert decodes JSON and validates against the type in one step
+            move = msgspec.convert(json.loads(move_json_str), type=Move)
+            state = msgspec.convert(json.loads(state_json_str), type=NextState)
+
+            # Add custom validation logic
+            if len(move) != 3 or len(state) != 3:
+                raise ValueError("Incorrect length for move or state")
+            
+            disk_id, from_peg, to_peg = move
+            if not (1 <= disk_id):
+                raise ValueError("disk_id must be >= 1")
+            if not (0 <= from_peg <= 2 and 0 <= to_peg <= 2):
+                raise ValueError("peg indices must be between 0 and 2")
+            if from_peg == to_peg:
+                raise ValueError("from_peg and to_peg cannot be the same")
+
+        except (msgspec.ValidationError, json.JSONDecodeError, ValueError, TypeError) as e:
+            logger.warning(f"RED FLAG: msgspec validation failed: {e}")
             return None
 
         return {
-            "move": move_model.root,
-            "predicted_state": {"pegs": state_model.root}
+            "move": move,
+            "predicted_state": {"pegs": state}
         }
 
     def parse_move_state_flag(self, response: str, usage: Optional[Any] = None) -> Optional[Dict[str, Any]]:
@@ -205,7 +196,7 @@ class RedFlagParser:
                 logger.warning("RED FLAG: Response missing required 'move' or 'next_state' fields after all parsing attempts.")
                 return None
             
-            return self._parse_and_validate_with_pydantic(move_line, state_line)
+            return self._parse_and_validate_with_msgspec(move_line, state_line)
 
         except Exception as e:
             logger.warning(f"Validation error: {e}")
