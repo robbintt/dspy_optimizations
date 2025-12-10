@@ -34,6 +34,10 @@ pip install --upgrade pip
 echo "📚 Installing dependencies..."
 pip install -r requirements_mdap.txt
 
+# Ensure PyYAML is properly installed
+echo "🔧 Ensuring PyYAML is installed..."
+pip install PyYAML>=6.0
+
 # Ensure pytest-asyncio is properly installed
 echo "🔧 Ensuring pytest-asyncio is installed..."
 pip install pytest-asyncio>=0.21.0
