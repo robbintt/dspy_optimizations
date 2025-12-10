@@ -1,0 +1,32 @@
+# MDAP Model Configuration
+# Configuration for cerebras/zai-glm-4.6
+
+model:
+  name: "cerebras/zai-glm-4.6"
+  provider: "cerebras"
+  type: "chat"
+  
+  # Model parameters
+  temperature: 0.6
+  max_tokens: 2048
+  top_p: 1.0
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  
+  # Cerebras-specific options
+  disable_reasoning: true
+  thinking_budget: 200
+  
+  # Cost tracking (per million tokens)
+  cost_per_input_token: 0.00015  # $0.15/M
+  cost_per_output_token: 0.0006  # $0.60/M
+  
+  # Response limits
+  max_response_length: 750  # characters
+
+# MDAP framework defaults
+mdap_defaults:
+  k_margin: 3
+  max_candidates: 10
+  max_retries: 3
+  cost_threshold: null

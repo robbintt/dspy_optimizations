@@ -14,6 +14,8 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass
 from collections import Counter
+from pathlib import Path
+import yaml
 import litellm
 from litellm import completion, acompletion
 
@@ -53,38 +55,39 @@ litellm.set_verbose = os.getenv("LITELLM_LOG", "INFO").upper() == "DEBUG"
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-@dataclass
 class MDAPConfig:
     """Configuration for MDAP execution"""
-    model: str = os.getenv("MDAP_DEFAULT_MODEL", "cerebras/zai-glm-4.6")
-    k_margin: int = int(os.getenv("MDAP_K_MARGIN", "3"))  # First-to-ahead-by-K margin
-    max_candidates: int = int(os.getenv("MDAP_MAX_CANDIDATES", "10"))  # Max candidates to sample
-    temperature: float = float(os.getenv("MDAP_TEMPERATURE", "0.6"))  # Default temperature set to 0.1
-    max_retries: int = 3
-    cost_threshold: Optional[float] = None
-    max_response_length: int = int(os.getenv("MDAP_MAX_RESPONSE_LENGTH", "750"))  # Max response length in chars (paper uses 750)
-    mock_mode: bool = os.getenv("MDAP_MOCK_MODE", "false").lower() == "true"  # Mock mode for testing
-
-    # --- Model Behavior Options ---
-    # Options to control model output, particularly for Cerebras/zai-glm-4.6
-    # See: https://inference-docs.cerebras.ai/resources/glm-migration#7-minimize-reasoning-when-not-needed
-
-    # Set appropriate max_completion_tokens limits. For focused responses, consider using lower values.
-    # Note: LiteLLM uses the 'max_tokens' parameter, which maps to 'max_completion_tokens' in the API.
-    max_tokens: int = int(os.getenv("MDAP_MAX_TOKENS", "2048"))
     
-    # Thinking budget for models that support reasoning/thinking
-    thinking_budget: int = int(os.getenv("MDAP_THINKING_BUDGET", "200"))
-
-    # Disable Reasoning with the nonstandard disable_reasoning: True parameter.
-    # This is different from the 'thinking' parameter that Z.ai uses in their API.
-    # Set to None to omit the parameter from the API call.
-    disable_reasoning: Optional[bool] = os.getenv("MDAP_DISABLE_REASONING", "true").lower() == "true"
-    
-    # --- Cost Tracking ---
-    # Cost per million tokens for different models (adjust based on actual pricing)
-    cost_per_input_token: float = float(os.getenv("MDAP_COST_PER_INPUT", "0.00015"))  # $0.15/M input tokens
-    cost_per_output_token: float = float(os.getenv("MDAP_COST_PER_OUTPUT", "0.0006"))  # $0.60/M output tokens
+    def __init__(self):
+        # Load configuration from YAML
+        config_file = Path(__file__).parent / "config" / "models.yaml"
+        
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        model_config = config['model']
+        mdap_defaults = config['mdap_defaults']
+        
+        # Model settings
+        self.model = model_config['name']
+        self.temperature = model_config.get('temperature', 0.6)
+        self.max_tokens = model_config.get('max_tokens', 2048)
+        self.cost_per_input_token = model_config.get('cost_per_input_token', 0.00015)
+        self.cost_per_output_token = model_config.get('cost_per_output_token', 0.0006)
+        self.max_response_length = model_config.get('max_response_length', 750)
+        
+        # Cerebras-specific options
+        self.disable_reasoning = model_config.get('disable_reasoning', None)
+        self.thinking_budget = model_config.get('thinking_budget', 200)
+        
+        # MDAP framework settings (can still be overridden by env vars)
+        self.k_margin = int(os.getenv("MDAP_K_MARGIN", str(mdap_defaults['k_margin'])))
+        self.max_candidates = int(os.getenv("MDAP_MAX_CANDIDATES", str(mdap_defaults['max_candidates'])))
+        self.max_retries = mdap_defaults['max_retries']
+        self.cost_threshold = mdap_defaults['cost_threshold']
+        
+        # Other settings
+        self.mock_mode = os.getenv("MDAP_MOCK_MODE", "false").lower() == "true"
 
 class RedFlagParser:
     """Red-flagging parser to filter invalid responses before voting"""
