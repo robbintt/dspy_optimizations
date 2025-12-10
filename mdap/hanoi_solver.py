@@ -271,9 +271,9 @@ class HanoiMDAP(MicroAgent):
             
             # Determine direction based on the number of disks
             if state.num_disks % 2 == 0:  # Even number of disks: counter-clockwise (A->C->B->A)
-                to_idx = (from_idx - 1) % 3
-            else:  # Odd number of disks: clockwise (A->B->C->A)
                 to_idx = (from_idx + 1) % 3
+            else:  # Odd number of disks: clockwise (A->B->C->A)
+                to_idx = (from_idx - 1) % 3
                 
             return [1, from_idx, to_idx]
 
