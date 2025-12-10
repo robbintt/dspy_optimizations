@@ -228,16 +228,25 @@ async def main():
     # 1. Estimate per-step success rate using random subset
     logger.info("Step 1: Estimating per-step success rate")
     
-    # For small sample sizes, generate states from smaller problems
-    # This makes calibration more relevant to actual use cases
+    # For small sample sizes, generate states from appropriately sized problems
+    # Use minimum 3 disks to avoid edge cases with very simple problems
     if args.sample_steps <= 10:
-        # Use a smaller disk count for calibration when sample size is small
-        disk_count = min(5, args.sample_steps)
+        # Use at least 3 disks for calibration to avoid trivial edge cases
+        disk_count = max(3, min(5, args.sample_steps))
         logger.info(f"Generating fresh states for {disk_count}-disk calibration (sample_steps={args.sample_steps})")
         moves = generate_hanoi_solution(disk_count)
         full_solution = apply_moves_to_states(disk_count, moves)
-        calibration_states = random.sample(full_solution, 
-                                          min(args.sample_steps, len(full_solution)))
+        # Sample states evenly across the solution to get diverse difficulty levels
+        if len(full_solution) > args.sample_steps:
+            # Sample evenly across the solution: beginning, middle, end
+            indices = []
+            step_size = len(full_solution) // (args.sample_steps + 1)
+            for i in range(args.sample_steps):
+                idx = min((i + 1) * step_size, len(full_solution) - 1)
+                indices.append(idx)
+            calibration_states = [full_solution[i] for i in indices]
+        else:
+            calibration_states = full_solution
     else:
         # Use cached 20-disk states for larger calibrations
         calibration_states = random.sample(calibration_data['states'], 
