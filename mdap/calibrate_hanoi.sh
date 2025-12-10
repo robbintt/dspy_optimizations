@@ -26,6 +26,7 @@ source "$VENV_PATH/bin/activate"
 
 # Run the Python calibration script
 echo "[MDAP] Running calibration..."
+echo "[MDAP] Note: Cache regeneration is now the default. Use --use_cache to skip."
 cd "$SCRIPT_DIR"
 # Execute Python script with all arguments intact
 exec python calibrate_hanoi.py "$@"

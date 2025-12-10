@@ -218,7 +218,7 @@ async def main():
     parser.add_argument("--target_reliability", type=float, default=0.95, help="Target reliability (t) for the calculation.")
     parser.add_argument("--cache_file", type=str, default="calibration_cache.pkl", help="Path to calibration cache file.")
     parser.add_argument("--target_disks", type=int, default=20, help="Number of disks in the final target problem for k_margin calculation.")
-    parser.add_argument("--regenerate_cache", action="store_true", help="Regenerate the calibration cache.")
+    parser.add_argument("--use_cache", action="store_true", help="Use an existing calibration cache if available. Default is to regenerate.")
     
     args = parser.parse_args()
 
@@ -237,12 +237,14 @@ async def main():
     logger.info("-" * 20)
 
     # Generate or load calibration cache
-    if args.regenerate_cache or not os.path.exists(args.cache_file):
+    # Default behavior is to regenerate unless --use_cache is specified and the file exists.
+    if not args.use_cache or not os.path.exists(args.cache_file):
+        logger.info("Regenerating calibration cache (default behavior). Use --use_cache to skip if a cache exists.")
         calibration_data = await generate_calibration_cache(cache_file=args.cache_file)
     else:
         with open(args.cache_file, 'rb') as f:
             calibration_data = pickle.load(f)
-        logger.info(f"Loaded calibration cache with {calibration_data['sampled_count']} states")
+        logger.info(f"Using existing calibration cache with {calibration_data['sampled_count']} states")
 
     # Use a temporary config for calibration with lower k_margin for testing
     # Pass the full model configuration
