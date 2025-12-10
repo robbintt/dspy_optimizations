@@ -214,7 +214,11 @@ class MDAPHarness:
             file_handler.setLevel(logging.INFO)
             formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
             file_handler.setFormatter(formatter)
-            logging.getLogger().addHandler(file_handler)
+            
+            # Get the specific logger for this module and ensure it's set to INFO
+            harness_logger = logging.getLogger(__name__)
+            harness_logger.setLevel(logging.INFO)
+            harness_logger.addHandler(file_handler)
         
     async def first_to_ahead_by_k(self, 
                                  prompt: str, 
