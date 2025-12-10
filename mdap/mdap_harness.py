@@ -130,6 +130,34 @@ class RedFlagParser:
                     elif line.strip().startswith("next_state ="):
                         state_line = line
                 
+                # If we didn't find the required lines with strict matching, try to extract from code blocks
+                if not move_line or not state_line:
+                    # Look for code blocks that might contain the move and state
+                    import re
+                    
+                    # Try to find move in a code block
+                    if not move_line:
+                        move_match = re.search(r'```(?:python)?\s*move\s*=\s*(\[[^\]]+\])\s*```', response, re.IGNORECASE | re.DOTALL)
+                        if move_match:
+                            move_line = f"move = {move_match.group(1)}"
+                    
+                    # Try to find next_state in a code block
+                    if not state_line:
+                        state_match = re.search(r'```(?:python)?\s*next_state\s*=\s*(\[[^\]]+\]|\{[^}]+\})\s*```', response, re.IGNORECASE | re.DOTALL)
+                        if state_match:
+                            state_line = f"next_state = {state_match.group(1)}"
+                    
+                    # If still not found, try to find them without code blocks but with proper formatting
+                    if not move_line:
+                        move_match = re.search(r'move\s*=\s*(\[[^\]]+\])', response, re.IGNORECASE)
+                        if move_match:
+                            move_line = f"move = {move_match.group(1)}"
+                    
+                    if not state_line:
+                        state_match = re.search(r'next_state\s*=\s*(\[[^\]]+\]|\{[^}]+\})', response, re.IGNORECASE)
+                        if state_match:
+                            state_line = f"next_state = {state_match.group(1)}"
+                
                 if not move_line or not state_line:
                     logger.warning(f"RED FLAG: Response missing required fields - move_line={bool(move_line)}, state_line={bool(state_line)}")
                     return None
