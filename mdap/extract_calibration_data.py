@@ -190,10 +190,6 @@ def generate_analysis_markdown(summary: Dict, steps: List[Dict]) -> str:
                 report.append(f"- **Red Flags:**")
                 for flag in step['red_flags']:
                     report.append(f"  - {flag}")
-            report.append("- **Raw LLM Response:**")
-            report.append("```")
-            report.append(step.get('raw_response', 'N/A'))
-            report.append("```")
         report.append("\n---\n")
 
     if successful_steps:
