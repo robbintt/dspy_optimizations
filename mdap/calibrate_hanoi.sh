@@ -16,6 +16,8 @@ source "$VENV_PATH/bin/activate"
 DISKS=${1:-20}
 echo "[MDAP] Running calibration for $DISKS disks..."
 cd "$SCRIPT_DIR"
+# Shift to remove the first argument (disk count) before passing remaining args
+shift
 python calibrate_hanoi.py --sample_steps "$DISKS" "$@"
 
 echo "[SUCCESS] Done!"
