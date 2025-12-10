@@ -10,23 +10,35 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-def find_most_recent_log() -> Optional[str]:
-    """Find the most recent calibration log file in the logs directory."""
+def find_most_recent_log() -> Optional[Tuple[str, str]]:
+    """Find the most recent calibration and harness log files."""
     # Check both project root logs and mdap/logs directories
     log_dirs = [Path("logs"), Path("mdap/logs")]
+    
+    calibration_log = None
+    harness_log = None
     
     for logs_dir in log_dirs:
         if not logs_dir.exists():
             continue
         
-        # Look specifically for calibrate_hanoi_*.log files
-        log_files = list(logs_dir.glob("calibrate_hanoi_*.log"))
-        if log_files:
-            most_recent = max(log_files, key=lambda f: f.stat().st_mtime)
-            return str(most_recent)
+        # Find the most recent calibration log
+        cal_files = list(logs_dir.glob("calibrate_hanoi_*.log"))
+        if cal_files:
+            most_recent_cal = max(cal_files, key=lambda f: f.stat().st_mtime)
+            calibration_log = str(most_recent_cal)
+        
+        # Find the most recent harness log
+        harness_files = list(logs_dir.glob("mdap_harness_*.log"))
+        if harness_files:
+            most_recent_harness = max(harness_files, key=lambda f: f.stat().st_mtime)
+            harness_log = str(most_recent_harness)
     
-    print("No calibrate_hanoi log files found")
-    return None
+    if not calibration_log:
+        print("No calibrate_hanoi log files found")
+        return None
+    
+    return calibration_log, harness_log
 
 def extract_calibration_summary(log_content: str) -> Dict:
     """Extract the final summary from the calibration log."""
@@ -199,14 +211,23 @@ def generate_analysis_markdown(summary: Dict, steps: List[Dict]) -> str:
 
 def main():
     """Main execution function."""
-    log_file = find_most_recent_log()
-    if not log_file:
+    log_files = find_most_recent_log()
+    if not log_files:
         return
     
-    print(f"Processing calibration log: {log_file}")
+    calibration_log_file, harness_log_file = log_files
     
-    with open(log_file, 'r') as f:
-        content = f.read()
+    print(f"Processing calibration log: {calibration_log_file}")
+    with open(calibration_log_file, 'r') as f:
+        cal_content = f.read()
+    
+    harness_content = ""
+    if harness_log_file:
+        print(f"Processing harness log: {harness_log_file}")
+        with open(harness_log_file, 'r') as f:
+            harness_content = f.read()
+    else:
+        print("Warning: No harness log file found. Step-by-step analysis will not be available.")
     
     # Check if this is actually a calibration log by looking for key phrases
     if "Estimating per-step success rate" not in content and "Calibration Result" not in content:
@@ -214,26 +235,29 @@ def main():
         return
 
     print("Extracting calibration summary...")
-    summary = extract_calibration_summary(content)
+    summary = extract_calibration_summary(cal_content)
     print(f"Summary extracted: {bool(summary)}")
     
     print("Extracting step details...")
-    steps = extract_step_details(content)
+    steps = extract_step_details(harness_content)
     print(f"Steps extracted: {len(steps) if steps else 0}")
     
     if not summary:
         print("ERROR: Could not extract calibration summary from the log.")
         return
     
-    # If no step details found, it's likely using cached calibration
+    # If no step details found, it's likely using cached calibration or logging failed
     if not steps:
-        if "Loaded calibration cache" in content:
+        if "Using existing calibration cache" in cal_content:
             print("\nNote: This calibration used cached states.")
             print("Step-by-step LLM interactions are not available in this log.")
-            print("To see detailed step analysis, re-run calibration with --regenerate_cache")
+            print("To see detailed step analysis, re-run calibration without the --use_cache flag.")
+        elif not harness_log_file:
+             print("\nNote: No harness log file was found.")
+             print("The detailed LLM interactions were not logged to a separate file.")
         else:
-            print("\nNote: Step details not found in this log file.")
-            print("The detailed LLM interactions may be in a separate harness log file.")
+            print("\nNote: Step details not found in the harness log file.")
+            print("The harness log may be empty or corrupted.")
         
         # Generate a summary report even without step details
         report = generate_summary_report(summary)
