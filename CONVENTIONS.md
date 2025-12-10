@@ -1,0 +1,2 @@
+- Changes must be focused, maintanable, and simple.
+- Minimize comments.
