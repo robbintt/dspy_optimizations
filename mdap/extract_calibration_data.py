@@ -99,15 +99,6 @@ def extract_step_details(log_content: str) -> List[Dict]:
         if optimal_match and current_step:
             current_step['optimal_move'] = json.loads(optimal_match.group(2))
 
-        # Extract raw LLM response
-        if "RAW LLM RESPONSE" in line and current_step:
-            # Find the end of the response block
-            end_idx = i + 1
-            while end_idx < len(lines) and not lines[end_idx].startswith('---'):
-                end_idx += 1
-            raw_response_block = "\n".join(lines[i+1 : end_idx])
-            current_step['raw_response'] = raw_response_block.strip()
-            
         # Extract parsed LLM response
         parsed_match = re.search(r'LLM Parsed Response: ({.*})', line)
         if parsed_match and current_step:
