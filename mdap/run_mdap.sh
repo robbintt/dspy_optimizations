@@ -24,15 +24,21 @@ activate_venv() {
     source "$VENV_PATH/bin/activate"
 }
 
-# Function to check if .env file exists
+# Function to check if .env file exists (optional)
 check_env() {
-    if [ ! -f ".env" ]; then
-        echo -e "\033[1;33m[WARNING]\033[0m .env file not found!"
-        echo "Please create a .env file with your API keys."
-        echo "You can copy it from .env.example:"
+    # Find parent directory with .env file
+    PARENT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+    ENV_FILE="$PARENT_DIR/.env"
+    
+    if [ -f "$ENV_FILE" ]; then
+        echo -e "\033[0;34m[MDAP]\033[0m Found .env file at $ENV_FILE"
+        # Export .env file path for Python scripts
+        export ENV_FILE_PATH="$ENV_FILE"
+    else
+        echo -e "\033[1;33m[MDAP]\033[0m No .env file found at $ENV_FILE, using system defaults"
+        echo "You can optionally create one from .env.example:"
         echo "  cp .env.example .env"
         echo "Then edit .env with your API keys."
-        exit 1
     fi
 }
 
