@@ -128,10 +128,13 @@ class RedFlagParser:
     def _extract_content_blocks(self, response: str) -> Tuple[Optional[str], Optional[str]]:
         """
         Extracts the raw 'move = ...' and 'next_state = ...' lines from a response.
-        Uses strict parsing first, then falls back to regex for code blocks.
+        Handles code blocks by stripping markdown delimiters before parsing.
         """
-        # Stage 1: Try to find lines with strict matching
-        lines = response.strip().split('\n')
+        # Simple preprocessing: remove all markdown code block delimiters
+        cleaned_response = response.replace('```', '')
+        
+        # Now, use simple line-by-line parsing on the cleaned response
+        lines = cleaned_response.strip().split('\n')
         move_line = None
         state_line = None
 
@@ -140,21 +143,6 @@ class RedFlagParser:
                 move_line = line
             elif line.strip().startswith("next_state ="):
                 state_line = line
-        
-        # Stage 2: If strict matching fails, use regex to find content in code blocks
-        if not move_line or not state_line:
-            import re
-            logger.info("Strict matching failed, trying regex fallback for code blocks.")
-            
-            if not move_line:
-                move_match = re.search(r'```(?:python)?\s*move\s*=\s*(\[[^\]]+\])\s*```', response, re.IGNORECASE | re.DOTALL)
-                if move_match:
-                    move_line = f"move = {move_match.group(1)}"
-            
-            if not state_line:
-                state_match = re.search(r'```(?:python)?\s*next_state\s*=\s*(\[[^\]]+\])\s*```', response, re.IGNORECASE | re.DOTALL)
-                if state_match:
-                    state_line = f"next_state = {state_match.group(1)}"
         
         return move_line, state_line
 
