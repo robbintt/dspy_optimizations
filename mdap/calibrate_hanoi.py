@@ -211,7 +211,16 @@ async def main():
     config = MDAPConfig(
         model=args.model, 
         k_margin=1,  # Use k_margin=1 for calibration to avoid overconfidence
-        **model_config['model']
+        temperature=model_config['model']['temperature'],
+        max_tokens=model_config['model']['max_tokens'],
+        top_p=model_config['model']['top_p'],
+        frequency_penalty=model_config['model']['frequency_penalty'],
+        presence_penalty=model_config['model']['presence_penalty'],
+        disable_reasoning=model_config['model']['disable_reasoning'],
+        thinking_budget=model_config['model']['thinking_budget'],
+        cost_per_input_token=model_config['model']['cost_per_input_token'],
+        cost_per_output_token=model_config['model']['cost_per_output_token'],
+        max_response_length=model_config['model']['max_response_length']
     )
     solver = HanoiMDAP(config=config)
     
