@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Tuple
 
 def find_most_recent_log() -> Optional[Tuple[str, str]]:
     """Find the most recent log file in the logs directory and extract its timestamp"""
-    logs_dir = Path("mdap/logs")
+    logs_dir = Path("logs")
     if not logs_dir.exists():
         print("No logs directory found")
         return None
