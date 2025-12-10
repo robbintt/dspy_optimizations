@@ -22,7 +22,7 @@ model:
   cost_per_output_token: 0.0006  # $0.60/M
   
   # Response limits
-  max_response_length: 2048  # characters
+  max_response_length: 750  # characters
 
 # MDAP framework defaults
 mdap_defaults:
