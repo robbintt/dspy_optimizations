@@ -25,12 +25,9 @@ echo "[MDAP] Activating virtual environment..."
 source "$VENV_PATH/bin/activate"
 
 # Run the Python calibration script
-# Default to 20 disks if no argument provided
-DISKS=${1:-20}
-echo "[MDAP] Running calibration for $DISKS disks..."
+echo "[MDAP] Running calibration..."
 cd "$SCRIPT_DIR"
-# Shift to remove the first argument (disk count) before passing remaining args
-shift
-python calibrate_hanoi.py --sample_steps "$DISKS" "$@"
+# Execute Python script with all arguments intact
+exec python calibrate_hanoi.py "$@"
 
 echo "[SUCCESS] Done!"
