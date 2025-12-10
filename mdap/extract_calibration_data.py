@@ -206,7 +206,8 @@ def main():
     with open(log_file, 'r') as f:
         content = f.read()
     
-    if "calibrate_hanoi" not in log_file:
+    # Check if this is actually a calibration log by looking for key phrases
+    if "Estimating per-step success rate" not in content and "Calibration Result" not in content:
         print("Warning: This does not appear to be a calibration log. Exiting.")
         return
 
