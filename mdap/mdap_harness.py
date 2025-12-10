@@ -59,7 +59,7 @@ class MDAPConfig:
     model: str = os.getenv("MDAP_DEFAULT_MODEL", "cerebras/zai-glm-4.6")
     k_margin: int = int(os.getenv("MDAP_K_MARGIN", "3"))  # First-to-ahead-by-K margin
     max_candidates: int = int(os.getenv("MDAP_MAX_CANDIDATES", "10"))  # Max candidates to sample
-    temperature: float = float(os.getenv("MDAP_TEMPERATURE", "0.1"))  # Default temperature set to 0.1
+    temperature: float = float(os.getenv("MDAP_TEMPERATURE", "0.6"))  # Default temperature set to 0.1
     max_retries: int = 3
     cost_threshold: Optional[float] = None
     max_response_length: int = int(os.getenv("MDAP_MAX_RESPONSE_LENGTH", "750"))  # Max response length in chars (paper uses 750)
@@ -262,6 +262,7 @@ class MDAPHarness:
         self.total_input_tokens = 0
         self.total_output_tokens = 0
         self.total_api_calls = 0
+        self.temperature_first_vote = 0.6
         
     async def first_to_ahead_by_k(self, 
                                  prompt: str, 
@@ -295,9 +296,9 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                         return None
                 
                 # Use temperature=0 for first vote, 0.1 for subsequent votes (per paper)
-                temperature = 0.0 if first_vote else self.config.temperature
+                temperature = self.temperature_first_vote if first_vote else self.config.temperature
                 if first_vote:
-                    logger.info(f"Using temperature=0.0 for first vote to ensure best guess")
+                    logger.info(f"Using temperature={self.temperature_first_vote} for first vote to ensure best guess")
                     first_vote = False
                 logger.info(f"Making LLM call with temperature={temperature}")
                 
