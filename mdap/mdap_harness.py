@@ -30,6 +30,9 @@ import msgspec
 # We will check the config object later in the MDAPHarness constructor
 # For now, we defer adding the file handler.
 
+# Configure formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
 # Also add console handler to tee output to terminal
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
