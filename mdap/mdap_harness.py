@@ -18,6 +18,27 @@ from pathlib import Path
 import yaml
 import litellm
 from litellm import completion, acompletion
+from pydantic import BaseModel, Field, ValidationError, model_validator
+
+# --- START: New Pydantic Models for Response Parsing ---
+
+class Move(BaseModel):
+    """Represents a single move in the Hanoi puzzle."""
+    disk_id: int = Field(..., ge=1)
+    from_peg: int = Field(..., ge=0, le=2)
+    to_peg: int = Field(..., ge=0, le=2)
+
+    @model_validator(mode='after')
+    def check_pegs_are_different(self) -> 'Move':
+        if self.from_peg == self.to_peg:
+            raise ValueError("from_peg and to_peg cannot be the same")
+        return self
+
+class NextState(BaseModel):
+    """Represents the pegs configuration, a list of lists."""
+    root: List[List[int]]
+
+# --- END: New Pydantic Models ---
 
 # Setup logging to file with timestamps
 LOGS_DIR = os.path.join(os.path.dirname(__file__), "logs")
@@ -106,188 +127,82 @@ class RedFlagParser:
     
     def parse_move_state_flag(self, response: Union[str, Dict[str, Any]], usage: Optional[Any] = None) -> Optional[Dict[str, Any]]:
         """
-        Parse and validate a move and next_state response using the paper's format.
-        Non-repairing extractor: If the extractor fails, we discard per red flagging.
+        Parse and validate a move and next_state response using Pydantic.
         Returns None if response is flagged (invalid).
-        
-        Args:
-            response: The response text to parse
-            usage: Optional usage object from the API response containing token counts
         """
         try:
-            # Handle string input (paper's format)
             if isinstance(response, str):
-                # Red flag 1: Check token limit (overly long responses)
+                # Red flag 1: Check token limit
                 if usage and hasattr(usage, 'completion_tokens'):
-                    token_count = usage.completion_tokens
-                    if token_count > self.config.max_response_length:
-                        logger.warning(f"RED FLAG: Response too long: {token_count} tokens > {self.config.max_response_length}")
+                    if usage.completion_tokens > self.config.max_response_length:
+                        logger.warning(f"RED FLAG: Response too long: {usage.completion_tokens} tokens")
                         return None
                 else:
-                    # Fallback to character count if no usage info available
-                    if len(response) > self.config.max_response_length * 4:  # Rough estimate: 4 chars per token
+                    if len(response) > self.config.max_response_length * 4:
                         logger.warning(f"RED FLAG: Response too long (fallback): {len(response)} chars")
                         return None
 
-                # Parse the multi-part response
+                # Extract move and state lines
                 lines = response.strip().split('\n')
                 move_line = None
                 state_line = None
 
                 for line in lines:
-                    # Strict matching for move line - must start exactly with "move ="
                     if line.strip().startswith("move ="):
                         move_line = line
-                    # Strict matching for state line - must start exactly with "next_state ="
                     elif line.strip().startswith("next_state ="):
                         state_line = line
                 
-                # If we didn't find the required lines with strict matching, try to extract from code blocks
                 if not move_line or not state_line:
-                    # Look for code blocks that might contain the move and state
-                    import re
-                    
-                    # Try to find move in a code block
-                    if not move_line:
-                        move_match = re.search(r'```(?:python)?\s*move\s*=\s*(\[[^\]]+\])\s*```', response, re.IGNORECASE | re.DOTALL)
-                        if move_match:
-                            move_line = f"move = {move_match.group(1)}"
-                    
-                    # Try to find next_state in a code block
-                    if not state_line:
-                        state_match = re.search(r'```(?:python)?\s*next_state\s*=\s*(\[[^\]]+\]|\{[^}]+\})\s*```', response, re.IGNORECASE | re.DOTALL)
-                        if state_match:
-                            state_line = f"next_state = {state_match.group(1)}"
-                    
-                    # If still not found, try to find them without code blocks but with proper formatting
-                    if not move_line:
-                        move_match = re.search(r'move\s*=\s*(\[[^\]]+\])', response, re.IGNORECASE)
-                        if move_match:
-                            move_line = f"move = {move_match.group(1)}"
-                    
-                    if not state_line:
-                        state_match = re.search(r'next_state\s*=\s*(\[[^\]]+\]|\{[^}]+\})', response, re.IGNORECASE)
-                        if state_match:
-                            state_line = f"next_state = {state_match.group(1)}"
-                
-                if not move_line or not state_line:
-                    logger.warning(f"RED FLAG: Response missing required fields - move_line={bool(move_line)}, state_line={bool(state_line)}")
+                    logger.warning("RED FLAG: Response missing required 'move' or 'next_state' fields")
                     return None
 
-                # Extract JSON from the lines
+                # Extract JSON strings from the lines
                 try:
-                    move_json = move_line.split("=", 1)[1].strip()
-                    # Allow markdown code blocks by stripping them if present
-                    if move_json.startswith('```') and move_json.endswith('```'):
-                        move_json = move_json[3:-3].strip()
-                    # The value is a JSON array, not an object
-                    move_data = json.loads(move_json)
-                except (json.JSONDecodeError, IndexError) as e:
-                    logger.warning(f"RED FLAG: Failed to parse move JSON: {e}")
-                    logger.warning(f"Move line was: {move_line}")
+                    move_json_str = move_line.split("=", 1)[1].strip()
+                    state_json_str = state_line.split("=", 1)[1].strip()
+                except IndexError:
+                    logger.warning("RED FLAG: Malformed 'move' or 'next_state' line")
                     return None
-
+                
+                # Use Pydantic for robust parsing and validation
                 try:
-                    state_json = state_line.split("=", 1)[1].strip()
-                    # Allow markdown code blocks by stripping them if present
-                    if state_json.startswith('```') and state_json.endswith('```'):
-                        state_json = state_json[3:-3].strip()
-                    # The value is a JSON array, not an object
-                    predicted_state = json.loads(state_json)
-                except (json.JSONDecodeError, IndexError) as e:
-                    logger.warning(f"RED FLAG: Failed to parse next_state JSON: {e}")
-                    logger.warning(f"State line was: {state_line}")
+                    move_model = Move.model_validate_json(move_json_str)
+                    state_model = NextState.model_validate_json(state_json_str)
+                except (ValidationError, json.JSONDecodeError) as e:
+                    logger.warning(f"RED FLAG: Pydantic validation failed: {e}")
                     return None
 
-                # Red flag 2: Check move structure (paper format: [disk_id, from_peg, to_peg])
-                if not isinstance(move_data, list) or len(move_data) != 3:
-                    logger.warning("Move is not a valid list of 3 elements")
-                    return None
-                
-                disk_id, from_peg, to_peg = move_data
-                
-                # Red flag 3: Check for empty or None critical fields
-                if None in move_data:
-                    logger.warning("Move contains None fields")
-                    return None
-                
-                # Red flag 4: Check valid values
-                if not isinstance(disk_id, int) or disk_id < 1:
-                    logger.warning(f"Invalid disk_id: {disk_id}")
-                    return None
-                if not isinstance(from_peg, int) or from_peg not in [0, 1, 2]:
-                    logger.warning(f"Invalid from_peg: {from_peg}")
-                    return None
-                if not isinstance(to_peg, int) or to_peg not in [0, 1, 2]:
-                    logger.warning(f"Invalid to_peg: {to_peg}")
-                    return None
-                
-                # Red flag 5: Check not moving to same peg
-                if from_peg == to_peg:
-                    logger.warning(f"Cannot move from {from_peg} to same peg")
-                    return None
-
-                # Red flag 6: Check predicted state structure
-                # Handle both {"pegs": [...]} format and direct [...] format
-                if isinstance(predicted_state, dict) and 'pegs' in predicted_state:
-                    pegs = predicted_state['pegs']
-                elif isinstance(predicted_state, list):
-                    # LLM returned pegs list directly
-                    pegs = predicted_state
-                    # Convert to expected dict format for consistency
-                    predicted_state = {'pegs': pegs}
-                else:
-                    logger.warning(f"Predicted state is not a valid dictionary or list: {type(predicted_state)}")
-                    return None
-                
-                # Red flag 7: Check pegs structure
-                if not isinstance(pegs, list) or len(pegs) != 3:
-                    logger.warning("Pegs must be a list of 3 lists")
-                    return None
-                if not all(isinstance(peg, list) for peg in pegs):
-                    logger.warning("Each peg must be a list")
-                    return None
-
-                # Ensure predicted_state has move_count for compatibility
-                if isinstance(predicted_state, dict) and 'move_count' not in predicted_state:
-                    # If move_count is missing, we'll add it later in update_state
-                    pass
-                
-                # Return the move and the predicted state for later validation
+                # Format the output to be compatible with existing code
                 return {
-                    "move": move_data,
-                    "predicted_state": predicted_state
+                    "move": [move_model.disk_id, move_model.from_peg, move_model.to_peg],
+                    "predicted_state": {"pegs": state_model.root}
                 }
             
-            # Handle dict input (legacy format) - still support for backward compatibility
+            # Handle legacy dict input for backward compatibility
             elif isinstance(response, dict):
-                # Red flag 2: Check move structure
                 if not isinstance(response, dict) or 'from_peg' not in response or 'to_peg' not in response:
                     logger.warning("Dict response is not a valid move dictionary")
                     return None
                 
-                # Red flag 3: Check for empty or None critical fields
                 if response['from_peg'] is None or response['to_peg'] is None:
                     logger.warning("Dict response contains None fields")
                     return None
                 
-                # Red flag 4: Check valid peg values
                 valid_pegs = ['A', 'B', 'C']
                 if response['from_peg'] not in valid_pegs or response['to_peg'] not in valid_pegs:
                     logger.warning(f"Dict response has invalid peg values: {response}")
                     return None
                 
-                # Red flag 5: Check not moving to same peg
                 if response['from_peg'] == response['to_peg']:
                     logger.warning(f"Dict response cannot move from {response['from_peg']} to same peg")
                     return None
                 
-                # Return in the expected format
                 return {
                     "move": response,
-                    "predicted_state": None  # Not available in dict format
+                    "predicted_state": None
                 }
-            
+
         except Exception as e:
             logger.warning(f"Validation error: {e}")
             return None
