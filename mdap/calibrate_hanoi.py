@@ -172,7 +172,9 @@ async def main():
     
     # Load model configuration
     model_config = load_model_config()
-    default_model = model_config['model']['name']
+    provider = model_config['model']['provider']
+    model_name = model_config['model']['name']
+    default_model = f"{provider}/{model_name}"
     
     parser = argparse.ArgumentParser(description="Calibrate k_margin for the Hanoi MDAP solver.")
     parser.add_argument("--model", type=str, default=os.getenv("MDAP_DEFAULT_MODEL", default_model), help="The model to calibrate.")
