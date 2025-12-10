@@ -505,7 +505,8 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
             logger.warning(f"No clear winner, returning majority vote")
             return winner
         
-        raise Exception("No valid candidates found")
+        logger.warning(f"No valid candidates found after {attempts} attempts (all were red-flagged)")
+        return None
     
     async def execute_step(self, 
                           step_prompt: str, 
@@ -647,6 +648,12 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                 
                 # We only need one successful candidate to check against optimal
                 step_result = await self.first_to_ahead_by_k(step_prompt, response_parser)
+                
+                # If step_result is None, it means all candidates were red-flagged
+                if step_result is None:
+                    logger.warning(f"Step {actual_steps_attempted}: All candidates were red-flagged and discarded ✗")
+                    break
+                
                 logger.info(f"Step {actual_steps_attempted} LLM call successful")
                 
                 # Check if the LLM's move matches the optimal move
@@ -713,6 +720,12 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                     logger.info(f"Step prompt for state {i+1}: {step_prompt[:200]}...")
                     logger.info(f"About to call first_to_ahead_by_k...")
                     step_result = await self.first_to_ahead_by_k(step_prompt, response_parser)
+                    
+                    # If step_result is None, it means all candidates were red-flagged
+                    if step_result is None:
+                        logger.warning(f"State {i+1}: All candidates were red-flagged and discarded ✗")
+                        continue
+                    
                     logger.info(f"State {i+1} LLM call successful")
                 
                     # Check if the LLM's move matches the optimal move
