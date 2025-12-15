@@ -10,8 +10,8 @@ from datetime import datetime
 from typing import List, Tuple, Callable, Any
 from dataclasses import dataclass
 import copy
-from mdap.micro_agent import MicroAgent
-from mdap.mdap_harness import MDAPHarness, MDAPConfig, RedFlagParser
+from micro_agent import MicroAgent
+from mdap_harness import MDAPHarness, MDAPConfig, RedFlagParser
 
 # Setup logging to file with timestamps
 LOGS_DIR = "logs"
@@ -227,7 +227,14 @@ class HanoiMDAP(MicroAgent):
             len(state.pegs['A']) == 0 and
             len(state.pegs['B']) == 0
         )
-    
+
+    def get_problem_complexity(self, state: HanoiState) -> int:
+        """
+        Get problem complexity for calibration.
+        For Hanoi, this is the number of disks.
+        """
+        return state.num_disks
+
     def get_optimal_move(self, state: HanoiState) -> List[int]:
         """
         Get the optimal move for the current state based on the optimal strategy.

@@ -34,7 +34,20 @@ class MicroAgent(ABC):
     def is_solved(self, state: Any) -> bool:
         """Check if the problem is solved"""
         pass
-    
+
+    @abstractmethod
+    def get_problem_complexity(self, state: Any) -> int:
+        """
+        Get the problem complexity for calibration purposes.
+
+        For Hanoi, this would return the number of disks.
+        For other problems, return an appropriate measure of problem size/difficulty.
+
+        Returns:
+            int: A positive integer representing problem complexity
+        """
+        pass
+
     def step_generator(self, state: Any) -> Tuple[str, Callable[[str], Any]]:
         """
         Generate step prompt and parser for the current state.
