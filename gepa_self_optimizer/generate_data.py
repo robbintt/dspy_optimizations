@@ -2,10 +2,13 @@ import dspy
 from dspy.signatures import Signature
 import random
 import json
-from gepa_config import setup_dspy, task_lm
+from gepa_config import setup_dspy, task_lm, _load_run_settings
 
 # Initialize DSPy and models first
 setup_dspy()
+
+# Load run settings
+run_settings = _load_run_settings()
 
 # Use the task model for data generation
 with dspy.context(lm=task_lm):
@@ -66,7 +69,9 @@ with dspy.context(lm=task_lm):
         return dataset
 
 if __name__ == "__main__":
-    data = generate_synthetic_data(25) 
+    # Get the number of examples from settings, with a default of 25
+    num_examples_to_generate = run_settings.get("data_generation", {}).get("num_examples", 25)
+    data = generate_synthetic_data(num_examples=num_examples_to_generate)
     serialized = [x.toDict() for x in data]
     with open("golden_set.json", "w") as f:
         json.dump(serialized, f, indent=2)

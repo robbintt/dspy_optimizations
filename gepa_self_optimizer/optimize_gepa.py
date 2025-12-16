@@ -1,11 +1,14 @@
 import dspy
 import json
 from sentence_transformers import SentenceTransformer, util
-from gepa_config import setup_dspy, task_lm, reflection_lm
+from gepa_config import setup_dspy, task_lm, reflection_lm, _load_run_settings
 from gepa_system import GlmSelfReflect
 
 # Initialize DSPy and models first
 setup_dspy()
+
+# Load run settings
+run_settings = _load_run_settings()
 
 # --- 1. PROVIDE A WORKING SEMANTIC SIMILARITY FUNCTION ---
 # The original 'dspy.evaluate.semantic_similarity' does not exist.
@@ -38,9 +41,12 @@ with open("golden_set.json", "r") as f:
 # ---------------------------------------------------------
 print("\n🧬 [SINGLE PHASE] Evolving the GlmSelfReflect system with GEPA...")
 
+# Get the GEPA auto setting from settings, with a default of "medium"
+gepa_auto_setting = run_settings.get("optimization", {}).get("gepa_auto_setting", "medium")
+
 optimizer = dspy.GEPA(
     metric=refinement_gepa_metric,
-    auto="medium",
+    auto=gepa_auto_setting,
     reflection_lm=reflection_lm,
     track_stats=True
 )

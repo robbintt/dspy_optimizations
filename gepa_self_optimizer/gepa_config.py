@@ -25,6 +25,16 @@ def _load_model_configs():
     with open(MODEL_CONFIG_PATH, "r") as f:
         return yaml.safe_load(f)
 
+def _load_run_settings():
+    """Loads the run-specific settings from config/settings.yaml."""
+    SETTINGS_CONFIG_PATH = CONFIG_DIR / "config" / "settings.yaml"
+    try:
+        with open(SETTINGS_CONFIG_PATH, "r") as f:
+            return yaml.safe_load(f)
+    except FileNotFoundError:
+        # Return a default empty dict if the optional config file is not found
+        return {}
+
 def _create_lm(config_name: str):
     """
     Helper function to create a dspy.LM instance from a named configuration.
