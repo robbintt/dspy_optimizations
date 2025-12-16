@@ -366,3 +366,113 @@ reflection_model:
   temperature: 0.5             # Lower temperature is often better for analysis and instruction generation.
   max_tokens: 1000
 ```
+# GEPA Self-Optimizer
+
+A hands-on example of using DSPy's **GEPA (Genetic Evolutionary Prompt Algorithm)** to automatically evolve and optimize the prompts of a Figure-8 self-reflection AI system.
+
+This project demonstrates a powerful prompt engineering technique where a stronger "Reflection" model analyzes failures and proposes textual improvements to a "Task" model's prompts.
+
+---
+
+## ✨ Features
+
+-   **🧬 Genetic Evolutionary Prompt Algorithm (GEPA):** Leverages DSPy's built-in GEPA optimizer for automated prompt discovery.
+-   **🔄 Figure-8 Self-Reflection Architecture:** Implements a cycle of generation, critique, and refinement.
+-   **⚙️ YAML-based Configuration:** Easily manage models and run parameters via configuration files.
+-   **📊 Configurable Runs:** Switch between a quick "test run" and a full "optimization run" without changing code.
+
+---
+
+## 🛠️ Installation and Setup
+
+**1. Prerequisites**
+-   Python 3.8+
+-   Pip for installing packages.
+-   An API key for your chosen LM provider (e.g., Cerebras, ZhipuAI).
+
+**2. Install Dependencies**
+```bash
+pip install dspy-ai sentence-transformers pyyaml torch
+```
+
+**3. Set Environment Variable**
+Set your API key as an environment variable.
+```bash
+export CEREBRAS_API_KEY="your_actual_cerebras_api_key"
+# OR
+export ZHIPUAI_API_KEY="your_actual_zhipuai_api_key"
+```
+
+## 📂 Configuration
+
+The project is configured using YAML files in `gepa_self_optimizer/config/`:
+
+-   `models.yaml`: Define your task and reflection models. A `models.dev.yaml` is also provided for faster, cheaper testing.
+-   `settings.yaml`: Control run parameters like the number of data examples and the optimization intensity.
+
+## 🚀 Usage
+
+### Quick Test Run
+
+This configuration performs a fast, inexpensive run to test your setup.
+
+**1. Configure for a small run in `settings.yaml`:**
+```yaml
+data_generation:
+  num_examples: 2
+optimization:
+  gepa_auto_setting: "light"
+```
+
+**2. Execute the workflow:**
+```bash
+python gepa_self_optimizer/generate_data.py
+python gepa_self_optimizer/optimize_gepa.py
+```
+
+### Full Optimization Run
+
+For a more thorough optimization, use the default settings in `settings.yaml`:
+```yaml
+data_generation:
+  num_examples: 25
+optimization:
+  gepa_auto_setting: "medium"
+```
+Then, run the same two commands as above.
+
+---
+
+## 📊 Understanding the Results
+
+-   `golden_set.json`: The generated QA pairs with injected errors, used as training data.
+-   `glm_gepa_complete.json`: The final, optimized `GlmSelfReflect` program. You can load and use this program for new inference tasks.
+-   The console output will display the optimized prompts, showing you how GEPA improved the original instructions.
+
+## 🔋 Using Your Optimized Program
+
+You can load the saved, optimized program and run it on new questions:
+
+```python
+import dspy
+import json
+from gepa_config import setup_dspy
+from gepa_system import GlmSelfReflect
+
+# 1. Set up the language model context
+load_config()
+
+# 2. Load the optimized program from the JSON file
+with open("glm_gepa_complete.json", "r") as f:
+    optimized_module = dspy.Program.load_program(f)
+
+print("✅ Optimized GlmSelfReflect program loaded.")
+
+# 3. Run a prediction with a new question
+new_question = "Explain the process of photosynthesis in simple terms."
+with dspy.context(lm=dspy.settings.lm):
+    result = optimized_module(question=new_question)
+
+print(f"\nQuestion: {new_question}")
+print(f"Optimized Answer: {result.answer}")
+```
