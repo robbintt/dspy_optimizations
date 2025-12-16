@@ -41,7 +41,21 @@ def _create_lm(config_name: str):
     # Extract parameters that are not the model identifier itself
     lm_params = {k: v for k, v in gepa_config.items() if k not in ['provider', 'name']}
     
-    api_key = os.getenv("CEREBRAS_API_KEY")
+    # Determine the appropriate API key environment variable based on provider
+    provider = gepa_config['provider'].lower()
+    if provider == "cerebras":
+        api_key_env = "CEREBRAS_API_KEY"
+    elif provider == "zhipuai":
+        api_key_env = "ZHIPUAI_API_KEY"
+    elif provider == "openai":
+        api_key_env = "OPENAI_API_KEY"
+    elif provider == "anthropic":
+        api_key_env = "ANTHROPIC_API_KEY"
+    else:
+        # Default to CEREBRAS_API_KEY for backwards compatibility
+        api_key_env = "CEREBRAS_API_KEY"
+    
+    api_key = os.getenv(api_key_env)
     return dspy.LM(model=model_id, api_key=api_key, **lm_params)
 
 def setup_dspy(api_key: str = None):
@@ -50,13 +64,26 @@ def setup_dspy(api_key: str = None):
     MUST be called explicitly in the main application script.
     It will NOT run during pytest discovery.
     """
-    if api_key is None:
-        api_key = os.getenv("CEREBRAS_API_KEY")
+    # Check if any of the supported API keys are set
+    api_key_vars = ["CEREBRAS_API_KEY", "ZHIPUAI_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"]
+    api_key_found = False
     
-    if not api_key or api_key == "YOUR_CEREBRAS_API_KEY":
-        raise ValueError("Please set the CEREBRAS_API_KEY environment variable.")
-
-    os.environ["CEREBRAS_API_KEY"] = api_key
+    if api_key is not None:
+        # Use explicitly provided API key
+        os.environ["DSPY_API_KEY"] = api_key
+        api_key_found = True
+    else:
+        # Check for any supported API key in environment
+        for var in api_key_vars:
+            if os.getenv(var):
+                api_key_found = True
+                break
+    
+    if not api_key_found:
+        raise ValueError(
+            "Please set one of the following environment variables: " + 
+            ", ".join(api_key_vars)
+        )
 
     # --- 3. INSTANTIATE THE LANGUAGE MODELS ---
     global task_lm, reflection_lm, lm  # Declare we're modifying globals
