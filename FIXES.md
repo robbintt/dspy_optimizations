@@ -22,10 +22,13 @@ Import and call `setup_dspy()` at the beginning of each script before using any 
 
 **In `generate_data.py`:**
 ```python
-from gepa_config import setup_dspy, task_lm
+from gepa_config import setup_dspy, task_lm, _load_run_settings
 
 # Initialize DSPy and models first
 setup_dspy()
+
+# Load run settings
+run_settings = _load_run_settings()
 
 # Now task_lm is initialized
 with dspy.context(lm=task_lm):
@@ -100,9 +103,12 @@ optimizer = dspy.GEPA(
 
 To:
 ```python
+# Get the GEPA auto setting from settings, with a default of "medium"
+gepa_auto_setting = run_settings.get("optimization", {}).get("gepa_auto_setting", "medium")
+
 optimizer = dspy.GEPA(
     metric=refinement_gepa_metric,
-    auto="medium",
+    auto=gepa_auto_setting,
     reflection_lm=reflection_lm,
     track_stats=True
 )
