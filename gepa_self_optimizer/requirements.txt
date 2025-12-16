@@ -4,3 +4,4 @@ torch
 PyYAML
 pydantic
 pandas
+openai

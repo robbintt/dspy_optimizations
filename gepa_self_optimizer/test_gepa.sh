@@ -3,6 +3,24 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
+# --- Virtual Environment Configuration ---
+VENV_DIR="$HOME/virtualenvs/dspy_env" # Assuming 'dspy_env' is the name. Change if needed.
+VENV_BIN="$VENV_DIR/bin"
+
+if [ ! -d "$VENV_DIR" ]; then
+    echo "⚠️  Virtual environment not found at $VENV_DIR."
+    echo "  Creating a new virtual environment here..."
+    mkdir -p "$(dirname "$VENV_DIR")"
+    python3 -m venv "$VENV_DIR"
+    if [ $? -ne 0 ]; then
+        echo "❌ Error: Failed to create virtual environment at $VENV_DIR"
+        exit 1
+    fi
+fi
+
+echo "🔧 Activating virtual environment at $VENV_DIR"
+source "$VENV_DIR/bin/activate"
+
 # --- Configuration ---
 # Path to the requirements file, relative to the project root
 REQUIREMENTS_FILE="gepa_self_optimizer/requirements.txt"
@@ -14,11 +32,12 @@ echo "=================================================================="
 # --- Dependency Installation ---
 if [ ! -f "$REQUIREMENTS_FILE" ]; then
   echo "❌ Error: requirements.txt not found at $REQUIREMENTS_FILE"
+  echo "  This file is required to install project dependencies (e.g., pytest, dspy)."
   exit 1
 fi
 
 echo "📥 Installing/upgrading dependencies from $REQUIREMENTS_FILE..."
-# Upgrade pip and install requirements
+# Upgrade pip and install requirements within the activated venv
 pip install --upgrade pip
 pip install -r "$REQUIREMENTS_FILE"
 
