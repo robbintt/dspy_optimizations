@@ -21,33 +21,49 @@ We define two models: a **Task LM** (for running the self-reflection loop) and a
 
 ```python
 # config.py
-import dspy
 import os
+import yaml
+import dspy
+from pathlib import Path
 
-# --- 1. SETUP GLM-4 MODEL(S) ---
-# Replace with your actual ZhipuAI API Key from https://open.bigmodel.com/
-API_KEY = os.getenv("ZHIPUAI_API_KEY", "YOUR_ZHIPU_API_KEY")
+# --- 1. LOAD CONFIGURATIONS FROM YAML ---
+# Determine the directory of this script to find the config file
+CONFIG_DIR = Path(__file__).parent
+MODEL_CONFIG_PATH = CONFIG_DIR / "models.yaml"
 
-# GEPA requires a model for the main task.
-task_lm = dspy.LM(
-    model="zhipuai/glm-4",  # Standard format using LiteLLM
-    api_key=API_KEY,
-    # ZhipuAI's 2025 endpoint is typically handled by LiteLLM when using the 'provider/model' format.
-    # If issues arise, you can manually set it: api_base="https://open.bigmodel.cn/api/paas/v4/"
-    temperature=0.7,
-    max_tokens=4096
-)
+# Load the entire model configuration file
+with open(MODEL_CONFIG_PATH, "r") as f:
+    model_configs = yaml.safe_load(f)
 
-# --- A separate, more powerful model for GEPA's reflection step ---
-# Using a stronger model here yields significantly better prompt mutations.
-# glm-4-plus or glm-4-0520 are excellent choices from ZhipuAI.
-reflection_lm_name = "zhipuai/glm-4-plus"
-reflection_lm = dspy.LM(
-    model=reflection_lm_name,
-    api_key=API_KEY,
-    temperature=0.7,
-    max_tokens=4096
-)
+# --- 2. SETUP CEREBRAS API KEY ---
+# API key for Cerebras. Set this in your environment.
+API_KEY = os.getenv("CEREBRAS_API_KEY", "YOUR_CEREBRAS_API_KEY")
+if API_KEY == "YOUR_CEREBRAS_API_KEY":
+    raise ValueError("Please set the CEREBRAS_API_KEY environment variable.")
+
+
+def _create_lm(config_name: str) -> dspy.LM:
+    """
+    Helper function to create a dspy.LM instance from a named configuration.
+    """
+    config = model_configs.get(config_name)
+    if not config:
+        raise ValueError(f"Model configuration '{config_name}' not found in {MODEL_CONFIG_PATH}")
+    
+    # Construct the model identifier in 'provider/model_name' format
+    model_id = f"{config['provider']}/{config['name']}"
+    
+    # Extract parameters that are not the model identifier itself
+    lm_params = {k: v for k, v in config.items() if k not in ['provider', 'name']}
+    
+    return dspy.LM(model=model_id, api_key=API_KEY, **lm_params)
+
+# --- 3. INSTANTIATE THE LANGUAGE MODELS ---
+# The task model for generating and refining
+task_lm = _create_lm("task_model")
+
+# The reflection model for GEPA's self-improvement step
+reflection_lm = _create_lm("reflection_model")
 
 # Set the default LM for DSPy to our task model
 dspy.configure(lm=task_lm)
