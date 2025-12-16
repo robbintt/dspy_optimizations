@@ -3,24 +3,24 @@ from gepa_config import JUDGE_CONSTITUTION
 
 # --- SIGNATURES ---
 class Generate(dspy.Signature):
-    """Generate a comprehensive answer. Use System 2 thinking."""
-    question = dspy.InputField()
-    draft_answer = dspy.OutputField()
+    """Generate a comprehensive answer to a given question, using step-by-step reasoning."""
+    question: str = dspy.InputField(desc="The question to be answered.")
+    draft_answer: str = dspy.OutputField(desc="A comprehensive, step-by-step answer to the question.")
 
 class ShepherdCritic(dspy.Signature):
-    """Act as a ruthless critic. Analyze the draft for errors based on the Constitution."""
-    constitution = dspy.InputField()
-    question = dspy.InputField()
-    draft_answer = dspy.InputField()
-    critique = dspy.OutputField(desc="List of specific errors")
-    severity = dspy.OutputField(desc="High, Medium, or Low")
+    """Act as a ruthless critic. Analyze the draft for errors based on the provided constitution."""
+    constitution: str = dspy.InputField(desc="The principles for judging the draft.")
+    question: str = dspy.InputField(desc="The question the draft is trying to answer.")
+    draft_answer: str = dspy.InputField(desc="The draft answer to be critiqued.")
+    critique: str = dspy.OutputField(desc="A list of specific errors found in the draft.")
+    severity: str = dspy.OutputField(desc="The severity of the errors: High, Medium, or Low.")
 
 class Refine(dspy.Signature):
-    """Rewrite the draft to fix the errors identified in the critique."""
-    question = dspy.InputField()
-    draft_answer = dspy.InputField()
-    critique = dspy.InputField()
-    final_answer = dspy.OutputField()
+    """Rewrite the draft to fix all errors identified in the critique to produce a final, correct answer."""
+    question: str = dspy.InputField(desc="The original question.")
+    draft_answer: str = dspy.InputField(desc="The draft answer that contains errors.")
+    critique: str = dspy.InputField(desc="The list of errors to be fixed.")
+    final_answer: str = dspy.OutputField(desc="The refined and correct final answer.")
 
 # --- THE MODULE ---
 class GlmSelfReflect(dspy.Module):

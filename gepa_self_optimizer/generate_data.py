@@ -7,18 +7,18 @@ from gepa_config import task_lm
 with dspy.context(lm=task_lm):
     # --- SIGNATURES ---
     class TopicToQA(dspy.Signature):
-        """Generate a complex reasoning question and a perfect step-by-step answer."""
-        topic = dspy.InputField()
-        question = dspy.OutputField()
-        correct_answer = dspy.OutputField()
+        """Given a topic, generate a complex reasoning question and a perfect, step-by-step answer."""
+        topic: str = dspy.InputField(desc="The general topic for the question.")
+        question: str = dspy.OutputField(desc="A complex question that requires reasoning.")
+        correct_answer: str = dspy.OutputField(desc="The perfect, step-by-step correct answer to the question.")
 
     class BugInjector(dspy.Signature):
-        """Rewrite the answer to include a specific, fatal error. Explain the error."""
-        question = dspy.InputField()
-        correct_answer = dspy.InputField()
-        error_type = dspy.InputField()
-        bad_draft = dspy.OutputField(desc="The corrupted answer")
-        gold_critique = dspy.OutputField(desc="Precise description of the error")
+        """Given a correct answer, rewrite it to include a specific, fatal error and explain that error."""
+        question: str = dspy.InputField(desc="The question associated with the answer.")
+        correct_answer: str = dspy.InputField(desc="The correct answer to be sabotaged.")
+        error_type: str = dspy.InputField(desc="The type of error to inject (e.g., 'Math Calculation Error').")
+        bad_draft: str = dspy.OutputField(desc="The rewritten answer containing a fatal error.")
+        gold_critique: str = dspy.OutputField(desc="A precise description of the injected error.")
 
     # --- THE FACTORY ---
     def generate_synthetic_data(num_examples=25):
@@ -33,11 +33,13 @@ with dspy.context(lm=task_lm):
             topic = topics[i % len(topics)]
             try:
                 # 1. Generate Truth
-                base = dspy.ChainOfThought(TopicToQA)(topic=topic)
+                base_predictor = dspy.ChainOfThought(TopicToQA)
+                base = base_predictor(topic=topic)
                 
                 # 2. Inject Bug
                 bug = random.choice(sabotage_types)
-                corrupted = dspy.ChainOfThought(BugInjector)(
+                bug_predictor = dspy.ChainOfThought(BugInjector)
+                corrupted = bug_predictor(
                     question=base.question,
                     correct_answer=base.correct_answer,
                     error_type=bug

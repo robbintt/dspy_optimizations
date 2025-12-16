@@ -1,7 +1,9 @@
 import os
 import yaml
-import dspy
 from pathlib import Path
+# Import main dspy module at runtime (will be mocked in tests)
+import dspy
+# from dspy.primitives import Signature, InputField, OutputField
 
 # --- 1. LOAD CONFIGURATIONS FROM YAML ---
 # Determine the directory of this script to find the config file
@@ -12,14 +14,7 @@ MODEL_CONFIG_PATH = CONFIG_DIR / "config" / "models.yaml"
 with open(MODEL_CONFIG_PATH, "r") as f:
     model_configs = yaml.safe_load(f)
 
-# --- 2. SETUP CEREBRAS API KEY ---
-# API key for Cerebras. Set this in your environment.
-API_KEY = os.getenv("CEREBRAS_API_KEY", "YOUR_CEREBRAS_API_KEY")
-if API_KEY == "YOUR_CEREBRAS_API_KEY":
-    raise ValueError("Please set the CEREBRAS_API_KEY environment variable.")
-
-
-def _create_lm(config_name: str) -> dspy.LM:
+def _create_lm(config_name: str) -> "dspy.LM":
     """
     Helper function to create a dspy.LM instance from a named configuration.
     """
@@ -33,17 +28,33 @@ def _create_lm(config_name: str) -> dspy.LM:
     # Extract parameters that are not the model identifier itself
     lm_params = {k: v for k, v in gepa_config.items() if k not in ['provider', 'name']}
     
-    return dspy.LM(model=model_id, api_key=API_KEY, **lm_params)
+    api_key = os.getenv("CEREBRAS_API_KEY")
+    return dspy.LM(model=model_id, api_key=api_key, **lm_params)
 
-# --- 3. INSTANTIATE THE LANGUAGE MODELS ---
-# The task model for generating and refining
-task_lm = _create_lm("task_model")
+def setup_dspy(api_key: str = None):
+    """
+    Initializes and configures the dspy language models.
+    MUST be called explicitly in the main application script.
+    It will NOT run during pytest discovery.
+    """
+    if api_key is None:
+        api_key = os.getenv("CEREBRAS_API_KEY")
+    
+    if not api_key or api_key == "YOUR_CEREBRAS_API_KEY":
+        raise ValueError("Please set the CEREBRAS_API_KEY environment variable.")
 
-# The reflection model for GEPA's self-improvement step
-reflection_lm = _create_lm("reflection_model")
+    os.environ["CEREBRAS_API_KEY"] = api_key
 
-# Set the default LM for DSPy to our task model
-dspy.configure(lm=task_lm)
+    # --- 3. INSTANTIATE THE LANGUAGE MODELS ---
+    task_lm = _create_lm("task_model")
+    reflection_lm = _create_lm("reflection_model")
+
+    # --- 4. CONFIGURE DSPY ---
+    dspy.configure(lm=task_lm)
+
+    # Make the models available globally if needed by other modules
+    globals()['task_lm'] = task_lm
+    globals()['reflection_lm'] = reflection_lm
 
 # --- 4. THE JUDGE'S CONSTITUTION ---
 JUDGE_CONSTITUTION = """

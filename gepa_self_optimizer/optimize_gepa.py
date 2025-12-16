@@ -18,7 +18,9 @@ def semantic_similarity(text1, text2):
 def refinement_gepa_metric(gold, pred, trace=None):
     score = semantic_similarity(pred.answer, gold.correct_answer)
     feedback = f"Similarity score is {score:.2f}. The reference answer is '{gold.correct_answer}'."
-    return dspy.evaluate.answer_with_feedback(score, feedback)
+    # In v3.0.4, metrics should return a float or bool directly
+    # The answer_with_feedback pattern is deprecated
+    return score
 
 # --- 3. LOAD DATA ---
 print("\n📂 Loading Golden Set...")
@@ -36,8 +38,10 @@ print("\n🧬 [SINGLE PHASE] Evolving the GlmSelfReflect system with GEPA...")
 optimizer = dspy.GEPA(
     metric=refinement_gepa_metric,
     auto="medium",
-    reflection_lm=reflection_lm, 
-    track_stats=True
+    reflection_lm=reflection_lm,
+    track_stats=True,
+    max_bootstrapped_demos=4,
+    max_labeled_demos=16
 )
 
 program_to_optimize = GlmSelfReflect()
