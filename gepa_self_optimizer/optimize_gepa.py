@@ -1,8 +1,8 @@
 import dspy
 import json
 from sentence_transformers import SentenceTransformer, util
-from config import task_lm, reflection_lm
-from system import GlmSelfReflect
+from gepa_config import task_lm, reflection_lm
+from gepa_system import GlmSelfReflect
 
 # --- 1. PROVIDE A WORKING SEMANTIC SIMILARITY FUNCTION ---
 # The original 'dspy.evaluate.semantic_similarity' does not exist.

@@ -1,0 +1,6 @@
+dspy-ai
+sentence-transformers
+torch
+PyYAML
+pydantic
+pandas

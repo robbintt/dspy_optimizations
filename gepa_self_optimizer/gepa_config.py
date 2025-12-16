@@ -6,7 +6,7 @@ from pathlib import Path
 # --- 1. LOAD CONFIGURATIONS FROM YAML ---
 # Determine the directory of this script to find the config file
 CONFIG_DIR = Path(__file__).parent
-MODEL_CONFIG_PATH = CONFIG_DIR / "models.yaml"
+MODEL_CONFIG_PATH = CONFIG_DIR / "config" / "models.yaml"
 
 # Load the entire model configuration file
 with open(MODEL_CONFIG_PATH, "r") as f:
