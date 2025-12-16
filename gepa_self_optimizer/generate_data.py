@@ -1,4 +1,5 @@
 import dspy
+from dspy.signatures import Signature
 import random
 import json
 from gepa_config import task_lm 
@@ -6,13 +7,13 @@ from gepa_config import task_lm
 # Use the task model for data generation
 with dspy.context(lm=task_lm):
     # --- SIGNATURES ---
-    class TopicToQA(dspy.Signature):
+    class TopicToQA(Signature):
         """Given a topic, generate a complex reasoning question and a perfect, step-by-step answer."""
         topic: str = dspy.InputField(desc="The general topic for the question.")
         question: str = dspy.OutputField(desc="A complex question that requires reasoning.")
         correct_answer: str = dspy.OutputField(desc="The perfect, step-by-step correct answer to the question.")
 
-    class BugInjector(dspy.Signature):
+    class BugInjector(Signature):
         """Given a correct answer, rewrite it to include a specific, fatal error and explain that error."""
         question: str = dspy.InputField(desc="The question associated with the answer.")
         correct_answer: str = dspy.InputField(desc="The correct answer to be sabotaged.")

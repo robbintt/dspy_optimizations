@@ -4,7 +4,8 @@ import json
 import torch
 
 # Import the actual classes and functions to be tested
-import dspy
+from dspy import Example
+from dspy.signatures import Signature
 from gepa_config import _create_lm, JUDGE_CONSTITUTION
 from gepa_system import GlmSelfReflect
 from generate_data import generate_synthetic_data
@@ -82,9 +83,9 @@ class TestGepaSystem(unittest.TestCase):
 
     def setUp(self):
         self.system = GlmSelfReflect()
-        self.system.generator = Mock(spec=dspy.ChainOfThought)
-        self.system.critic = Mock(spec=dspy.ChainOfThought)
-        self.system.refiner = Mock(spec=dspy.Predict)
+        self.system.generator = Mock(spec='dspy.ChainOfThought')
+        self.system.critic = Mock(spec='dspy.ChainOfThought')
+        self.system.refiner = Mock(spec='dspy.Predict')
 
     def test_forward_with_high_severity_critique_refines(self):
         """Test forward pass when critique is 'High' and refinement occurs."""
@@ -140,7 +141,7 @@ class TestGenerateData(unittest.TestCase):
 
     def test_generate_synthetic_data_handles_exceptions(self):
         """Test that data generation handles exceptions gracefully and continues."""
-        with patch('generate_data.dspy.ChainOfThought', side_effect=Exception("Test error")):
+        with patch('dspy.predict.ChainOfThought', side_effect=Exception("Test error")):
             result = generate_synthetic_data(num_examples=1)
             self.assertEqual(len(result), 0)
 
