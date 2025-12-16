@@ -2,7 +2,10 @@ import dspy
 from dspy.signatures import Signature
 import random
 import json
-from gepa_config import task_lm 
+from gepa_config import setup_dspy, task_lm
+
+# Initialize DSPy and models first
+setup_dspy()
 
 # Use the task model for data generation
 with dspy.context(lm=task_lm):

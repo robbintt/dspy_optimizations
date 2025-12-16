@@ -1,8 +1,11 @@
 import dspy
 import json
 from sentence_transformers import SentenceTransformer, util
-from gepa_config import task_lm, reflection_lm
+from gepa_config import setup_dspy, task_lm, reflection_lm
 from gepa_system import GlmSelfReflect
+
+# Initialize DSPy and models first
+setup_dspy()
 
 # --- 1. PROVIDE A WORKING SEMANTIC SIMILARITY FUNCTION ---
 # The original 'dspy.evaluate.semantic_similarity' does not exist.
@@ -39,9 +42,7 @@ optimizer = dspy.GEPA(
     metric=refinement_gepa_metric,
     auto="medium",
     reflection_lm=reflection_lm,
-    track_stats=True,
-    max_bootstrapped_demos=4,
-    max_labeled_demos=16
+    track_stats=True
 )
 
 program_to_optimize = GlmSelfReflect()
