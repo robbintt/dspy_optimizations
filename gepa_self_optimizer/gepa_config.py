@@ -2,23 +2,36 @@ import os
 import yaml
 from pathlib import Path
 # Import main dspy module at runtime (will be mocked in tests)
-import dspy
+try:
+    import dspy
+except ImportError:
+    dspy = None
 # from dspy.primitives import Signature, InputField, OutputField
+
+# Initialize module-level variables to None so they can be imported
+lm = None
+task_lm = None
+reflection_lm = None
 
 # --- 1. LOAD CONFIGURATIONS FROM YAML ---
 # Determine the directory of this script to find the config file
-CONFIG_DIR = Path(__file__).parent
+# Use absolute path to ensure it works during pytest discovery
+CONFIG_DIR = Path(__file__).parent.resolve()
 MODEL_CONFIG_PATH = CONFIG_DIR / "config" / "models.yaml"
 
 # Load the entire model configuration file
-with open(MODEL_CONFIG_PATH, "r") as f:
-    model_configs = yaml.safe_load(f)
+# Make this lazy loading to allow for test mocking
+def _load_model_configs():
+    with open(MODEL_CONFIG_PATH, "r") as f:
+        return yaml.safe_load(f)
 
-def _create_lm(config_name: str) -> "dspy.LM":
+def _create_lm(config_name: str):
     """
     Helper function to create a dspy.LM instance from a named configuration.
     """
-    gepa_config = model_configs.get(config_name)
+    # Load configs directly inside the function
+    all_configs = _load_model_configs()
+    gepa_config = all_configs.get(config_name)
     if not gepa_config:
         raise ValueError(f"Model configuration '{config_name}' not found in {MODEL_CONFIG_PATH}")
     
@@ -53,12 +66,9 @@ def setup_dspy(api_key: str = None):
     # --- 4. CONFIGURE DSPY ---
     # The main lm for DSPy operations will be the task_lm
     lm = task_lm
-    dspy.configure(lm=lm)
+    if dspy is not None:
+        dspy.configure(lm=lm)
 
-# Initialize module-level variables to None
-lm = None
-task_lm = None
-reflection_lm = None
 
 # --- 4. THE JUDGE'S CONSTITUTION ---
 JUDGE_CONSTITUTION = """

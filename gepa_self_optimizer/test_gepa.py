@@ -31,11 +31,9 @@ sys.modules['optimize_gepa'].refinement_gepa_metric = mock_refinement_gepa_metri
 class TestGepaConfig(unittest.TestCase):
     """Test the configuration module."""
 
-    @patch('gepa_config.yaml.safe_load')
-    @patch('gepa_config.open', new_callable=MagicMock)
-    @patch('gepa_config.Path')
+    @patch('gepa_config._load_model_configs')
     @patch('gepa_config.os.getenv', return_value='MOCKED_API_KEY')
-    def test_create_lm_success(self, mock_getenv, mock_path, mock_open_file, mock_yaml):
+    def test_create_lm_success(self, mock_getenv, mock_load_configs):
         """
         Test that `_create_lm` uses dspy.LM to create and return an LM instance.
         """
@@ -47,7 +45,7 @@ class TestGepaConfig(unittest.TestCase):
                 'max_tokens': 100
             }
         }
-        mock_yaml.return_value = mock_config_data
+        mock_load_configs.return_value = mock_config_data
         
         # Mock the dspy.LM class
         with patch('gepa_config.dspy.LM') as mock_dspy_lm:
@@ -123,12 +121,24 @@ class TestGenerateData(unittest.TestCase):
     @patch('generate_data.random.choice', return_value="Math Calculation Error")
     def test_generate_synthetic_data_success(self, mock_random):
         """Test synthetic data generation for a single example."""
-        mock_topic_to_qa_pred = Mock(question="q1", correct_answer="a1")
-        mock_bug_injector_pred = Mock(bad_draft="bad_a1", gold_critique="error_desc1")
+        mock_topic_to_qa_pred = Mock()
+        mock_topic_to_qa_pred.question = "q1"
+        mock_topic_to_qa_pred.correct_answer = "a1"
+        
+        mock_bug_injector_pred = Mock()
+        mock_bug_injector_pred.bad_draft = "bad_a1"
+        mock_bug_injector_pred.gold_critique = "error_desc1"
         
         with patch('generate_data.dspy.ChainOfThought') as mock_chain_of_thought:
-            mock_chain_instance = mock_chain_of_thought.return_value
-            mock_chain_instance.side_effect = [mock_topic_to_qa_pred, mock_bug_injector_pred]
+            # Create mock predictors
+            mock_base_predictor = Mock()
+            mock_base_predictor.return_value = mock_topic_to_qa_pred
+            
+            mock_bug_predictor = Mock()
+            mock_bug_predictor.return_value = mock_bug_injector_pred
+            
+            # Configure ChainOfThought to return different predictors
+            mock_chain_of_thought.side_effect = [mock_base_predictor, mock_bug_predictor]
 
             dataset = generate_synthetic_data(num_examples=1)
             self.assertEqual(len(dataset), 1)
@@ -137,11 +147,11 @@ class TestGenerateData(unittest.TestCase):
             self.assertEqual(example.draft_answer, "bad_a1")
             self.assertEqual(example.gold_critique, "error_desc1")
             self.assertEqual(example.correct_answer, "a1")
-            self.assertEqual(example.inputs(), {"question": "q1", "draft_answer": "bad_a1"})
+            self.assertEqual(dict(example.inputs()), {"question": "q1", "draft_answer": "bad_a1"})
 
     def test_generate_synthetic_data_handles_exceptions(self):
         """Test that data generation handles exceptions gracefully and continues."""
-        with patch('dspy.predict.ChainOfThought', side_effect=Exception("Test error")):
+        with patch('generate_data.dspy.ChainOfThought', side_effect=Exception("Test error")):
             result = generate_synthetic_data(num_examples=1)
             self.assertEqual(len(result), 0)
 
