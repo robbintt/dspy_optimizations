@@ -46,15 +46,19 @@ def setup_dspy(api_key: str = None):
     os.environ["CEREBRAS_API_KEY"] = api_key
 
     # --- 3. INSTANTIATE THE LANGUAGE MODELS ---
+    global task_lm, reflection_lm, lm  # Declare we're modifying globals
     task_lm = _create_lm("task_model")
     reflection_lm = _create_lm("reflection_model")
 
     # --- 4. CONFIGURE DSPY ---
-    dspy.configure(lm=task_lm)
+    # The main lm for DSPy operations will be the task_lm
+    lm = task_lm
+    dspy.configure(lm=lm)
 
-    # Make the models available globally if needed by other modules
-    globals()['task_lm'] = task_lm
-    globals()['reflection_lm'] = reflection_lm
+# Initialize module-level variables to None
+lm = None
+task_lm = None
+reflection_lm = None
 
 # --- 4. THE JUDGE'S CONSTITUTION ---
 JUDGE_CONSTITUTION = """
