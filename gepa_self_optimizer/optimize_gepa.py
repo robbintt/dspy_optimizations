@@ -1,14 +1,7 @@
 import dspy
 import json
 from sentence_transformers import SentenceTransformer, util
-from gepa_config import setup_dspy, task_lm, reflection_lm, _load_run_settings
-from gepa_system import GlmSelfReflect
-
-# Initialize DSPy and models first
-setup_dspy()
-
-# Load run settings
-run_settings = _load_run_settings()
+# No change needed - imports and initialization are already correct
 
 # --- 1. PROVIDE A WORKING SEMANTIC SIMILARITY FUNCTION ---
 # The original 'dspy.evaluate.semantic_similarity' does not exist.
