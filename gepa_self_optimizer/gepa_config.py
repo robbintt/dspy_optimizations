@@ -162,18 +162,30 @@ def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred
     Returns:
         dspy.Prediction: A Prediction object with the combined score and detailed feedback.
     """
-    # Score the quality of the final refined answer
-    answer_score = semantic_similarity(prediction.answer, example.correct_answer)
-
-    # Score the quality of the critique against the gold standard critique
-    # We check if the critiques exist before scoring
-    critique_score = 0.0
-    
     # --- INSTRUMENTATION ---
     print(f"\n[METRIC] Scoring a new prediction...")
     
-    if hasattr(prediction, 'critique') and hasattr(example, 'gold_critique'):
-        critique_score = semantic_similarity(prediction.critique, example.gold_critique)
+    # Initialize scores to 0.0 to handle potential failures gracefully
+    answer_score = 0.0
+    critique_score = 0.0
+
+    # Score the quality of the final refined answer, with error handling
+    try:
+        if hasattr(prediction, 'answer') and hasattr(example, 'correct_answer'):
+            answer_score = semantic_similarity(prediction.answer, example.correct_answer)
+        else:
+            print("[METRIC] WARNING: Missing 'answer' in prediction or 'correct_answer' in example. Scoring answer as 0.0.")
+    except Exception as e:
+        print(f"[METRIC] ERROR: Failed to calculate answer similarity: {e}. Scoring as 0.0.")
+
+    # Score the quality of the critique against the gold standard critique, with error handling
+    try:
+        if hasattr(prediction, 'critique') and hasattr(example, 'gold_critique'):
+            critique_score = semantic_similarity(prediction.critique, example.gold_critique)
+        else:
+            print("[METRIC] INFO: Missing 'critique' in prediction or 'gold_critique' in example. Scoring critique as 0.0.")
+    except Exception as e:
+        print(f"[METRIC] ERROR: Failed to calculate critique similarity: {e}. Scoring as 0.0.")
 
     # Combine the two scores. This gives partial credit for a good critique,
     # enabling GEPA to learn from the trace even if the final answer is poor.
