@@ -71,8 +71,36 @@ def save_run_results(program, valset, metric_fn, run_dir):
     
     # 1. Save the detailed GEPA optimization statistics
     detailed_results_path = os.path.join(run_dir, "gepa_detailed_results.json")
+    
+    # Build the dictionary manually to handle DSPy module objects in candidates
+    results_dict = {
+        "parents": program.detailed_results.parents,
+        "val_aggregate_scores": program.detailed_results.val_aggregate_scores,
+        "val_subscores": program.detailed_results.val_subscores,
+        "per_val_instance_best_candidates": [list(s) for s in program.detailed_results.per_val_instance_best_candidates],
+        "discovery_eval_counts": program.detailed_results.discovery_eval_counts,
+        "best_outputs_valset": program.detailed_results.best_outputs_valset,
+        "total_metric_calls": program.detailed_results.total_metric_calls,
+        "num_full_val_evals": program.detailed_results.num_full_val_evals,
+        "log_dir": program.detailed_results.log_dir,
+        "seed": program.detailed_results.seed,
+    }
+    
+    # To save the candidate programs, we must convert the module objects to their dict representation
+    candidates_as_dicts = []
+    for candidate_module in program.detailed_results.candidates:
+        # Get the instructions for each predictor within the candidate module
+        candidate_dict = {}
+        for name, predictor in candidate_module.named_predictors():
+            if hasattr(predictor, 'signature'):
+                candidate_dict[name] = predictor.signature.instructions
+        candidates_as_dicts.append(candidate_dict)
+
+    results_dict["candidates"] = candidates_as_dicts
+    results_dict["best_idx"] = program.detailed_results.best_idx
+    
     with open(detailed_results_path, "w") as f:
-        json.dump(program.detailed_results.to_dict(), f, indent=4)
+        json.dump(results_dict, f, indent=4)
     print(f"  - Saved detailed GEPA stats to '{detailed_results_path}'")
 
     # 2. Save the final evaluation metrics on the validation set
