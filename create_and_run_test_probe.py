@@ -76,8 +76,11 @@ class SimpleTask(dspy.Signature):
     question = dspy.InputField(desc="A simple question.")
     answer = dspy.OutputField(desc="A simple answer.")
 
-def simple_metric(gold, pred, trace=None):
-    """A simple metric that always returns 1.0 to ensure success."""
+def simple_metric(gold, pred, trace=None, pred_name=None, pred_trace=None):
+    """
+    A simple metric that always returns 1.0 to ensure success.
+    It matches the required 5-argument signature for dspy.GEPA.
+    """
     return 1.0
 
 # --- 2. Define a minimal student program ---
