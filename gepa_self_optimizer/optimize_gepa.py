@@ -35,7 +35,7 @@ print("\n🧬 [SINGLE PHASE] Evolving the GlmSelfReflect system with GEPA...")
 
 # Initialize the configured language models from config/models.yaml
 print("\n🔧 Initializing dspy language models...")
-setup_dspy()
+task_lm, reflection_lm = setup_dspy()
 
 # Get the GEPA auto setting from settings, with a default of "medium"
 gepa_auto_setting = run_settings.get("optimization", {}).get("gepa_auto_setting", "medium")

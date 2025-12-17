@@ -120,6 +120,9 @@ def setup_dspy(api_key: str = None):
     if dspy is not None:
         dspy.configure(lm=lm)
 
+    # Return the created language models for direct use
+    return task_lm, reflection_lm
+
 
 # --- 4. THE JUDGE'S CONSTITUTION ---
 JUDGE_CONSTITUTION = """
