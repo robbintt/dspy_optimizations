@@ -43,7 +43,7 @@ gepa_auto_setting = run_settings.get("optimization", {}).get("gepa_auto_setting"
 optimizer = dspy.GEPA(
     metric=refinement_gepa_metric,
     auto=gepa_auto_setting,
-    reflection_lm=task_lm,
+    reflection_lm=reflection_lm,
     track_stats=True
 )
 
