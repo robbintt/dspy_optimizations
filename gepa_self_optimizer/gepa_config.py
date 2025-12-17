@@ -149,23 +149,46 @@ def semantic_similarity(text1, text2):
 # --- 5. METRIC FOR GEPA ---
 def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred_trace=None):
     """
-    Computes a semantic similarity score and provides rich feedback for GEPA.
-    GEPA uses this function to determine if a prediction was successful and to gather
-    textual feedback from its failures to inform prompt improvements.
+    Computes a combined metric score based on the final answer's correctness and the critique's quality.
+    This dual scoring allows GEPA to learn from partial successes, such as a good critique followed by a failed refinement.
+    
+    Args:
+        example (dspy.Example): The ground truth example, containing `correct_answer` and `gold_critique`.
+        prediction (dspy.Prediction): The model's prediction, containing `answer` and `critique`.
+        trace: The execution trace.
+        pred_name: The name of the predictor.
+        pred_trace: The predictor trace.
+    
+    Returns:
+        dspy.Prediction: A Prediction object with the combined score and detailed feedback.
     """
-    score = semantic_similarity(prediction.answer, example.correct_answer)
+    # Score the quality of the final refined answer
+    answer_score = semantic_similarity(prediction.answer, example.correct_answer)
+
+    # Score the quality of the critique against the gold standard critique
+    # We check if the critiques exist before scoring
+    critique_score = 0.0
+    if hasattr(prediction, 'critique') and hasattr(example, 'gold_critique'):
+        critique_score = semantic_similarity(prediction.critique, example.gold_critique)
+
+    # Combine the two scores. This gives partial credit for a good critique,
+    # enabling GEPA to learn from the trace even if the final answer is poor.
+    # We can weight these scores, for now let's average them.
+    final_score = (answer_score + critique_score) / 2
     
-    # The feedback is critical: it tells the reflection model *why* it failed
-    # and gives it the 'gold standard' to aim for.
+    # Provide detailed feedback to the reflection model
     feedback = (
-        f"The generated answer achieved a similarity score of {score:.3f} against the reference answer. "
+        f"Combined metric score: {final_score:.3f}. "
+        f"Answer similarity score: {answer_score:.3f}. "
+        f"Critique similarity score: {critique_score:.3f}.\n\n"
         f"The model's prediction was:\n---\n{prediction.answer}\n---\n"
-        f"The target reference answer was:\n---\n{example.correct_answer}\n---"
+        f"The target reference answer was:\n---\n{example.correct_answer}\n---\n"
+        f"The model's critique was:\n---\n{getattr(prediction, 'critique', 'N/A')}\n---\n"
+        f"The gold standard critique was:\n---\n{getattr(example, 'gold_critique', 'N/A')}\n---"
     )
-    
-    # Return a Prediction object with trace, which is the standard for DSPy optimizers.
-    # GEPA will try to maximize this score and use the trace to learn.
-    return dspy.Prediction(score=score, feedback=feedback, trace=trace)
+
+    # Return the combined score and feedback. GEPA will use this to maximize its performance.
+    return dspy.Prediction(score=final_score, feedback=feedback, trace=trace)
 
 # --- 6. THE JUDGE'S CONSTITUTION ---
 def _load_judge_constitution():
