@@ -4,6 +4,13 @@ from sentence_transformers import SentenceTransformer, util
 from gepa_config import setup_dspy, run_settings
 from gepa_system import GlmSelfReflect
 
+import os
+
+# Check if optimized program already exists to prevent rerunning
+if os.path.exists("glm_gepa_complete.json"):
+    print("✅ Optimized program already exists at 'glm_gepa_complete.json'. Skipping optimization.")
+    exit(0)
+
 # --- 1. PROVIDE A WORKING SEMANTIC SIMILARITY FUNCTION ---
 # The original 'dspy.evaluate.semantic_similarity' does not exist.
 print("🔍 Loading semantic similarity model...")
@@ -61,5 +68,12 @@ optimized_program.save("glm_gepa_complete.json")
 print("\n🏆 GEPA EVOLUTION COMPLETE! Saved to 'glm_gepa_complete.json'")
 print("\n--- What changed? ---")
 print("Inspect your optimized program's prompts:")
-optimized_program.critic.display()
-optimized_program.refiner.display()
+# Safely inspect prompts without using .display() which may not exist
+try:
+    if hasattr(optimized_program.critic, 'prompt'):
+        print("CRITIC PROMPT:", optimized_program.critic.prompt)
+    if hasattr(optimized_program.refiner, 'prompt'):
+        print("REFINER PROMPT:", optimized_program.refiner.prompt)
+except AttributeError as e:
+    print(f"Could not inspect prompts: {e}")
+    print("Program optimized successfully.")
