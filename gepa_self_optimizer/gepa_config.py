@@ -169,9 +169,6 @@ class GEPARunConfig:
     Each instance represents a complete set of parameters for one optimization job.
     """
     
-    # The name of the profile loaded from the configuration file
-    gepa_profile: Optional[str] = None
-    
     # Budget configuration
     max_metric_calls: Optional[int] = None
     max_full_evals: Optional[int] = None
@@ -240,7 +237,6 @@ def get_gepa_run_config(profile_name: str) -> GEPARunConfig:
 
 # Pre-defined configurations for common use cases
 DEVELOPMENT_CONFIG = GEPARunConfig(
-    gepa_profile="development",
     max_metric_calls=80,
     reflection_minibatch_size=3,
     use_merge=True,
