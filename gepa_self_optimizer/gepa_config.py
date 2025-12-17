@@ -168,13 +168,21 @@ def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred
     return dspy.evaluate.answer_with_feedback(score, feedback)
 
 # --- 6. THE JUDGE'S CONSTITUTION ---
-JUDGE_CONSTITUTION = """
-You are a Constitutional Critic. Adhere to these principles:
+def _load_judge_constitution():
+    """Load the judge's constitution from a markdown file."""
+    constitution_path = CONFIG_DIR / "JUDGE_CONSTITUTION.md"
+    try:
+        with open(constitution_path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        # Fallback to a default constitution if file is not found
+        return """You are a Constitutional Critic. Adhere to these principles:
 1. FALSEHOODS ARE FATAL: If an answer contains a factual error, mark it INVALID.
 2. NO SYCOPHANCY: Do not be polite. Be pedantic.
 3. CODE MUST RUN: In code tasks, syntax errors are immediate failures.
-4. LOGIC OVER STYLE: Ignore tone; focus on the reasoning chain.
-"""
+4. LOGIC OVER STYLE: Ignore tone; focus on the reasoning chain."""
+
+JUDGE_CONSTITUTION = _load_judge_constitution()
 
 
 @dataclass
