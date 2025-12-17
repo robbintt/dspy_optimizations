@@ -136,7 +136,10 @@ print("=" * 60)
 print("\n--- Inspecting Optimized Program Prompts ---")
 try:
     print("--- Optimized Critic Prompts ---")
-    print(optimized_program.critic.demos)
+    if hasattr(optimized_program.critic, 'predict') and hasattr(optimized_program.critic.predict, 'demos'):
+        print(optimized_program.critic.predict.demos)
+    else:
+        print("No critic demos found")
 
     if hasattr(optimized_program, 'refiner'):
         print("\n--- Optimized Refiner Prompts ---")
