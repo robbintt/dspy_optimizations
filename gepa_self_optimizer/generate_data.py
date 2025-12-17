@@ -76,11 +76,12 @@ with dspy.context(lm=task_lm):
         
         good_dataset = []
         total_attempts = 0
-
         overall_topic_attempts = 0
+        
         while len(good_dataset) < num_examples:
             topic_idx = overall_topic_attempts % len(topics)
             topic = topics[topic_idx]
+            overall_topic_attempts += 1
             
             try:
                 # 1. Generate a single, high-quality base Q&A pair
