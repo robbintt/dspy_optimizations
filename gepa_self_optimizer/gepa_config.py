@@ -237,6 +237,7 @@ def get_gepa_run_config(profile_name: str) -> GEPARunConfig:
 
 # Pre-defined configurations for common use cases
 DEVELOPMENT_CONFIG = GEPARunConfig(
+    gepa_profile="development",
     max_metric_calls=80,
     reflection_minibatch_size=3,
     use_merge=True,
