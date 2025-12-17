@@ -5,7 +5,7 @@ import json
 import os
 import sys
 import time
-from gepa_config import setup_dspy, task_lm, refinement_gepa_metric
+from gepa_config import setup_dspy
 from gepa_system import GlmSelfReflect
 from dspy.evaluate import Evaluate
 
@@ -30,7 +30,7 @@ if os.path.exists(output_filename):
 # --- 2. INITIALIZE AND GENERATE DATA ---
 # Only run this if the file was not found.
 print("🚀 Initializing DSPy and models to generate golden set...")
-setup_dspy()
+task_lm, reflection_lm = setup_dspy()
 
 # Number of examples to generate
 num_examples_to_generate = 25
@@ -97,9 +97,9 @@ with dspy.context(lm=task_lm):
         MIN_SCORE = 0.30
 
         print(f"🧠 Curating {num_examples} examples using novel synthetic contexts...")
-        print(f"   Target score range per item: [{MIN_SCORE:.2f}, {MAX_SCORE:.2f})\n")
+        print(f"   Target similarity score range per item: [{MIN_SCORE:.2f}, {MAX_SCORE:.2f})\n")
         
-        setup_dspy()
+        task_lm, reflection_lm = setup_dspy()
         unoptimized_program = GlmSelfReflect()
         evaluator = Evaluate(devset=[], metric=refinement_gepa_metric, num_threads=1)
         
