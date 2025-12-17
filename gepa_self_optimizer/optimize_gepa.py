@@ -17,7 +17,8 @@ def semantic_similarity(text1, text2):
 # --- 2. DEFINE THE METRIC FOR GEPA ---
 def refinement_gepa_metric(example, prediction, trace=None):
     score = semantic_similarity(prediction.answer, example.correct_answer)
-    return score
+    # Return boolean: True if similarity > 0.7 (good enough), False otherwise
+    return score > 0.7
 
 # --- 3. LOAD DATA ---
 print("\n📂 Loading Golden Set...")
