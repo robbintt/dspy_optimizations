@@ -88,16 +88,10 @@ with dspy.context(lm=task_lm):
         """
         global SEED
         
-        # Concepts are now broad abstract ideas, not specific knowledge domains
-        concepts = [
-            "inter-dimensional travel customs",
-            "sentient fungal colony politics",
-            "alchemy based on emotional states",
-            "a galactic bureaucracy for planet approvals",
-            "the logic of dream-crafting",
-            "time-travel-based evidence law",
-            "a city built on a giant, sleeping creature"
-        ]
+        # Create highly unique concepts from combination parts
+        adjectives = ["bureaucratic", "sentient", "ancient", "chaotic", "harmonious"]
+        subjects = ["alchemy", "dream-crafting", "fungal logic", "interdimensional trade", "time-travel law"]
+        contexts = ["galactic empires", "underwater cities", "digital realms", "medieval villages"]
         
         MAX_SCORE = 0.75
         MIN_SCORE = 0.30
@@ -113,7 +107,7 @@ with dspy.context(lm=task_lm):
         total_attempts = 0
         
         while len(good_dataset) < num_examples:
-            chosen_concept = random.choice(concepts)
+            chosen_concept = f"{random.choice(adjectives)} {random.choice(subjects)} for the context of {random.choice(contexts)}"
             cache_busting_nonce = random.randint(0, 2**63 - 1)
             unique_context = f"concept-{hash(chosen_concept)}-seed-{SEED}-nonce-{cache_busting_nonce}"
             
