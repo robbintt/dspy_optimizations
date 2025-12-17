@@ -29,9 +29,6 @@ if os.path.exists(output_filename):
 
 # Number of examples to generate
 num_examples_to_generate = 25
-
-# Use the task model for data generation
-with dspy.context(lm=task_lm):
     # --- SIGNATURES ---
     class WorldGenerator(Signature):
         """Given a concept, invent a short, self-contained set of unique rules for a fictional system."""
