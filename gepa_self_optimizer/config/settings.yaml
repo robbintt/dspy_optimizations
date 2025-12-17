@@ -5,21 +5,6 @@ data_generation:
   # Number of examples to generate in golden_set.json
   # A small number (e.g., 2-5) is good for quick tests.
   # A larger number (e.g., 25+) is better for robust optimization.
-  num_examples: 2
-
-optimization:
-  # GEPA optimizer intensity level.
-  # Options: "light", "medium", "heavy"
-  # Use "light" for fast, cheap test runs.
-  # Use "medium" or "heavy" for more thorough optimization.
-  gepa_auto_setting: "light"
-# GEPA Execution Settings
-# This file controls parameters for data generation and optimization runs.
-
-data_generation:
-  # Number of examples to generate in golden_set.json
-  # A small number (e.g., 2-5) is good for quick tests.
-  # A larger number (e.g., 25+) is better for robust optimization.
   num_examples: 25
 
 optimization:
