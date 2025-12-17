@@ -16,6 +16,8 @@ optimization:
   skip_perfect_score: false
 # GEPA Execution Settings
 
+gepa_profile: "development"
+
 data_generation:
   num_examples: 25
 
