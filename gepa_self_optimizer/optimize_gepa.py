@@ -37,13 +37,13 @@ else:
         auto=gepa_auto_setting,
         reflection_lm=reflection_lm,
         track_stats=True,
-        skip_if_perfect_score=False
     )
     program_to_optimize = GlmSelfReflect()
     optimized_program = optimizer.compile(
         student=program_to_optimize, 
         trainset=trainset,
         valset=valset,
+        skip_if_perfect_score=False
     )
     
     # --- ADD THIS DEBUGGING BLOCK ---
