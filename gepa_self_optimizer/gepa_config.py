@@ -308,23 +308,31 @@ def create_gepa_optimizer(metric, config: GEPARunConfig, reflection_lm: dspy.LM)
     """
     config.validate()
     
-    return dspy.GEPA(
-        metric=metric,
-        max_metric_calls=config.max_metric_calls,
-        max_full_evals=config.max_full_evals,
-        auto=config.auto,
-        reflection_minibatch_size=config.reflection_minibatch_size,
-        candidate_selection_strategy=config.candidate_selection_strategy,
-        reflection_lm=reflection_lm,
-        skip_perfect_score=config.skip_perfect_score,
-        use_merge=config.use_merge,
-        max_merge_invocations=config.max_merge_invocations,
-        num_threads=config.num_threads,
-        failure_score=config.failure_score,
-        perfect_score=config.perfect_score,
-        log_dir=config.log_dir,
-        track_stats=config.track_stats,
-        warn_on_score_mismatch=config.warn_on_score_mismatch,
-        seed=config.seed,
-        gepa_kwargs=config.gepa_kwargs or {},
-    )
+    # Prepare the base arguments for dspy.GEPA, excluding budget settings
+    optimizer_kwargs = {
+        "metric": metric,
+        "reflection_lm": reflection_lm,
+        "reflection_minibatch_size": config.reflection_minibatch_size,
+        "candidate_selection_strategy": config.candidate_selection_strategy,
+        "skip_perfect_score": config.skip_perfect_score,
+        "use_merge": config.use_merge,
+        "max_merge_invocations": config.max_merge_invocations,
+        "num_threads": config.num_threads,
+        "failure_score": config.failure_score,
+        "perfect_score": config.perfect_score,
+        "log_dir": config.log_dir,
+        "track_stats": config.track_stats,
+        "warn_on_score_mismatch": config.warn_on_score_mismatch,
+        "seed": config.seed,
+        "gepa_kwargs": config.gepa_kwargs or {},
+    }
+    
+    # Add only the relevant budget parameter to avoid conflicts in dspy.GEPA
+    if config.auto is not None:
+        optimizer_kwargs["auto"] = config.auto
+    elif config.max_metric_calls is not None:
+        optimizer_kwargs["max_metric_calls"] = config.max_metric_calls
+    elif config.max_full_evals is not None:
+        optimizer_kwargs["max_full_evals"] = config.max_full_evals
+        
+    return dspy.GEPA(**optimizer_kwargs)
