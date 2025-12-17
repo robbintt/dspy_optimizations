@@ -12,7 +12,8 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # --- Configuration ---
-VENV_DIR="$PROJECT_ROOT/venv"
+VENV_DIR="$HOME/virtualenvs/dspy_env" # Assuming 'dspy_env' is the name. Change if needed.
+VENV_BIN="$VENV_DIR/bin"
 CONFIG_DIR="$SCRIPT_DIR/config"
 MODELS_FILE="$CONFIG_DIR/models.yaml"
 DEV_MODELS_FILE="$CONFIG_DIR/models.dev.yaml"
@@ -21,16 +22,31 @@ BACKUP_FILE="$CONFIG_DIR/models.yaml.backup"
 # --- Script Logic ---
 echo "🚀 Starting GEPA development run..."
 
-# 1. Check for venv
 if [ ! -d "$VENV_DIR" ]; then
-    echo "❌ Error: Virtual environment '$VENV_DIR' not found."
-    echo "Please create it first: python -m venv venv"
-    exit 1
+    echo "⚠️  Virtual environment not found at $VENV_DIR."
+    echo "  Creating a new virtual environment here..."
+    mkdir -p "$(dirname "$VENV_DIR")"
+    python3 -m venv "$VENV_DIR"
+    if [ $? -ne 0 ]; then
+        echo "❌ Error: Failed to create virtual environment at $VENV_DIR"
+        exit 1
+    fi
 fi
 
-# 2. Activate venv
-echo "🔧 Activating virtual environment..."
+echo "🔧 Activating virtual environment at $VENV_DIR"
 source "$VENV_DIR/bin/activate"
+
+# --- Dependency Installation ---
+REQUIREMENTS_FILE="$PROJECT_ROOT/gepa_self_optimizer/requirements.txt"
+
+if [ ! -f "$REQUIREMENTS_FILE" ]; then
+  echo "❌ Error: requirements.txt not found at $REQUIREMENTS_FILE"
+  exit 1
+fi
+
+echo "📥 Installing/upgrading dependencies from $REQUIREMENTS_FILE..."
+pip install --upgrade pip
+pip install -r "$REQUIREMENTS_FILE"
 
 # 3. Check if API key is set
 if [ -z "$CEREBRAS_API_KEY" ] && [ -z "$ZHIPUAI_API_KEY" ]; then
