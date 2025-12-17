@@ -158,6 +158,13 @@ def test_gepa_compilation_bug():
         
         state_before_forward = optimized_program.dump_state()
         cot_state_before_forward = state_before_forward.get('chain_of_thought_predictor.predict', {})
+        print("   -> Raw state for 'chain_of_thought_predictor.predict' before forward call:", cot_state_before_forward)
+        
+        if not cot_state_before_forward:
+            print("   -> ❌ FAILURE: Optimized program state is missing its 'chain_of_thought_predictor' component BEFORE forward call.")
+            print("   -> Full state before:", state_before_forward)
+            return False
+            
         instruction_before_forward = cot_state_before_forward.get('signature', {}).get('instructions')
         print(f"   -> Instruction BEFORE forward call: '{instruction_before_forward}'")
 
@@ -175,10 +182,11 @@ def test_gepa_compilation_bug():
         state_after_forward = optimized_program.dump_state()
         
         cot_state_after_forward = state_after_forward.get('chain_of_thought_predictor.predict', {})
-        
+        print("   -> Raw state for 'chain_of_thought_predictor.predict' after forward call:", cot_state_after_forward)
+
         if not cot_state_after_forward:
-            print("   -> ❌ FAILURE: Optimized program state is missing its 'chain_of_thought_predictor' component.")
-            print("   -> Full state:", state_after_forward)
+            print("   -> ❌ FAILURE: Optimized program state is missing its 'chain_of_thought_predictor' component AFTER forward call.")
+            print("   -> Full state after:", state_after_forward)
             return False
 
         # ChainOfThought modules have an extra 'predict' layer in their dumped state
