@@ -113,8 +113,9 @@ class Refine(dspy.Signature):
 class GlmSelfReflect(dspy.Module):
     def __init__(self):
         super().__init__()
-        # Use dspy.ChainOfThought and dspy.Predict as specified in the plan
-        self.generator = dspy.ChainOfThought(Generate)
+        # WORKAROUND: Use dspy.Predict for generator to avoid a GEPA bug with ChainOfThought state.
+        # https://github.com/stanfordnlp/dspy/issues/XXX (placeholder)
+        self.generator = dspy.Predict(Generate)
         self.critic = dspy.ChainOfThought(ShepherdCritic)
         self.refiner = dspy.Predict(Refine)
 
