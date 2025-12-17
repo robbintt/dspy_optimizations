@@ -8,10 +8,10 @@ task_model:
   name: "zai-glm-4.6"               # Use the specified model
   provider: "cerebras"
   temperature: 0.8
-  max_tokens: 5000
+  max_tokens: 32000
 
 reflection_model:
   name: "zai-glm-4.6"               # Use the specified model
   provider: "cerebras"
   temperature: 0.7
-  max_tokens: 5000
+  max_tokens: 32000
