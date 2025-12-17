@@ -1,23 +1,35 @@
 import dspy
-from gepa_config import JUDGE_CONSTITUTION
+from gepa_config import JUDGE_CONSTITUTION, DEVELOPMENT_CONFIG, create_gepa_optimizer
 
-def optimize_with_retries(gepa_optimizer, student_module, trainset, valset, max_retries=3):
+def optimize_with_retries(student_module, trainset, valset, reflection_lm, metric, config=DEVELOPMENT_CONFIG, max_retries=3):
     """
     Wrapper function to run GEPA optimization with retries on reflection failures.
     
     Args:
-        gepa_optimizer: The configured GEPA optimizer instance
         student_module: The DSPy module to optimize
         trainset: Training data for optimization
         valset: Validation data for evaluation
+        reflection_lm: The language model to use for reflection
+        metric: The metric function for evaluation
+        config: The GEPARunConfig to use (defaults to DEVELOPMENT_CONFIG)
         max_retries: Maximum number of retry attempts on reflection failures
         
     Returns:
         The optimized DSPy module
     """
+    # Create optimizer from configuration
+    gepa_optimizer = create_gepa_optimizer(
+        metric=metric,
+        config=config,
+        reflection_lm=reflection_lm
+    )
+    
     optimized_program = None
     
-    print(f"Starting GEPA optimization with up to {max_retries} retries...")
+    if config.max_metric_calls:
+        print(f"Starting GEPA optimization with budget of {config.max_metric_calls} calls")
+    else:
+        print(f"Starting GEPA optimization with up to {max_retries} retries...")
     
     for attempt in range(max_retries):
         try:
