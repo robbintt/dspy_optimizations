@@ -163,7 +163,7 @@ def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred
         dspy.Prediction: A Prediction object with the combined score and detailed feedback.
     """
     # --- INSTRUMENTATION ---
-    print(f"\n[METRIC] Scoring a new prediction...")
+    print(f"\n[METRIC] THE METRIC FUNCTION IS BEING CALLED! Scoring a new prediction...")
     
     # Initialize scores to 0.0 to handle potential failures gracefully
     answer_score = 0.0
