@@ -63,6 +63,64 @@ else:
         valset=valset,
     )
     
+    # --- INSPECT GEPA OPTIMIZATION RESULTS ---
+    print("\n🔍 GEPA OPTIMIZATION INSPECTION RESULTS:")
+    print("=" * 60)
+    
+    # Show optimization statistics if available
+    if hasattr(optimizer, 'stats') and optimizer.stats:
+        print("📊 Optimization Statistics:")
+        for key, value in optimizer.stats.items():
+            print(f"  {key}: {value}")
+        print()
+    
+    # Show the evolved program structure
+    print("🏗️ Evolved Program Structure:")
+    print(f"  Program type: {type(optimized_program).__name__}")
+    
+    # Inspect critic component
+    if hasattr(optimized_program, 'critic'):
+        print("\n📝 Evolved Critic Component:")
+        if hasattr(optimized_program.critic, 'demos') and optimized_program.critic.demos:
+            print(f"  Number of demos: {len(optimized_program.critic.demos)}")
+            for i, demo in enumerate(optimized_program.critic.demos[:3]):  # Show first 3
+                print(f"  Demo {i+1}:")
+                for key, value in demo.items():
+                    if isinstance(value, str) and len(value) > 100:
+                        print(f"    {key}: {value[:100]}...")
+                    else:
+                        print(f"    {key}: {value}")
+        else:
+            print("  No demos found in critic")
+    
+    # Inspect refiner component if it exists
+    if hasattr(optimized_program, 'refiner'):
+        print("\n🔧 Evolved Refiner Component:")
+        if hasattr(optimized_program.refiner, 'demos') and optimized_program.refiner.demos:
+            print(f"  Number of demos: {len(optimized_program.refiner.demos)}")
+            for i, demo in enumerate(optimized_program.refiner.demos[:3]):  # Show first 3
+                print(f"  Demo {i+1}:")
+                for key, value in demo.items():
+                    if isinstance(value, str) and len(value) > 100:
+                        print(f"    {key}: {value[:100]}...")
+                    else:
+                        print(f"    {key}: {value}")
+        else:
+            print("  No demos found in refiner")
+    
+    # Show any other components
+    for attr_name in dir(optimized_program):
+        if not attr_name.startswith('_') and attr_name not in ['critic', 'refiner', 'save', 'load', 'forward']:
+            attr = getattr(optimized_program, attr_name)
+            if hasattr(attr, 'demos'):
+                print(f"\n📋 Component '{attr_name}':")
+                if attr.demos:
+                    print(f"  Number of demos: {len(attr.demos)}")
+                else:
+                    print("  No demos found")
+    
+    print("=" * 60)
+    
     # --- SAVE RESULTS ---
     optimized_program.save(output_file)
     print(f"\n🏆 GEPA EVOLUTION COMPLETE! Saved to '{output_file}'")
