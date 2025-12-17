@@ -2,6 +2,28 @@ import dspy
 import json
 from dspy.primitives.base_module import BaseModule
 from gepa_config import JUDGE_CONSTITUTION, create_gepa_optimizer
+import json
+
+def post_compile_inspection(program, program_name="Optimized Program"):
+    """
+    Inspects a program immediately after optimization.
+    This helps determine if the optimizer or the save function is the source of corruption.
+    """
+    print(f"\n🐛 [DEBUG] Inspecting '{program_name}' immediately after GEPA compilation...")
+    if not hasattr(program, 'dump_state'):
+        print(f"  ⚠️ Program {program_name} does not have a dump_state method. Cannot inspect.")
+        return
+
+    state = program.dump_state()
+    for component_key, component_data in state.items():
+        demos = component_data.get('demos', [])
+        instructions = component_data.get('signature', {}).get('instructions', '')
+        print(f"  🔍 Component: {component_key}")
+        print(f"    -> 'demos' count: {len(demos)}")
+        print(f"    -> 'instructions' length: {len(instructions)}")
+        # To avoid huge log output, we won't print the full instructions here unless needed.
+    print(f"🐛 [DEBUG] Finished post-compilation inspection of '{program_name}'.\n")
+
 
 def optimize_with_retries(student_module, trainset, valset, reflection_lm, metric, config, max_retries=3):
     """
@@ -60,6 +82,10 @@ def optimize_with_retries(student_module, trainset, valset, reflection_lm, metri
         raise RuntimeError(f"GEPA compilation failed after {max_retries} retries.")
     
     print("GEPA optimization finished successfully.")
+    
+    # Inspect the program returned by the optimizer *before* passing it to the caller
+    post_compile_inspection(optimized_program, program_name="GEPA Optimized Program")
+    
     return optimized_program
 
 # --- SIGNATURES ---
