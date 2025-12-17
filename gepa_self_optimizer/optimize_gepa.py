@@ -33,6 +33,9 @@ with open("golden_set.json", "r") as f:
 # ---------------------------------------------------------
 print("\n🧬 [SINGLE PHASE] Evolving the GlmSelfReflect system with GEPA...")
 
+# Initialize the configured language models from config/models.yaml
+setup_dspy()
+
 # Get the GEPA auto setting from settings, with a default of "medium"
 gepa_auto_setting = run_settings.get("optimization", {}).get("gepa_auto_setting", "medium")
 
