@@ -128,6 +128,11 @@ def setup_dspy(api_key: str = None):
 # --- 4. SEMANTIC SIMILARITY FUNCTION ---
 similarity_model = SentenceTransformer('all-MiniLM-L6-v2')
 
+from dataclasses import dataclass
+from typing import Optional, Dict, Any
+import dspy
+
+
 def semantic_similarity(text1, text2):
     """Computes cosine similarity between two texts."""
     embeddings = similarity_model.encode([text1, text2], convert_to_tensor=True)
@@ -147,3 +152,128 @@ You are a Constitutional Critic. Adhere to these principles:
 3. CODE MUST RUN: In code tasks, syntax errors are immediate failures.
 4. LOGIC OVER STYLE: Ignore tone; focus on the reasoning chain.
 """
+
+
+@dataclass
+class GEPARunConfig:
+    """
+    Configuration for a GEPA optimization run.
+    Each instance represents a complete set of parameters for one optimization job.
+    """
+    
+    # Budget configuration
+    max_metric_calls: Optional[int] = None
+    max_full_evals: Optional[int] = None
+    auto: Optional[str] = None  # "light", "medium", "heavy"
+    
+    # Reflection configuration
+    reflection_minibatch_size: int = 3
+    candidate_selection_strategy: str = "pareto"
+    skip_perfect_score: bool = True
+    
+    # Merge configuration
+    use_merge: bool = True
+    max_merge_invocations: int = 5
+    
+    # Evaluation configuration
+    num_threads: Optional[int] = None
+    failure_score: float = 0.0
+    perfect_score: float = 1.0
+    
+    # Logging configuration
+    log_dir: Optional[str] = None
+    track_stats: bool = False
+    warn_on_score_mismatch: bool = True
+    
+    # Reproducibility
+    seed: int = 0
+    
+    # Additional GEPA kwargs
+    gepa_kwargs: Optional[Dict[str, Any]] = None
+    
+    def validate(self):
+        """Validate the configuration."""
+        budget_params = [
+            self.max_metric_calls is not None,
+            self.max_full_evals is not None,
+            self.auto is not None
+        ]
+        if sum(budget_params) != 1:
+            raise ValueError(
+                "Exactly one of max_metric_calls, max_full_evals, or auto must be set"
+            )
+
+
+# Pre-defined configurations for common use cases
+DEVELOPMENT_CONFIG = GEPARunConfig(
+    max_metric_calls=80,
+    reflection_minibatch_size=3,
+    use_merge=True,
+    max_merge_invocations=2,
+    track_stats=True,
+    warn_on_score_mismatch=False,
+    seed=42,
+)
+
+LIGHT_CONFIG = GEPARunConfig(
+    auto="light",
+    reflection_minibatch_size=3,
+    use_merge=True,
+    max_merge_invocations=3,
+    track_stats=True,
+    seed=42,
+)
+
+MEDIUM_CONFIG = GEPARunConfig(
+    auto="medium",
+    reflection_minibatch_size=3,
+    use_merge=True,
+    max_merge_invocations=5,
+    track_stats=True,
+    seed=42,
+)
+
+HEAVY_CONFIG = GEPARunConfig(
+    auto="heavy",
+    reflection_minibatch_size=4,
+    use_merge=True,
+    max_merge_invocations=8,
+    track_stats=True,
+    seed=42,
+)
+
+
+def create_gepa_optimizer(metric, config: GEPARunConfig, reflection_lm: dspy.LM) -> dspy.GEPA:
+    """
+    Create a GEPA optimizer from a configuration.
+    
+    Args:
+        metric: The metric function to use for feedback and evaluation
+        config: The GEPARunConfig instance
+        reflection_lm: The language model to use for reflection
+        
+    Returns:
+        Configured dspy.GEPA optimizer
+    """
+    config.validate()
+    
+    return dspy.GEPA(
+        metric=metric,
+        max_metric_calls=config.max_metric_calls,
+        max_full_evals=config.max_full_evals,
+        auto=config.auto,
+        reflection_minibatch_size=config.reflection_minibatch_size,
+        candidate_selection_strategy=config.candidate_selection_strategy,
+        reflection_lm=reflection_lm,
+        skip_perfect_score=config.skip_perfect_score,
+        use_merge=config.use_merge,
+        max_merge_invocations=config.max_merge_invocations,
+        num_threads=config.num_threads,
+        failure_score=config.failure_score,
+        perfect_score=config.perfect_score,
+        log_dir=config.log_dir,
+        track_stats=config.track_stats,
+        warn_on_score_mismatch=config.warn_on_score_mismatch,
+        seed=config.seed,
+        gepa_kwargs=config.gepa_kwargs or {},
+    )
