@@ -108,6 +108,12 @@ def setup_dspy(api_key: str = None):
     task_lm = _create_lm("task_model")
     reflection_lm = _create_lm("reflection_model")
 
+    # Validate that models were created successfully
+    if task_lm is None:
+        raise RuntimeError("Failed to create task language model")
+    if reflection_lm is None:
+        raise RuntimeError("Failed to create reflection language model")
+
     # --- 4. CONFIGURE DSPY ---
     # The main lm for DSPy operations will be the task_lm
     lm = task_lm
