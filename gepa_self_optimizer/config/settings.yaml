@@ -13,4 +13,4 @@ optimization:
   # Use "light" for fast, cheap test runs.
   # Use "medium" or "heavy" for more thorough optimization.
   gepa_auto_setting: "medium"
-  skip_if_perfect_score: false
+  skip_perfect_score: false

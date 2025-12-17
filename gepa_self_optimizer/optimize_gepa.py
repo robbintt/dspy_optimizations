@@ -37,6 +37,7 @@ else:
         auto=gepa_auto_setting,
         reflection_lm=reflection_lm,
         track_stats=True,
+        skip_perfect_score=run_settings.get("optimization", {}).get("skip_perfect_score", True)
     )
     program_to_optimize = GlmSelfReflect()
     optimized_program = optimizer.compile(
