@@ -90,14 +90,13 @@ with dspy.context(lm=task_lm):
                 sabotage_attempt = 0
                 feedback_instruction = ""
                 item_is_good = False
+                last_failure_report = "" # Initialize for the first run
 
                 # We will try up to 4 times to get a good error for this one Q&A pair
                 while not item_is_good and sabotage_attempt < 4:
                     total_attempts += 1
                     sabotage_attempt += 1
                     
-            last_failure_report = "" # Initialize for the first run
-                
             bug_predictor = dspy.ChainOfThought(BugInjector)
             corrupted = bug_predictor(
                 question=base.question,
