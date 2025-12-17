@@ -67,7 +67,7 @@ print("\n🔍 GEPA OPTIMIZATION INSPECTION RESULTS:")
 print("=" * 60)
 
 # Show optimization statistics if available
-if hasattr(optimizer, 'stats') and optimizer.stats:
+if 'optimizer' in locals() and hasattr(optimizer, 'stats') and optimizer.stats:
     print("📊 Optimization Statistics:")
     for key, value in optimizer.stats.items():
         print(f"  {key}: {value}")
