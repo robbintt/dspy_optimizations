@@ -96,22 +96,14 @@ with dspy.context(lm=task_lm):
                     total_attempts += 1
                     sabotage_attempt += 1
                     
-                # 3. Dynamically build a sophisticated sabotage goal
-                sabotage_goal = feedback_instruction
+            last_failure_report = "" # Initialize for the first run
                 
-                if not sabotage_goal:
-                    # On the first try, provide a challenging but open-ended goal
-                    sabotage_goal = (
-                        "Your previous error was easily detected. Create a much more subtle and sophisticated flaw. "
-                        "Consider a subtle logical fallacy, a misapplied principle, or a plausible but incorrect detail."
-                    )
-                
-                bug_predictor = dspy.ChainOfThought(BugInjector)
-                corrupted = bug_predictor(
-                    question=base.question,
-                    correct_answer=base.correct_answer,
-                    sabotage_goal=sabotage_goal
-                )
+            bug_predictor = dspy.ChainOfThought(BugInjector)
+            corrupted = bug_predictor(
+                question=base.question,
+                correct_answer=base.correct_answer,
+                last_failed_attempt=last_failure_report
+            )
                     
                 ex = dspy.Example(
                     question=base.question,
