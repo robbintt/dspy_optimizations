@@ -1,3 +1,4 @@
+import sys
 import dspy
 import json
 from sentence_transformers import SentenceTransformer, util
@@ -75,6 +76,9 @@ try:
     if hasattr(optimized_program, 'refiner'):
         print("\n--- Optimized Refiner Prompts ---")
         print(optimized_program.refiner.demos)
-        
-except AttributeError as e:
-    print(f"Could not inspect prompts: {e}")
+            
+except Exception as e:
+    print(f"\n[ERROR] Could not inspect prompts due to an unexpected error: {e}")
+    print("The program object may be incomplete or structured differently than expected.")
+    
+sys.stdout.flush()
