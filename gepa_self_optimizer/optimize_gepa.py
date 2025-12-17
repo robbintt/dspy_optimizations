@@ -1,7 +1,7 @@
 import dspy
 import json
 from sentence_transformers import SentenceTransformer, util
-from gepa_config import setup_dspy, task_lm, reflection_lm, run_settings
+from gepa_config import setup_dspy, run_settings
 from gepa_system import GlmSelfReflect
 
 # --- 1. PROVIDE A WORKING SEMANTIC SIMILARITY FUNCTION ---
@@ -35,6 +35,7 @@ print("\n🧬 [SINGLE PHASE] Evolving the GlmSelfReflect system with GEPA...")
 
 # Initialize the configured language models from config/models.yaml
 print("\n🔧 Initializing dspy language models...")
+# Capture the returned language models instead of relying on globals
 task_lm, reflection_lm = setup_dspy()
 
 # Get the GEPA auto setting from settings, with a default of "medium"
