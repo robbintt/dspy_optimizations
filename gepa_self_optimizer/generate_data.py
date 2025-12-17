@@ -5,7 +5,7 @@ import json
 import os
 import sys
 import time
-from .gepa_config import setup_dspy, refinement_gepa_metric
+from gepa_self_optimizer.gepa_config import setup_dspy, refinement_gepa_metric
 from .gepa_system import GlmSelfReflect
 from dspy.evaluate import Evaluate
 
