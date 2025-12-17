@@ -163,9 +163,9 @@ def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred
         f"The target reference answer was:\n---\n{example.correct_answer}\n---"
     )
     
-    # Return a ScoreWithFeedback object, which is the standard for DSPy optimizers.
+    # Return a Prediction object, which is the standard for DSPy optimizers.
     # GEPA will try to maximize this score.
-    return dspy.evaluate.ScoreWithFeedback(score=score, feedback=feedback)
+    return dspy.Prediction(score=score, feedback=feedback)
 
 # --- 6. THE JUDGE'S CONSTITUTION ---
 def _load_judge_constitution():
