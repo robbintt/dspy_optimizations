@@ -89,6 +89,9 @@ class GlmSelfReflect(dspy.Module):
         self.critic = dspy.ChainOfThought(ShepherdCritic)
         self.refiner = dspy.ChainOfThought(Refine)
 
+    def predictors(self):
+        return [self.generator, self.critic, self.refiner]
+
     def forward(self, question, draft_answer=None):
         if not draft_answer:
             draft_answer = self.generator(question=question).draft_answer
