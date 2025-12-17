@@ -168,6 +168,10 @@ def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred
     # Score the quality of the critique against the gold standard critique
     # We check if the critiques exist before scoring
     critique_score = 0.0
+    
+    # --- INSTRUMENTATION ---
+    print(f"\n[METRIC] Scoring a new prediction...")
+    
     if hasattr(prediction, 'critique') and hasattr(example, 'gold_critique'):
         critique_score = semantic_similarity(prediction.critique, example.gold_critique)
 
@@ -188,6 +192,10 @@ def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred
     )
 
     # Return the combined score and feedback. GEPA will use this to maximize its performance.
+    
+    # --- INSTRUMENTATION ---
+    print(f"[METRIC] Final Score: {final_score:.3f}. Feedback:\n{feedback}\n")
+    
     return dspy.Prediction(score=final_score, feedback=feedback, trace=trace)
 
 # --- 6. THE JUDGE'S CONSTITUTION ---
