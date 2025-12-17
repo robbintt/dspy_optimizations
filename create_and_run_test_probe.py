@@ -181,7 +181,9 @@ def test_gepa_compilation_bug():
             print("   -> Full state:", state_after_forward)
             return False
 
-        instruction_after_forward = cot_state_after_forward.get('predict', {}).get('signature', {}).get('instructions')
+        # ChainOfThought modules have an extra 'predict' layer in their dumped state
+        actual_predictor_state_after = cot_state_after_forward.get('predict', {})
+        instruction_after_forward = actual_predictor_state_after.get('signature', {}).get('instructions')
         print(f"   -> Instruction AFTER forward call: '{instruction_after_forward}'")
 
         # --- 6. Analyze the result ---
