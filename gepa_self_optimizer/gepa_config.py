@@ -1,6 +1,7 @@
 import os
 import yaml
 from pathlib import Path
+from sentence_transformers import SentenceTransformer, util
 # Import main dspy module at runtime (will be mocked in tests)
 try:
     import dspy
@@ -124,7 +125,20 @@ def setup_dspy(api_key: str = None):
     return task_lm, reflection_lm
 
 
-# --- 4. THE JUDGE'S CONSTITUTION ---
+# --- 4. SEMANTIC SIMILARITY FUNCTION ---
+similarity_model = SentenceTransformer('all-MiniLM-L6-v2')
+
+def semantic_similarity(text1, text2):
+    """Computes cosine similarity between two texts."""
+    embeddings = similarity_model.encode([text1, text2], convert_to_tensor=True)
+    return util.cos_sim(embeddings[0], embeddings[1]).item()
+
+# --- 5. METRIC FOR GEPA ---
+def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred_trace=None):
+    score = semantic_similarity(prediction.answer, example.correct_answer)
+    return score > 0.5
+
+# --- 6. THE JUDGE'S CONSTITUTION ---
 JUDGE_CONSTITUTION = """
 You are a Constitutional Critic. Adhere to these principles:
 1. FALSEHOODS ARE FATAL: If an answer contains a factual error, mark it INVALID.

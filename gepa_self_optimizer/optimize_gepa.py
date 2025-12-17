@@ -1,8 +1,7 @@
 import sys
 import dspy
 import json
-from sentence_transformers import SentenceTransformer, util
-from gepa_config import setup_dspy, run_settings
+from gepa_config import setup_dspy, run_settings, refinement_gepa_metric
 from gepa_system import GlmSelfReflect
 
 import os
@@ -10,20 +9,8 @@ import os
 # --- 1. PROVIDE A WORKING SEMANTIC SIMILARITY FUNCTION ---
 # The original 'dspy.evaluate.semantic_similarity' does not exist.
 print("🔍 Loading semantic similarity model...")
-similarity_model = SentenceTransformer('all-MiniLM-L6-v2')
 
-def semantic_similarity(text1, text2):
-    """Computes cosine similarity between two texts."""
-    embeddings = similarity_model.encode([text1, text2], convert_to_tensor=True)
-    return util.cos_sim(embeddings[0], embeddings[1]).item()
-
-# --- 2. DEFINE THE METRIC FOR GEPA ---
-def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred_trace=None):
-    score = semantic_similarity(prediction.answer, example.correct_answer)
-    # Return boolean: True if similarity > 0.5 (more lenient), False otherwise
-    return score > 0.5
-
-# --- 3. CONDITIONALLY LOAD OR RUN OPTIMIZATION ---
+# --- 2. CONDITIONALLY LOAD OR RUN OPTIMIZATION ---
 output_file = "glm_gepa_complete.json"
 
 if os.path.exists(output_file):
