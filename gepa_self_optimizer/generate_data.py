@@ -29,30 +29,33 @@ num_examples_to_generate = 25
 with dspy.context(lm=task_lm):
     # --- SIGNATURES ---
     class TopicToQA(Signature):
-        """Given a topic and a unique identifier, generate a complex reasoning question and a perfect, step-by-step answer."""
+        """Given a topic, generate a highly complex, multi-step reasoning question that contains subtle pitfalls or common misconceptions, and provide a perfect, step-by-step answer."""
         topic: str = dspy.InputField(desc="The general topic for the question.")
         unique_id: str = dspy.InputField(desc="A unique identifier to ensure a novel response is generated.")
-        question: str = dspy.OutputField(desc="A complex question that requires reasoning.")
-        correct_answer: str = dspy.OutputField(desc="The perfect, step-by-step correct answer to the question.")
+        question: str = dspy.OutputField(desc="A highly complex and multi-step question with subtle pitfalls that requires deep reasoning.")
+        correct_answer: str = dspy.OutputField(desc="The perfect, step-by-step correct answer to the complex question.")
 
     class BugInjector(Signature):
         """
-        You are a Red Teamer. Your last attempt at creating a subtle sabotage FAILED because the system found it too easily.
-        Analyze the failed attempt provided in 'last_failed_attempt' and create a NEW, much more sophisticated sabotage.
-        Your new flaw must be:
+        You are a Red Teamer. Your previous attempts at creating a subtle sabotage have FAILED because the system found them too easily.
+        Analyze the complete history of your failed attempts provided in 'attempts_history'. Each attempt includes the flawed draft and the score it received.
+        
+        Create a NEW, much more sophisticated sabotage. Your new flaw must be fundamentally different and more subtle than all previous attempts.
+        It must be:
         1.  FATAL: It makes the answer incorrect.
         2.  SUBTLE: It must not be obvious. Blend it in.
         3.  HARD-TO-FIX: Require careful reasoning to spot and correct.
         
         DO NOT:
+        -   Simply repeat the type of error from a previous failed attempt.
         -   Add typos or grammatical mistakes.
         -   Invent obvious nonsense.
         -   Make simple calculation errors.
         """
         question: str = dspy.InputField(desc="The question the original answer addresses.")
         correct_answer: str = dspy.InputField(desc="The perfect, step-by-step answer to be sabotaged.")
-        last_failed_attempt: str = dspy.InputField(desc="The previous failed sabotage attempt, including the critique of why it was too easy.")
-        saboteurs_tactic_log: str = dspy.OutputField(desc="A short, internal note explaining the NEW subtle flaw and why it's harder to spot.")
+        attempts_history: str = dspy.InputField(desc="A complete history of your previous failed attempts for this question, with each attempt's score and flawed draft. Use this to understand what has been deemed 'too easy' and escalate the sophistication of your flaw.")
+        saboteurs_tactic_log: str = dspy.OutputField(desc="A short, internal note explaining the NEW subtle flaw, how it differs from past attempts, and why it's harder to spot.")
         bad_draft: str = dspy.OutputField(desc="The rewritten answer containing the NEW, more subtle, fatal flaw.")
         gold_critique: str = dspy.OutputField(desc="A concise description of the NEW, harder-to-find flaw.")
 
@@ -60,15 +63,15 @@ with dspy.context(lm=task_lm):
     def generate_synthetic_data(num_examples=25):
         """
         Generates and curates a dataset using a feedback loop. If an example is
-        too easy or too hard, the script provides this feedback to the model
-        in the next attempt to guide it toward a better result.
+        too easy or too hard, the script provides the full history of attempts to the model
+        to guide it toward a better result.
         """
         topics = ["Python Recursion", "Thermodynamics", "SQL Joins", "Bayesian Stats", "Game Theory", "Roman History"]
         
         MAX_SCORE = 0.75
         MIN_SCORE = 0.30
 
-        print(f"🧠 Curating {num_examples} examples with adaptive feedback...")
+        print(f"🧠 Curating {num_examples} examples with full historical feedback...")
         print(f"   Target score range per item: [{MIN_SCORE:.2f}, {MAX_SCORE:.2f})\n")
         
         setup_dspy()
@@ -91,25 +94,22 @@ with dspy.context(lm=task_lm):
                 
                 # 2. Enter a feedback loop to find a suitable sabotage for this Q&A
                 sabotage_attempt = 0
-                feedback_instruction = ""
                 item_is_good = False
-                last_failure_report = "" # Reset for each new topic attempt
+                # Initialize the history for this new base Q&A pair
+                attempts_history = []
 
                 # We will try up to 4 times to get a good error for this one Q&A pair
                 while not item_is_good and sabotage_attempt < 4:
-                    total_attempts += 1
                     sabotage_attempt += 1
+                    total_attempts += 1
 
-                    # Add a unique identifier to bypass any potential LLM caching
-                    unique_instruction = last_failure_report
-                    if last_failure_report:
-                        unique_instruction += f"\n\n[FEEDBACK ATTEMPT #{sabotage_attempt}]"
-                    
                     bug_predictor = dspy.ChainOfThought(BugInjector)
+                    # Pass the full history of all previous attempts for this item
+                    history_string = "\n---\n".join(attempts_history)
                     corrupted = bug_predictor(
                         question=base.question,
                         correct_answer=base.correct_answer,
-                        last_failed_attempt=unique_instruction
+                        attempts_history=history_string
                     )
                         
                     ex = dspy.Example(
@@ -119,30 +119,29 @@ with dspy.context(lm=task_lm):
                         correct_answer=base.correct_answer,     
                     ).with_inputs("question", "draft_answer")
 
-                    # 4. Evaluate and provide feedback for the next loop
+                    # 4. Evaluate
                     eval_result = evaluator(unoptimized_program, devset=[ex])
                     score = eval_result.score / 100.0
+                    
+                    # Append the result of this attempt to the history for the next loop
+                    history_entry = (
+                        f"Attempt {sabotage_attempt} scored {score:.2f}, which was too easy. "
+                        f"The system detected the error in this draft: {corrupted.bad_draft}"
+                    )
+                    attempts_history.append(history_entry)
                         
                     if MIN_SCORE <= score < MAX_SCORE:
                         good_dataset.append(ex)
                         print(f"✅ [{len(good_dataset)}/{num_examples}] KEPT. Score: {score:.2f} (after {sabotage_attempt} tries)")
                         item_is_good = True
-                    elif score >= MAX_SCORE or score > 0.99: # Handle perfect and near-perfect scores
-                        print(f"⚪ [Attempt {sabotage_attempt}] Too easy (Score: {score:.2f}). Demanding a much harder, more devious error...")
-                        # Build a report of the failure to give back to the model
-                        last_failure_report = (
-                            f"YOUR LAST ATTEMPT FAILED. It was scored {score:.2f} and deemed 'too easy'.\n"
-                            f"--- YOUR LAST FLAWED DRAFT ---\n{corrupted.bad_draft}\n--- END DRAFT ---\n"
-                            f"REASON FOR FAILURE: The system easily detected and corrected your error. "
-                            f"You must create something far more subtle that a top-tier AI will miss."
-                        )
+                    elif score >= MAX_SCORE or score > 0.99:
+                        print(f"⚪ [Attempt {sabotage_attempt}] Too easy (Score: {score:.2f}). Trying a more devious error...")
                     else: # score < MIN_SCORE
-                        print(f"⚫ [Attempt {sabotage_attempt}] Too hard (Score: {score:.2f}). Make the flaw more solvable but still tricky.")
-                        last_failure_report = (
-                            f"YOUR LAST ATTEMPT FAILED. It was scored {score:.2f} and deemed 'too hard'.\n"
-                            f"--- YOUR LAST FLAWED DRAFT ---\n{corrupted.bad_draft}\n--- END DRAFT ---\n"
-                            f"REASON FOR FAILURE: The error was too obscure or nonsensical. "
-                            f"You must create a flaw that is subtle but FAIR, meaning a powerful model can plausibly find and fix it."
+                        print(f"⚫ [Attempt {sabotage_attempt}] Too hard (Score: {score:.2f}). Making the flaw more solvable but still tricky.")
+                        # Update the history entry to reflect 'too hard'
+                        attempts_history[-1] = (
+                            f"Attempt {sabotage_attempt} scored {score:.2f}, which was too hard. "
+                            f"The error in this draft was too obscure: {corrupted.bad_draft}"
                         )
                 
                 if not item_is_good:
@@ -151,9 +150,7 @@ with dspy.context(lm=task_lm):
             except Exception as e:
                 print(f"❌ A critical error occurred with topic '{topic}': {e}")
             
-            overall_topic_attempts += 1
-
-        print(f"\n✅ Dataset curated! Found {len(good_dataset)} good examples out of {total_attempts} total feedback-driven attempts.")
+        print(f"\n✅ Dataset curated! Found {len(good_dataset)} good examples out of {total_attempts} total attempts.")
         return good_dataset
 
 if __name__ == "__main__":
