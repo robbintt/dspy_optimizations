@@ -1,6 +1,48 @@
 import dspy
 from gepa_config import JUDGE_CONSTITUTION
 
+def optimize_with_retries(gepa_optimizer, student_module, trainset, valset, max_retries=3):
+    """
+    Wrapper function to run GEPA optimization with retries on reflection failures.
+    
+    Args:
+        gepa_optimizer: The configured GEPA optimizer instance
+        student_module: The DSPy module to optimize
+        trainset: Training data for optimization
+        valset: Validation data for evaluation
+        max_retries: Maximum number of retry attempts on reflection failures
+        
+    Returns:
+        The optimized DSPy module
+    """
+    optimized_program = None
+    
+    print(f"Starting GEPA optimization with up to {max_retries} retries...")
+    
+    for attempt in range(max_retries):
+        try:
+            print(f"--- Attempt {attempt + 1}/{max_retries} ---")
+            optimized_program = gepa_optimizer.compile(
+                student=student_module,
+                trainset=trainset,
+                valset=valset,
+            )
+            print("GEPA compilation successful.")
+            break  # Exit the retry loop on success
+            
+        except Exception as e:
+            if "No valid predictions found for any module." in str(e):
+                print(f"Attempt {attempt + 1} failed with a reflection error. Will retry.")
+            else:
+                print(f"Attempt {attempt + 1} failed with an unexpected error: {e}")
+                raise
+    
+    if optimized_program is None:
+        raise RuntimeError(f"GEPA compilation failed after {max_retries} retries.")
+    
+    print("GEPA optimization finished successfully.")
+    return optimized_program
+
 # --- SIGNATURES ---
 class Generate(dspy.Signature):
     """Generate a comprehensive answer to a given question, using step-by-step reasoning."""
