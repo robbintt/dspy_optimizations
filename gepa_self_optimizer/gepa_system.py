@@ -125,10 +125,7 @@ class GlmSelfReflect(dspy.Module):
         self.critic = dspy.Predict(ShepherdCritic) # Changed from ChainOfThought
         self.refiner = dspy.Predict(Refine)
 
-    def predictors(self):
-        return [self.generator, self.critic, self.refiner]
-
-    def dump_state(self, json_mode=True):
+    def forward(self, question, draft_answer=None):
         """
         An instrumented version of dump_state to debug the saving process.
         It prints the state of each component before saving.
