@@ -122,12 +122,12 @@ with dspy.context(lm=task_lm):
                     sabotage_goal=sabotage_goal
                 )
                     
-                    ex = dspy.Example(
-                        question=base.question,
-                        draft_answer=corrupted.bad_draft,       
-                        gold_critique=corrupted.gold_critique,  
-                        correct_answer=base.correct_answer,     
-                    ).with_inputs("question", "draft_answer")
+                ex = dspy.Example(
+                    question=base.question,
+                    draft_answer=corrupted.bad_draft,       
+                    gold_critique=corrupted.gold_critique,  
+                    correct_answer=base.correct_answer,     
+                ).with_inputs("question", "draft_answer")
 
                     # 4. Evaluate and provide feedback for the next loop
                     eval_result = evaluator(unoptimized_program, devset=[ex])
