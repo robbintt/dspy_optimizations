@@ -96,12 +96,17 @@ with dspy.context(lm=task_lm):
                 while not item_is_good and sabotage_attempt < 4:
                     total_attempts += 1
                     sabotage_attempt += 1
+
+                    # Add a unique identifier to bypass any potential LLM caching
+                    unique_instruction = last_failure_report
+                    if last_failure_report:
+                        unique_instruction += f"\n\n[FEEDBACK ATTEMPT #{sabotage_attempt}]"
                     
                     bug_predictor = dspy.ChainOfThought(BugInjector)
                     corrupted = bug_predictor(
                         question=base.question,
                         correct_answer=base.correct_answer,
-                        last_failed_attempt=last_failure_report
+                        last_failed_attempt=unique_instruction
                     )
                         
                     ex = dspy.Example(
