@@ -1,194 +1,196 @@
-### **The End-to-End Guide: 20-Minute GEPA Optimization**
+# GEPA Self-Reflection Optimizer: End-to-End Guide
 
-This guide uses GEPA (Genetic Evolutionary Prompt Algorithm) to optimize the prompt and instructions within a Figure-8 self-reflection architecture. GEPA is uniquely powerful because it uses a strong **Reflection LM** to analyze failures and propose textual improvements to your prompt.
+This guide demonstrates how to use GEPA (Genetic Evolutionary Prompt Algorithm) to optimize a Figure-8 self-reflection architecture. GEPA uses a strong **Reflection LM** to analyze failures and propose textual improvements to your prompts, evolving them to achieve better performance.
 
-#### **Step 0: Terminal Setup**
+## System Overview
+
+The system consists of:
+- A **Task LM** that generates answers and critiques
+- A **Reflection LM** that GEPA uses to analyze failures and improve prompts
+- A self-reflection module (`GlmSelfReflect`) with generator, critic, and refiner components
+- GEPA optimizer that evolves the instructions in each component
+
+## Prerequisites
+
+### 1. Install Dependencies
 
 ```bash
-# 1. Install libraries
-# NOTE: sentence-transformers is required for the semantic similarity function.
-pip install dspy-ai sentence-transformers
-
-# 2. Create project folder
-mkdir glm_gepa_figure8
-cd glm_gepa_figure8
-touch config.py system.py generate_data.py optimize_gepa.py
+pip install dspy-ai sentence-transformers pyyaml
 ```
 
-#### **File 1: Configuration (`config.py`)**
+### 2. Set Up API Keys
 
-We define two models: a **Task LM** (for running the self-reflection loop) and a **Reflection LM** (for GEPA to analyze and improve prompts). Using a stronger model for reflection is a GEPA best practice.
+Set one or more of the following environment variables based on your model provider:
 
-```python
-# config.py
-import os
-import yaml
-import dspy
-from pathlib import Path
-
-# --- 1. LOAD CONFIGURATIONS FROM YAML ---
-# Determine the directory of this script to find the config file
-CONFIG_DIR = Path(__file__).parent
-MODEL_CONFIG_PATH = CONFIG_DIR / "config" / "models.yaml"
-
-# Load the entire model configuration file
-with open(MODEL_CONFIG_PATH, "r") as f:
-    model_configs = yaml.safe_load(f)
-
-# --- 2. SETUP CEREBRAS API KEY ---
-# API key for Cerebras. Set this in your environment.
-API_KEY = os.getenv("CEREBRAS_API_KEY", "YOUR_CEREBRAS_API_KEY")
-if API_KEY == "YOUR_CEREBRAS_API_KEY":
-    raise ValueError("Please set the CEREBRAS_API_KEY environment variable.")
-
-
-def _create_lm(config_name: str) -> dspy.LM:
-    """
-    Helper function to create a dspy.LM instance from a named configuration.
-    """
-    config = model_configs.get(config_name)
-    if not config:
-        raise ValueError(f"Model configuration '{config_name}' not found in {MODEL_CONFIG_PATH}")
-    
-    # Construct the model identifier in 'provider/model_name' format
-    model_id = f"{config['provider']}/{config['name']}"
-    
-    # Extract parameters that are not the model identifier itself
-    lm_params = {k: v for k, v in config.items() if k not in ['provider', 'name']}
-    
-    return dspy.LM(model=model_id, api_key=API_KEY, **lm_params)
-
-# --- 3. INSTANTIATE THE LANGUAGE MODELS ---
-# The task model for generating and refining
-task_lm = _create_lm("task_model")
-
-# The reflection model for GEPA's self-improvement step
-reflection_lm = _create_lm("reflection_model")
-
-# Set the default LM for DSPy to our task model
-dspy.configure(lm=task_lm)
-
-# --- 2. THE JUDGE'S CONSTITUTION ---
-JUDGE_CONSTITUTION = """
-You are a Constitutional Critic. Adhere to these principles:
-1. FALSEHOODS ARE FATAL: If an answer contains a factual error, mark it INVALID.
-2. NO SYCOPHANCY: Do not be polite. Be pedantic.
-3. CODE MUST RUN: In code tasks, syntax errors are immediate failures.
-4. LOGIC OVER STYLE: Ignore tone; focus on the reasoning chain.
-"""
+```bash
+export CEREBRAS_API_KEY="your_cerebras_key"
+# or
+export ZHIPUAI_API_KEY="your_zhipuai_key"
+# or
+export OPENAI_API_KEY="your_openai_key"
+# or
+export ANTHROPIC_API_KEY="your_anthropic_key"
 ```
 
-#### **File 2: The Data Factory (`generate_data.py`)**
+## Step 1: Configuration
 
-This script creates the synthetic "failures" that GEPA will use to learn how to improve the prompt.
+The system uses a YAML configuration file for model settings. Create `config/models.yaml`:
+
+```yaml
+# config/models.yaml
+# Task model for running the self-reflection loop
+task_model:
+  provider: cerebras
+  name: llama3.1-70b
+  temperature: 0.7
+  max_tokens: 2048
+
+# Reflection model for GEPA optimization (use a strong model)
+reflection_model:
+  provider: cerebras
+  name: llama3.1-70b
+  temperature: 1.0
+  max_tokens: 32000
+
+# GEPA optimization profile
+gepa_profile: development
+```
+
+Available GEPA profiles:
+- `development`: Quick testing (80 metric calls)
+- `small`: Light optimization (auto="light")
+- `medium`: Balanced optimization (auto="medium")
+- `large`: Heavy optimization (auto="heavy")
+
+## Step 2: Data Generation
+
+Generate synthetic training data with errors for GEPA to learn from:
+
+```bash
+python -m gepa_self_optimizer.generate_data
+```
+
+This creates `golden_set.json` with question-answer pairs containing injected errors and corresponding critiques.
+
+## Step 3: Run Optimization
+
+Use the `run_gepa.sh` script to run the optimization. The script提供了灵活的参数选项:
+
+### Basic Usage
+
+```bash
+# Use development profile (default)
+./gepa_self_optimizer/run_gepa.sh \
+  -s gepa_system.GlmSelfReflect \
+  -m gepa_config.refinement_gepa_metric \
+  -d golden_set.json \
+  -o optimized_program.json
+```
+
+### Advanced Usage
+
+```bash
+# Use medium profile with budget override
+./gepa_self_optimizer/run_gepa.sh \
+  -p medium \
+  -a heavy \
+  -s gepa_system.GlmSelfReflect \
+  -m gepa_config.refinement_gepa_metric \
+  -d golden_set.json \
+  -o optimized_program.json
+
+# Use heavy profile for thorough optimization
+./gepa_self_optimizer/run_gepa.sh \
+  -p large \
+  -s gepa_system.GlmSelfReflect \
+  -m gepa_config.refinement_gepa_metric \
+  -d golden_set.json \
+  -o optimized_program.json
+```
+
+### Script Parameters
+
+- `-p profile`: GEPA profile (development, small, medium, large)
+- `-a auto_override`: Override budget (light, medium, heavy)
+- `-s student_module`: Required - DSPy module to optimize
+- `-m metric`: Required - Metric function for evaluation
+- `-d data_file`: Required - Training data JSON
+- `-o output_file`: Required - Save optimized program here
+
+## Step 4: Inspect Results
+
+After optimization completes:
+1. The optimized program is saved to your specified output file
+2. A summary of evolved instructions is printed to the console
+3. You can load and inspect the program:
 
 ```python
-# generate_data.py
-import dspy
-import random
 import json
-from config import task_lm 
+from gepa_system import GlmSelfReflect
 
-# Use the task model for data generation
-with dspy.context(lm=task_lm):
-    # --- SIGNATURES ---
-    class TopicToQA(dspy.Signature):
-        """Generate a complex reasoning question and a perfect step-by-step answer."""
-        topic = dspy.InputField()
-        question = dspy.OutputField()
-        correct_answer = dspy.OutputField()
+# Load optimized program
+program = GlmSelfReflect()
+program.load("optimized_program.json")
 
-    class BugInjector(dspy.Signature):
-        """Rewrite the answer to include a specific, fatal error. Explain the error."""
-        question = dspy.InputField()
-        correct_answer = dspy.InputField()
-        error_type = dspy.InputField()
-        bad_draft = dspy.OutputField(desc="The corrupted answer")
-        gold_critique = dspy.OutputField(desc="Precise description of the error")
-
-    # --- THE FACTORY ---
-    def generate_synthetic_data(num_examples=25):
-        topics = ["Python Recursion", "Thermodynamics", "SQL Joins", "Bayesian Stats", "Game Theory", "Roman History"] * 5
-        dataset = []
-        
-        print(f"🏭 Manufacturing {num_examples} sabotage examples...")
-        
-        sabotage_types = ["Math Calculation Error", "Logical Fallacy", "Factual Hallucination", "Code Syntax Error"]
-
-        for i in range(num_examples):
-            topic = topics[i % len(topics)]
-            try:
-                # 1. Generate Truth
-                base = dspy.ChainOfThought(TopicToQA)(topic=topic)
-                
-                # 2. Inject Bug
-                bug = random.choice(sabotage_types)
-                corrupted = dspy.ChainOfThought(BugInjector)(
-                    question=base.question,
-                    correct_answer=base.correct_answer,
-                    error_type=bug
-                )
-                
-                # 3. Package as a dspy.Example with the required .with_inputs()
-                ex = dspy.Example(
-                    question=base.question,
-                    draft_answer=corrupted.bad_draft,       
-                    gold_critique=corrupted.gold_critique,  
-                    correct_answer=base.correct_answer,     
-                ).with_inputs("question", "draft_answer")
-                
-                dataset.append(ex)
-                print(f"✅ [{i+1}/{num_examples}] Sabotaged '{topic}' with {bug}")
-                
-            except Exception as e:
-                print(f"❌ Failed on {topic}: {e}")
-
-        return dataset
-
-if __name__ == "__main__":
-    data = generate_synthetic_data(25) 
-    serialized = [x.toDict() for x in data]
-    with open("golden_set.json", "w") as f:
-        json.dump(serialized, f, indent=2)
-    print("💾 Saved to golden_set.json")
+# Display evolved instructions
+print("Critic instructions:", program.critic.signature.instructions)
+print("Refiner instructions:", program.refiner.signature.instructions)
 ```
 
-#### **File 3: The System (`system.py`)**
+## Understanding the Optimization
 
-This defines the Figure-8 architecture itself. GEPA will mutate the instructions within the signatures of the `critic` and `refiner` modules.
+GEPA works by:
+1. Running your program on the training set
+2. Identifying failed examples with low metric scores
+3. Using the Reflection LM to analyze failures and generate feedback
+4. Proposing new, improved instructions based on feedback
+5. Evaluating new candidates and keeping the best performers
+6. Iterating to evolve increasingly effective prompts
 
+The optimized program contains evolved instructions that typically:
+- Are more detailed and specific
+- Include better guidance for edge cases
+- Are tailored to your specific task and metric
+- Show improved performance on validation data
+
+## Core System Components
+
+### Configuration (`gepa_config.py`)
+- Manages model loading and API keys
+- Implements the similarity-based metric
+- Provides pre-configured GEPA profiles
+- Handles optimizer creation
+
+### System Architecture (`gepa_system.py`)
 ```python
-# system.py
 import dspy
-from config import JUDGE_CONSTITUTION
+from gepa_config import JUDGE_CONSTITUTION
 
-# --- SIGNATURES ---
 class Generate(dspy.Signature):
-    """Generate a comprehensive answer. Use System 2 thinking."""
-    question = dspy.InputField()
-    draft_answer = dspy.OutputField()
+    """Generate a comprehensive answer to a given question, using step-by-step reasoning."""
+    question: str = dspy.InputField(desc="The question to be answered.")
+    draft_answer: str = dspy.OutputField(desc="A comprehensive, step-by-step answer to the question.")
 
 class ShepherdCritic(dspy.Signature):
-    """Act as a ruthless critic. Analyze the draft for errors based on the Constitution."""
-    constitution = dspy.InputField()
-    question = dspy.InputField()
-    draft_answer = dspy.InputField()
-    critique = dspy.OutputField(desc="List of specific errors")
-    severity = dspy.OutputField(desc="High, Medium, or Low")
+    """Act as a ruthless critic. Analyze the draft for errors based on the provided constitution."""
+    constitution: str = dspy.InputField(desc="The principles for judging the draft.")
+    question: str = dspy.InputField(desc="The question the draft is trying to answer.")
+    draft_answer: str = dspy.InputField(desc="The draft answer to be critiqued.")
+    critique: str = dspy.OutputField(desc="A list of specific errors found in the draft.")
+    severity: str = dspy.OutputField(desc="The severity of the errors: High, Medium, or Low.")
 
 class Refine(dspy.Signature):
-    """Rewrite the draft to fix the errors identified in the critique."""
-    question = dspy.InputField()
-    draft_answer = dspy.InputField()
-    critique = dspy.InputField()
-    final_answer = dspy.OutputField()
+    """Rewrite the draft to fix all errors identified in the critique to produce a final, correct answer."""
+    question: str = dspy.InputField(desc="The original question.")
+    draft_answer: str = dspy.InputField(desc="The draft answer that contains errors.")
+    critique: str = dspy.InputField(desc="The list of errors to be fixed.")
+    final_answer: str = dspy.OutputField(desc="The refined and correct final answer.")
 
-# --- THE MODULE ---
 class GlmSelfReflect(dspy.Module):
     def __init__(self):
         super().__init__()
-        self.generator = dspy.ChainOfThought(Generate)
-        self.critic = dspy.ChainOfThought(ShepherdCritic)
+        self.generator = dspy.Predict(Generate)
+        self.critic = dspy.Predict(ShepherdCritic)
         self.refiner = dspy.Predict(Refine)
 
     def forward(self, question, draft_answer=None):
@@ -209,81 +211,7 @@ class GlmSelfReflect(dspy.Module):
             )
             return dspy.Prediction(answer=final.final_answer, critique=critique_pkg.critique, severity=critique_pkg.severity)
         else:
-            # If the critique is low severity, return the original draft.
             return dspy.Prediction(answer=draft_answer, critique=critique_pkg.critique, severity=critique_pkg.severity)
 ```
 
-#### **File 4: The GEPA Optimizer (`optimize_gepa.py`)**
-
-This is where the magic happens. We run GEPA on the entire program. Unlike the original guide, we optimize the whole system at once, which is more idiomatic for how GEPA works.
-
-```python
-# optimize_gepa.py
-import dspy
-import json
-from sentence_transformers import SentenceTransformer, util
-from config import task_lm, reflection_lm
-from system import GlmSelfReflect
-
-# --- 1. PROVIDE A WORKING SEMANTIC SIMILARITY FUNCTION ---
-# The original 'dspy.evaluate.semantic_similarity' does not exist.
-print("🔍 Loading semantic similarity model...")
-similarity_model = SentenceTransformer('all-MiniLM-L6-v2')
-
-def semantic_similarity(text1, text2):
-    """Computes cosine similarity between two texts."""
-    embeddings = similarity_model.encode([text1, text2], convert_to_tensor=True)
-    return util.cos_sim(embeddings[0], embeddings[1]).item()
-
-# --- 2. LOAD DATA ---
-print("\n📂 Loading Golden Set...")
-with open("golden_set.json", "r") as f:
-    raw_data = json.load(f)
-    trainset = [dspy.Example(**d).with_inputs("question", "draft_answer") for d in raw_data]
-    # GEPA also benefits from a small validation set
-    valset = trainset[-5:] 
-    trainset = trainset[:-5]
-
-
-# ---------------------------------------------------------
-# PHASE: EVOLVE THE ENTIRE SYSTEM WITH GEPA
-# ---------------------------------------------------------
-print("\n🧬 [SINGLE PHASE] Evolving the GlmSelfReflect system with GEPA...")
-
-# Correct GEPA initialization
-# - 'auto' controls the optimization budget (light/medium/heavy).
-# - 'reflection_lm' is the strong model used to find weaknesses and propose fixes.
-optimizer = dspy.GEPA(
-    metric=refinement_gepa_metric,
-    auto="medium",
-    reflection_lm=reflection_lm, 
-    track_stats=True
-)
-
-# The program to be optimized
-program_to_optimize = GlmSelfReflect()
-
-# Compile and optimize the entire program
-# NOTE: We optimize the whole self-reflection loop in one go. This is simpler and
-# often more effective with GEPA than optimizing modules in isolation.
-optimized_program = optimizer.compile(
-    student=program_to_optimize, 
-    trainset=trainset,
-    valset=valset,
-)
-
-# --- 4. SAVE AND INSPECT RESULTS ---
-optimized_program.save("glm_gepa_complete.json")
-print("\n🏆 GEPA EVOLUTION COMPLETE! Saved to 'glm_gepa_complete.json'")
-print("\n--- What changed? ---")
-print("Inspect your optimized program's prompts:")
-optimized_program.critic.display()
-optimized_program.refiner.display()
-```
-
-#### **Execution Plan**
-
-1.  **Generate Data:** `python generate_data.py`
-2.  **Run Optimization:** `python optimize_gepa.py`
-
-Watch the terminal output. You will see GEPA reflecting on failed traces and using the `reflection_lm` to write new, improved instructions for the `ShepherdCritic` and `Refine` modules. After it completes, `optimize_gepa.py` will print the optimized prompts so you can see exactly how they evolved.
+This clean, modular architecture makes it easy to adapt GEPA optimization to your own tasks and use cases.
