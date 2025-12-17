@@ -148,9 +148,24 @@ def semantic_similarity(text1, text2):
 
 # --- 5. METRIC FOR GEPA ---
 def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred_trace=None):
+    """
+    Computes a semantic similarity score and provides rich feedback for GEPA.
+    GEPA uses this function to determine if a prediction was successful and to gather
+    textual feedback from its failures to inform prompt improvements.
+    """
     score = semantic_similarity(prediction.answer, example.correct_answer)
-    # Increased threshold to 0.85 to force optimization
-    return score > 0.85
+    
+    # The feedback is critical: it tells the reflection model *why* it failed
+    # and gives it the 'gold standard' to aim for.
+    feedback = (
+        f"The generated answer achieved a similarity score of {score:.3f} against the reference answer. "
+        f"The model's prediction was:\n---\n{prediction.answer}\n---\n"
+        f"The target reference answer was:\n---\n{example.correct_answer}\n---"
+    )
+    
+    # Return a ScoreWithFeedback object, which is the standard for DSPy optimizers.
+    # GEPA will try to maximize this score.
+    return dspy.evaluate.answer_with_feedback(score, feedback)
 
 # --- 6. THE JUDGE'S CONSTITUTION ---
 JUDGE_CONSTITUTION = """
