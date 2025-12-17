@@ -63,3 +63,94 @@ if __name__ == "__main__":
     # Configure a dummy LM to prevent errors
     with dspy.context(lm=dspy.LM(model="dummy_model", api_key="dummy_key")):
         test_chain_of_thought_state_bug()
+import dspy
+import json
+
+# --- Setup a minimal environment ---
+# Use a dummy LM to avoid API calls during the probe
+dummy_lm = dspy.LM(model="dummy_model", api_key="dummy_key")
+
+# --- 1. Define a minimal task and metric ---
+class SimpleTask(dspy.Signature):
+    """A simple task for the probe."""
+    question = dspy.InputField(desc="A simple question.")
+    answer = dspy.OutputField(desc="A simple answer.")
+
+def simple_metric(gold, pred, trace=None):
+    """A simple metric that always returns 1.0 to ensure success."""
+    return 1.0
+
+# --- 2. Define a minimal student program ---
+class SimpleProgram(dspy.Module):
+    def __init__(self):
+        super().__init__()
+        # This is the module we suspect gets corrupted
+        self.complex_predictor = dspy.ChainOfThought(
+            SimpleTask, 
+            instructions="This is the initial instruction for the complex predictor."
+        )
+    
+    def forward(self, question):
+        # The forward pass doesn't matter, just the structure
+        prediction = self.complex_predictor(question=question)
+        return dspy.Prediction(answer=prediction.answer)
+
+def test_gepa_compilation_bug():
+    """
+    Probes for a bug inside dspy.GEPA's compilation process that corrupts
+    the state of ChainOfThought modules.
+    """
+    print("--- Probing dspy.GEPA for a compilation bug ---")
+
+    with dspy.context(lm=dummy_lm):
+        # --- 3. Create the student and optimizer ---
+        student = SimpleProgram()
+        
+        # Sanity check: Manually mutate and verify student is OK before GEPA
+        print("1. Pre-GEPA sanity check:")
+        student.complex_predictor.predict.signature.instructions = "MANUALLY MUTATED INSTRUCTION"
+        state_before_gepa = student.dump_state()
+        instruction_before_gepa = state_before_gepa['predict']['signature']['instructions']
+        print(f"   -> Student instruction before GEPA: '{instruction_before_gepa}'\n")
+
+        # GEPA needs a trainset, even if it's just one example
+        trainset = [dspy.Example(question="Q", answer="A").with_inputs("question")]
+        
+        # Use a minimal GEPA config. A single metric call is enough for the probe.
+        optimizer = dspy.GEPA(metric=simple_metric, max_metric_calls=1, track_stats=False)
+
+        # --- 4. The critical step: Compile the program ---
+        print("2. Running optimizer.compile()...")
+        try:
+            optimized_program = optimizer.compile(student=student, trainset=trainset)
+            print("   -> Compilation finished without errors.\n")
+        except Exception as e:
+            print(f"   -> Compilation FAILED with error: {e}\n")
+            return False
+
+        # --- 5. Inspect the program returned by the optimizer ---
+        print("3. Inspecting the program returned by GEPA:")
+        
+        # Reset instruction to a known value to see what GEPA did
+        optimized_program.complex_predictor.predict.signature.instructions = "VALUE SET AFTER GEPA"
+        
+        state_after_gepa = optimized_program.dump_state()
+        
+        if 'predict' not in state_after_gepa:
+            print("   -> ❌ FAILURE: Optimized program state is completely missing inner predictor state.")
+            return False
+
+        instruction_after_gepa = state_after_gepa['predict']['signature']['instructions']
+        print(f"   -> Optimized program instruction: '{instruction_after_gepa}'")
+
+        # --- 6. Analyze the result ---
+        if instruction_after_gepa == "":
+            print("\n   -> ❌ FAILURE CONFIRMED: GEPA returned a ChainOfThought module with a corrupted, empty instruction.")
+            print("      This confirms the bug is within the GEPA optimizer itself.")
+            return False
+        else:
+            print("\n   -> ✅ SUCCESS: The optimized program has a valid instruction. GEPA compilation did not corrupt the state.")
+            return True
+
+if __name__ == "__main__":
+    test_gepa_compilation_bug()
