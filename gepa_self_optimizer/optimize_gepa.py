@@ -7,11 +7,6 @@ from gepa_system import GlmSelfReflect
 
 import os
 
-# Check if optimized program already exists to prevent rerunning
-if os.path.exists("glm_gepa_complete.json"):
-    print("✅ Optimized program already exists at 'glm_gepa_complete.json'. Skipping optimization.")
-    exit(0)
-
 # --- 1. PROVIDE A WORKING SEMANTIC SIMILARITY FUNCTION ---
 # The original 'dspy.evaluate.semantic_similarity' does not exist.
 print("🔍 Loading semantic similarity model...")
@@ -63,69 +58,69 @@ else:
         valset=valset,
     )
     
-    # --- INSPECT GEPA OPTIMIZATION RESULTS ---
-    print("\n🔍 GEPA OPTIMIZATION INSPECTION RESULTS:")
-    print("=" * 60)
-    
-    # Show optimization statistics if available
-    if hasattr(optimizer, 'stats') and optimizer.stats:
-        print("📊 Optimization Statistics:")
-        for key, value in optimizer.stats.items():
-            print(f"  {key}: {value}")
-        print()
-    
-    # Show the evolved program structure
-    print("🏗️ Evolved Program Structure:")
-    print(f"  Program type: {type(optimized_program).__name__}")
-    
-    # Inspect critic component
-    if hasattr(optimized_program, 'critic'):
-        print("\n📝 Evolved Critic Component:")
-        if hasattr(optimized_program.critic, 'demos') and optimized_program.critic.demos:
-            print(f"  Number of demos: {len(optimized_program.critic.demos)}")
-            for i, demo in enumerate(optimized_program.critic.demos[:3]):  # Show first 3
-                print(f"  Demo {i+1}:")
-                for key, value in demo.items():
-                    if isinstance(value, str) and len(value) > 100:
-                        print(f"    {key}: {value[:100]}...")
-                    else:
-                        print(f"    {key}: {value}")
-        else:
-            print("  No demos found in critic")
-    
-    # Inspect refiner component if it exists
-    if hasattr(optimized_program, 'refiner'):
-        print("\n🔧 Evolved Refiner Component:")
-        if hasattr(optimized_program.refiner, 'demos') and optimized_program.refiner.demos:
-            print(f"  Number of demos: {len(optimized_program.refiner.demos)}")
-            for i, demo in enumerate(optimized_program.refiner.demos[:3]):  # Show first 3
-                print(f"  Demo {i+1}:")
-                for key, value in demo.items():
-                    if isinstance(value, str) and len(value) > 100:
-                        print(f"    {key}: {value[:100]}...")
-                    else:
-                        print(f"    {key}: {value}")
-        else:
-            print("  No demos found in refiner")
-    
-    # Show any other components
-    for attr_name in dir(optimized_program):
-        if not attr_name.startswith('_') and attr_name not in ['critic', 'refiner', 'save', 'load', 'forward']:
-            attr = getattr(optimized_program, attr_name)
-            if hasattr(attr, 'demos'):
-                print(f"\n📋 Component '{attr_name}':")
-                if attr.demos:
-                    print(f"  Number of demos: {len(attr.demos)}")
-                else:
-                    print("  No demos found")
-    
-    print("=" * 60)
-    
     # --- SAVE RESULTS ---
     optimized_program.save(output_file)
     print(f"\n🏆 GEPA EVOLUTION COMPLETE! Saved to '{output_file}'")
 
-# --- 4. INSPECT RESULTS ---
+# --- 4. INSPECT GEPA OPTIMIZATION RESULTS ---
+print("\n🔍 GEPA OPTIMIZATION INSPECTION RESULTS:")
+print("=" * 60)
+
+# Show optimization statistics if available
+if hasattr(optimizer, 'stats') and optimizer.stats:
+    print("📊 Optimization Statistics:")
+    for key, value in optimizer.stats.items():
+        print(f"  {key}: {value}")
+    print()
+
+# Show the evolved program structure
+print("🏗️ Evolved Program Structure:")
+print(f"  Program type: {type(optimized_program).__name__}")
+
+# Inspect critic component
+if hasattr(optimized_program, 'critic'):
+    print("\n📝 Evolved Critic Component:")
+    if hasattr(optimized_program.critic, 'demos') and optimized_program.critic.demos:
+        print(f"  Number of demos: {len(optimized_program.critic.demos)}")
+        for i, demo in enumerate(optimized_program.critic.demos[:3]):  # Show first 3
+            print(f"  Demo {i+1}:")
+            for key, value in demo.items():
+                if isinstance(value, str) and len(value) > 100:
+                    print(f"    {key}: {value[:100]}...")
+                else:
+                    print(f"    {key}: {value}")
+    else:
+        print("  No demos found in critic")
+
+# Inspect refiner component if it exists
+if hasattr(optimized_program, 'refiner'):
+    print("\n🔧 Evolved Refiner Component:")
+    if hasattr(optimized_program.refiner, 'demos') and optimized_program.refiner.demos:
+        print(f"  Number of demos: {len(optimized_program.refiner.demos)}")
+        for i, demo in enumerate(optimized_program.refiner.demos[:3]):  # Show first 3
+            print(f"  Demo {i+1}:")
+            for key, value in demo.items():
+                if isinstance(value, str) and len(value) > 100:
+                    print(f"    {key}: {value[:100]}...")
+                else:
+                    print(f"    {key}: {value}")
+    else:
+        print("  No demos found in refiner")
+
+# Show any other components
+for attr_name in dir(optimized_program):
+    if not attr_name.startswith('_') and attr_name not in ['critic', 'refiner', 'save', 'load', 'forward']:
+        attr = getattr(optimized_program, attr_name)
+        if hasattr(attr, 'demos'):
+            print(f"\n📋 Component '{attr_name}':")
+            if attr.demos:
+                print(f"  Number of demos: {len(attr.demos)}")
+            else:
+                print("  No demos found")
+
+print("=" * 60)
+
+# --- 5. INSPECT RESULTS ---
 print("\n--- Inspecting Optimized Program Prompts ---")
 try:
     print("--- Optimized Critic Prompts ---")
