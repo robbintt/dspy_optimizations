@@ -119,7 +119,7 @@ with dspy.context(lm=task_lm):
                         good_dataset.append(ex)
                         print(f"✅ [{len(good_dataset)}/{num_examples}] KEPT. Score: {score:.2f} (after {sabotage_attempt} tries)")
                         item_is_good = True
-                    elif score >= MAX_SCORE:
+                    elif score >= MAX_SCORE or score > 0.99: # Handle perfect and near-perfect scores
                         print(f"⚪ [Attempt {sabotage_attempt}] Too easy (Score: {score:.2f}). Demanding a much harder, more devious error...")
                         # Build a report of the failure to give back to the model
                         last_failure_report = (
