@@ -9,6 +9,16 @@ from gepa_config import setup_dspy, task_lm, refinement_gepa_metric
 from gepa_system import GlmSelfReflect
 from dspy.evaluate import Evaluate
 
+#
+# --- SEEDING AND RANDOMNESS SETUP ---
+# Use the current Unix timestamp in milliseconds to ensure unique runs
+# and bust any potential caches that rely on the random seed.
+SEED = int(time.time() * 1000)
+print(f"🎲 Using millisecond timestamp as seed: {SEED}")
+
+random.seed(SEED)
+
+#
 # --- 1. CHECK IF FILE EXISTS FIRST ---
 # This avoids expensive API calls if the data is already present.
 output_filename = "golden_set.json"
@@ -71,6 +81,7 @@ with dspy.context(lm=task_lm):
         too easy or too hard, the script provides the full history of attempts to the model
         to guide it toward a better result.
         """
+        global SEED
         topics = ["Python Recursion", "Thermodynamics", "SQL Joins", "Bayesian Stats", "Game Theory", "Roman History"]
         
         MAX_SCORE = 0.75
@@ -95,7 +106,10 @@ with dspy.context(lm=task_lm):
             try:
                 # 1. Generate a single, high-quality base Q&A pair
                 base_predictor = dspy.ChainOfThought(TopicToQA)
-                base = base_predictor(topic=topic, unique_id=str(overall_topic_attempts))
+                # Generate a large random nonce to aggressively bust the LM's cache
+                cache_busting_nonce = random.randint(0, 2**63 - 1)
+                unique_id = f"topic-{topic}-seed-{SEED}-nonce-{cache_busting_nonce}"
+                base = base_predictor(topic=topic, unique_id=unique_id)
                 
                 # 2. Enter a feedback loop to find a suitable sabotage for this Q&A
                 sabotage_attempt = 0
