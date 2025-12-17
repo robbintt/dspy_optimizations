@@ -25,6 +25,8 @@ else:
     with open("golden_set.json", "r") as f:
         raw_data = json.load(f)
         trainset = [dspy.Example(**d).with_inputs("question", "draft_answer") for d in raw_data]
+        # --- INSTRUMENTATION ---
+        print(f"\n[DATA CHECK] Training set size: {len(trainset)}")
         valset = trainset[-5:] 
         trainset = trainset[:-5]
 
