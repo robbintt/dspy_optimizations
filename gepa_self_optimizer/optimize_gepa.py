@@ -1,7 +1,7 @@
 import sys
 import dspy
 import json
-from gepa_config import setup_dspy, run_settings, refinement_gepa_metric
+from gepa_config import setup_dspy, refinement_gepa_metric, get_default_gepa_run_config, create_gepa_optimizer
 from gepa_system import GlmSelfReflect
 
 import os
@@ -31,13 +31,20 @@ else:
     # --- EVOLVE THE ENTIRE SYSTEM WITH GEPA ---
     print("\n🧬 [SINGLE PHASE] Evolving the GlmSelfReflect system with GEPA...")
     task_lm, reflection_lm = setup_dspy()
-    gepa_auto_setting = run_settings.get("optimization", {}).get("gepa_auto_setting", "medium")
-    optimizer = dspy.GEPA(
+
+    # Load the GEPA configuration based on the 'gepa_profile' in settings.yaml
+    gepa_run_config = get_default_gepa_run_config()
+    print(f"  -> GEPA Profile: '{gepa_run_config.gepa_profile or 'custom'}'")
+    if gepa_run_config.auto:
+        print(f"  -> GEPA Budget: '{gepa_run_config.auto}'")
+    else:
+        print(f"  -> GEPA Max Metric Calls: {gepa_run_config.max_metric_calls}")
+
+    # Create the GEPA optimizer using the loaded configuration
+    optimizer = create_gepa_optimizer(
         metric=refinement_gepa_metric,
-        auto=gepa_auto_setting,
-        reflection_lm=reflection_lm,
-        track_stats=True,
-        skip_perfect_score=run_settings.get("optimization", {}).get("skip_perfect_score", True)
+        config=gepa_run_config,
+        reflection_lm=reflection_lm
     )
     program_to_optimize = GlmSelfReflect()
     optimized_program = optimizer.compile(
