@@ -45,82 +45,92 @@ with dspy.context(lm=task_lm):
     # --- THE FACTORY ---
     def generate_synthetic_data(num_examples=25):
         """
-        Generates and curates a dataset item-by-item, keeping only examples
-        that fall within a target difficulty score range.
+        Generates and curates a dataset using a feedback loop. If an example is
+        too easy or too hard, the script provides this feedback to the model
+        in the next attempt to guide it toward a better result.
         """
         topics = ["Python Recursion", "Thermodynamics", "SQL Joins", "Bayesian Stats", "Game Theory", "Roman History"]
-        sabotage_types = ["Math Calculation Error", "Logical Fallacy", "Factual Hallucination", "Code Syntax Error"]
         
-        # --- Score thresholds for a "good" training example ---
-        # - MAX_SCORE: If the model scores higher, the example is too easy and provides no learning signal.
-        # - MIN_SCORE: If the model scores lower, the example may be too hard or ill-posed for this model.
         MAX_SCORE = 0.75
         MIN_SCORE = 0.30
 
-        print(f"🏭 Curating {num_examples} high-quality examples (this will take longer but yields better data)...")
+        print(f"🧠 Curating {num_examples} examples with adaptive feedback...")
         print(f"   Target score range per item: [{MIN_SCORE:.2f}, {MAX_SCORE:.2f})\n")
         
-        # --- SETUP SYSTEM FOR VALIDATION ---
-        # We need the model and system to be available for a quick test of each item
         setup_dspy()
         unoptimized_program = GlmSelfReflect()
-        
-        # We run the evaluator on one item at a time
-        evaluator = Evaluate(
-            devset=[],  # Devset will be provided per call
-            metric=refinement_gepa_metric,
-            num_threads=1,
-            display_progress=False, # Keep output clean
-            display_table=False,
-        )
+        evaluator = Evaluate(devset=[], metric=refinement_gepa_metric, num_threads=1)
         
         good_dataset = []
-        attempts = 0
-        
+        total_attempts = 0
+
         while len(good_dataset) < num_examples:
-            attempts += 1
-            topic = topics[attempts % len(topics)]
+            topic_idx = len(good_dataset) # Use count to cycle through topics
+            topic = topics[topic_idx % len(topics)]
             
             try:
-                # 1. Generate Truth
+                # 1. Generate a single, high-quality base Q&A pair
                 base_predictor = dspy.ChainOfThought(TopicToQA)
                 base = base_predictor(topic=topic)
                 
-                # 2. Inject Bug
-                bug = random.choice(sabotage_types)
-                bug_predictor = dspy.ChainOfThought(BugInjector)
-                corrupted = bug_predictor(
-                    question=base.question,
-                    correct_answer=base.correct_answer,
-                    error_type=bug
-                )
-                
-                # 3. Package as a dspy.Example
-                ex = dspy.Example(
-                    question=base.question,
-                    draft_answer=corrupted.bad_draft,       
-                    gold_critique=corrupted.gold_critique,  
-                    correct_answer=base.correct_answer,     
-                ).with_inputs("question", "draft_answer")
+                # 2. Enter a feedback loop to find a suitable sabotage for this Q&A
+                sabotage_attempt = 0
+                feedback_instruction = ""
+                item_is_good = False
 
-                # 4. IMMEDIATELY VALIDATE THE ITEM
-                # The evaluator returns a score as a percentage (0-100)
-                eval_result = evaluator(unoptimized_program, devset=[ex])
-                score = eval_result.score / 100.0
-                
-                # 5. JUDGE AND KEEP/DISCARD BASED ON SCORE
-                if MIN_SCORE <= score < MAX_SCORE:
-                    good_dataset.append(ex)
-                    print(f"✅ [{len(good_dataset)}/{num_examples}] KEPT.   Score: {score:.2f}")
-                elif score >= MAX_SCORE:
-                    print(f"⚪ [{len(good_dataset)}/{num_examples}] DISCARDED (too easy). Score: {score:.2f}")
-                else: # score < MIN_SCORE
-                    print(f"⚫ [{len(good_dataset)}/{num_examples}] DISCARDED (too hard). Score: {score:.2f}")
+                # We will try up to 4 times to get a good error for this one Q&A pair
+                while not item_is_good and sabotage_attempt < 4:
+                    total_attempts += 1
+                    sabotage_attempt += 1
                     
-            except Exception as e:
-                print(f"❌ Generation failed on attempt {attempts}: {e}")
+                    # 3. Dynamically build the prompt for the BugInjector
+                    error_type = random.choice(["Math Error", "Logical Fallacy", "Fact Hallucination", "Code Syntax"])
+                    
+                    # This is the core of the feedback mechanism
+                    full_instruction = f"Inject a '{error_type}' into the answer. {feedback_instruction}"
+                    
+                    bug_predictor = dspy.ChainOfThought(BugInjector)
+                    corrupted = bug_predictor(
+                        question=base.question,
+                        correct_answer=base.correct_answer,
+                        error_type=full_instruction
+                    )
+                    
+                    ex = dspy.Example(
+                        question=base.question,
+                        draft_answer=corrupted.bad_draft,       
+                        gold_critique=corrupted.gold_critique,  
+                        correct_answer=base.correct_answer,     
+                    ).with_inputs("question", "draft_answer")
 
-        print(f"\n✅ Dataset curated! Found {num_examples} good examples out of {attempts} total attempts.")
+                    # 4. Evaluate and provide feedback for the next loop
+                    eval_result = evaluator(unoptimized_program, devset=[ex])
+                    score = eval_result.score / 100.0
+                    
+                    if MIN_SCORE <= score < MAX_SCORE:
+                        good_dataset.append(ex)
+                        print(f"✅ [{len(good_dataset)}/{num_examples}] KEPT. Score: {score:.2f} (after {sabotage_attempt} tries)")
+                        item_is_good = True
+                    elif score >= MAX_SCORE:
+                        print(f"⚪ [Attempt {sabotage_attempt}] Too easy (Score: {score:.2f}). Instructing model to try harder...")
+                        feedback_instruction = (
+                            "The previous error you created was too simple and easy for the system to find and fix. "
+                            "For this next attempt, you must create a MORE SUBTLE, complex, or well-hidden error."
+                        )
+                    else: # score < MIN_SCORE
+                        print(f"⚫ [Attempt {sabotage_attempt}] Too hard (Score: {score:.2f}). Instructing model to be clearer...")
+                        feedback_instruction = (
+                            "The previous error you created made the answer nonsensical or impossible to fix. "
+                            "For this next attempt, create a CLEARER but still fatal error that is harder to spot."
+                        )
+
+                if not item_is_good:
+                    print(f"❌ Could not find a good error for the topic: '{topic}' after 4 attempts. Moving on.")
+
+            except Exception as e:
+                print(f"❌ A critical error occurred with topic '{topic}': {e}")
+
+        print(f"\n✅ Dataset curated! Found {len(good_dataset)} good examples out of {total_attempts} total feedback-driven attempts.")
         return good_dataset
 
 if __name__ == "__main__":
