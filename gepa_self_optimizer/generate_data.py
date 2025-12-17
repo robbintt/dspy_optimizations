@@ -27,11 +27,6 @@ if os.path.exists(output_filename):
     # Exit early, preventing the rest of the script from running
     sys.exit(0)
 
-# --- 2. INITIALIZE AND GENERATE DATA ---
-# Only run this if the file was not found.
-print("🚀 Initializing DSPy and models to generate golden set...")
-task_lm, reflection_lm = setup_dspy()
-
 # Number of examples to generate
 num_examples_to_generate = 25
 
@@ -81,7 +76,7 @@ with dspy.context(lm=task_lm):
         gold_critique: str = dspy.OutputField(desc="A precise description of the new flaw that highlights its advanced subtlety and why it's significantly harder to detect than previous attempts.")
 
     # --- THE FACTORY ---
-    def generate_synthetic_data(num_examples=25):
+    def generate_synthetic_data(num_examples=25, task_lm=None, reflection_lm=None):
         """
         Generates a dataset using a synthetic world generation feedback loop.
         This avoids reliance on real-world knowledge and increases problem perplexity.
@@ -99,7 +94,6 @@ with dspy.context(lm=task_lm):
         print(f"🧠 Curating {num_examples} examples using novel synthetic contexts...")
         print(f"   Target similarity score range per item: [{MIN_SCORE:.2f}, {MAX_SCORE:.2f})\n")
         
-        task_lm, reflection_lm = setup_dspy()
         unoptimized_program = GlmSelfReflect()
         evaluator = Evaluate(devset=[], metric=refinement_gepa_metric, num_threads=1)
         
@@ -139,39 +133,51 @@ with dspy.context(lm=task_lm):
                     bug_predictor = dspy.ChainOfThought(BugInjector)
                     # Pass the full history of all previous attempts for this item
                     history_string = "\n---\n".join(attempts_history)
-                    corrupted = bug_predictor(
-                        question=base.question,
-                        correct_answer=base.correct_answer,
-                        attempts_history=history_string
-                    )
-                        
-                    ex = dspy.Example(
-                        question=base.question,
-                        draft_answer=corrupted.bad_draft,       
-                        gold_critique=corrupted.gold_critique,  
-                        correct_answer=base.correct_answer,     
-                    ).with_inputs("question", "draft_answer")
+                    
+                    try:
+                        corrupted = bug_predictor(
+                            question=base.question,
+                            correct_answer=base.correct_answer,
+                            attempts_history=history_string
+                        )
+                            
+                        ex = dspy.Example(
+                            question=base.question,
+                            draft_answer=corrupted.bad_draft,       
+                            gold_critique=corrupted.gold_critique,  
+                            correct_answer=base.correct_answer,     
+                        ).with_inputs("question", "draft_answer")
 
-                    # 4. Evaluate
-                    eval_result = evaluator(unoptimized_program, devset=[ex])
-                    score = eval_result.score / 100.0
-                        
-                    if MIN_SCORE <= score < MAX_SCORE:
-                        good_dataset.append(ex)
-                        print(f"✅ [{len(good_dataset)}/{num_examples}] KEPT. Score: {score:.2f} (after {sabotage_attempt} tries)")
-                        item_is_good = True
-                    elif score >= MAX_SCORE:
-                        print(f"⚪ [Attempt {sabotage_attempt}] Too easy (Score: {score:.2f}). Trying a more devious error...")
+                        # 4. Evaluate
+                        eval_result = evaluator(unoptimized_program, devset=[ex])
+                        score = eval_result.score / 100.0
+                            
+                        if MIN_SCORE <= score < MAX_SCORE:
+                            good_dataset.append(ex)
+                            print(f"✅ [{len(good_dataset)}/{num_examples}] KEPT. Score: {score:.2f} (after {sabotage_attempt} tries)")
+                            item_is_good = True
+                        elif score >= MAX_SCORE:
+                            print(f"⚪ [Attempt {sabotage_attempt}] Too easy (Score: {score:.2f}). Trying a more devious error...")
+                            history_entry = (
+                                f"Attempt {sabotage_attempt} scored {score:.2f}, which was too easy. The system detected the error in this draft: {corrupted.bad_draft}"
+                            )
+                            attempts_history.append(history_entry)
+                        else: # score < MIN_SCORE
+                            print(f"⚫ [Attempt {sabotage_attempt}] Too hard (Score: {score:.2f}). Making the flaw more solvable but still tricky.")
+                            history_entry = (
+                                f"Attempt {sabotage_attempt} scored {score:.2f}, which was too hard. The error in this draft was too obscure: {corrupted.bad_draft}"
+                            )
+                            attempts_history.append(history_entry)
+                    
+                    except Exception as e:
+                        print(f"⚠️ [Attempt {sabotage_attempt}] BugInjector prediction failed: {e}. Retrying.")
+                        # Add a failure to the history to inform the next BugInjector attempt
                         history_entry = (
-                            f"Attempt {sabotage_attempt} scored {score:.2f}, which was too easy. The system detected the error in this draft: {corrupted.bad_draft}"
+                            f"Attempt {sabotage_attempt} failed due to a prediction error: {e}. You must produce a valid output in the next attempt."
                         )
                         attempts_history.append(history_entry)
-                    else: # score < MIN_SCORE
-                        print(f"⚫ [Attempt {sabotage_attempt}] Too hard (Score: {score:.2f}). Making the flaw more solvable but still tricky.")
-                        history_entry = (
-                            f"Attempt {sabotage_attempt} scored {score:.2f}, which was too hard. The error in this draft was too obscure: {corrupted.bad_draft}"
-                        )
-                        attempts_history.append(history_entry)
+                        # Continue to the next attempt in the while loop
+                        continue
                 
                 if not item_is_good:
                     print(f"❌ Could not find a good error for the concept: '{chosen_concept}' after 4 attempts. Moving on.")
@@ -184,9 +190,12 @@ with dspy.context(lm=task_lm):
 
 if __name__ == "__main__":
     num_examples_to_generate = 25
+
+    print("🚀 Initializing DSPy and models to generate golden set...")
+    task_lm, reflection_lm = setup_dspy()
     
     # The function now handles generation, curation, and reporting
-    synthetic_dataset = generate_synthetic_data(num_examples=num_examples_to_generate)
+    synthetic_dataset = generate_synthetic_data(num_examples=num_examples_to_generate, task_lm=task_lm, reflection_lm=reflection_lm)
 
     if synthetic_dataset:
         # Convert dspy.Example objects to plain dictionaries for JSON serialization
