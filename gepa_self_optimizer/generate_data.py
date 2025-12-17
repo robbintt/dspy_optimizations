@@ -36,33 +36,24 @@ with dspy.context(lm=task_lm):
 
     class BugInjector(Signature):
         """
-        You are a Red Teamer tasked with sabotaging a perfect answer.
-        Your goal is to create a flawed version that is DIFFICULT for a top-tier AI to find and fix.
-
-        The flaw must be:
-        1.  FATAL: It makes the answer incorrect or unsafe.
-        2.  SUBTLE: It should not be an obvious typo or blatant hallucination. It must blend in with the rest of the text.
-        3.  PLAUSIBLE: A non-expert might not notice the error.
-        4.  HARD-TO-FIX: Fixing the error requires careful reasoning, not just a simple word swap.
-
-        Examples of good flaws:
-        -   A subtle but critical logical misstep in a multi-stage argument.
-        -   A misapplication of a scientific principle that seems correct on the surface.
-        -   A code error that only manifests under specific, non-obvious conditions.
-        -   Introducing a convincing but false "alternative fact" that fits the context.
-
+        You are a Red Teamer. Your last attempt at creating a subtle sabotage FAILED because the system found it too easily.
+        Analyze the failed attempt provided in 'last_failed_attempt' and create a NEW, much more sophisticated sabotage.
+        Your new flaw must be:
+        1.  FATAL: It makes the answer incorrect.
+        2.  SUBTLE: It must not be obvious. Blend it in.
+        3.  HARD-TO-FIX: Require careful reasoning to spot and correct.
+        
         DO NOT:
         -   Add typos or grammatical mistakes.
         -   Invent obvious nonsense.
-        -   Make a simple calculation error.
-        -   Change the topic.
+        -   Make simple calculation errors.
         """
         question: str = dspy.InputField(desc="The question the original answer addresses.")
         correct_answer: str = dspy.InputField(desc="The perfect, step-by-step answer to be sabotaged.")
-        sabotage_goal: str = dspy.InputField(desc="A specific, challenging instruction from the user to guide the type of sabotage.")
-        saboteurs_tactic_log: str = dspy.OutputField(desc="A short, internal note explaining the subtle flaw you decided to inject and why it's hard to spot.")
-        bad_draft: str = dspy.OutputField(desc="The rewritten answer containing the subtle, fatal flaw.")
-        gold_critique: str = dspy.OutputField(desc="A concise yet precise description of the hidden flaw that the red-teamer created.")
+        last_failed_attempt: str = dspy.InputField(desc="The previous failed sabotage attempt, including the critique of why it was too easy.")
+        saboteurs_tactic_log: str = dspy.OutputField(desc="A short, internal note explaining the NEW subtle flaw and why it's harder to spot.")
+        bad_draft: str = dspy.OutputField(desc="The rewritten answer containing the NEW, more subtle, fatal flaw.")
+        gold_critique: str = dspy.OutputField(desc="A concise description of the NEW, harder-to-find flaw.")
 
     # --- THE FACTORY ---
     def generate_synthetic_data(num_examples=25):
@@ -139,16 +130,20 @@ with dspy.context(lm=task_lm):
                     item_is_good = True
                 elif score >= MAX_SCORE:
                     print(f"⚪ [Attempt {sabotage_attempt}] Too easy (Score: {score:.2f}). Demanding a much harder, more devious error...")
-                    feedback_instruction = (
-                        "THE MODEL FOUND YOUR ERROR. IT WAS NOT SUBTLE ENOUGH. "
-                        "You must now create an extremely clever, contextual flaw that is almost invisible, even to an expert. "
-                        "Avoid anything that looks like a simple mistake. Think like an adversary trying to poison the model's knowledge."
+                    # Build a report of the failure to give back to the model
+                    last_failure_report = (
+                        f"YOUR LAST ATTEMPT FAILED. It was scored {score:.2f} and deemed 'too easy'.\n"
+                        f"--- YOUR LAST FLAWED DRAFT ---\n{corrupted.bad_draft}\n--- END DRAFT ---\n"
+                        f"REASON FOR FAILURE: The system easily detected and corrected your error. "
+                        f"You must create something far more subtle that a top-tier AI will miss."
                     )
                 else: # score < MIN_SCORE
                     print(f"⚫ [Attempt {sabotage_attempt}] Too hard (Score: {score:.2f}). Make the flaw more solvable but still tricky.")
-                    feedback_instruction = (
-                        "The error you created was too obscure and made the answer nonsensical. "
-                        "For this next attempt, create a flaw that is subtle but FAIR, meaning a powerful reasoning model can plausibly find and fix it."
+                    last_failure_report = (
+                        f"YOUR LAST ATTEMPT FAILED. It was scored {score:.2f} and deemed 'too hard'.\n"
+                        f"--- YOUR LAST FLAWED DRAFT ---\n{corrupted.bad_draft}\n--- END DRAFT ---\n"
+                        f"REASON FOR FAILURE: The error was too obscure or nonsensical. "
+                        f"You must create a flaw that is subtle but FAIR, meaning a powerful model can plausibly find and fix it."
                     )
 
                 if not item_is_good:
