@@ -15,11 +15,8 @@ def semantic_similarity(text1, text2):
     return util.cos_sim(embeddings[0], embeddings[1]).item()
 
 # --- 2. DEFINE THE METRIC FOR GEPA ---
-def refinement_gepa_metric(gold, pred, trace=None):
-    score = semantic_similarity(pred.answer, gold.correct_answer)
-    feedback = f"Similarity score is {score:.2f}. The reference answer is '{gold.correct_answer}'."
-    # In v3.0.4, metrics should return a float or bool directly
-    # The answer_with_feedback pattern is deprecated
+def refinement_gepa_metric(example, prediction, trace=None):
+    score = semantic_similarity(prediction.answer, example.correct_answer)
     return score
 
 # --- 3. LOAD DATA ---
