@@ -16,8 +16,15 @@ def post_compile_inspection(program, program_name="Optimized Program"):
 
     state = program.dump_state()
     for component_key, component_data in state.items():
-        demos = component_data.get('demos', [])
-        instructions = component_data.get('signature', {}).get('instructions', '')
+        # Handle nested state for ChainOfThought modules, which have a '.predict' suffix
+        # and an internal 'predict' key in their dumped state.
+        if 'predict' in component_data:
+            actual_data = component_data.get('predict', {})
+        else:
+            actual_data = component_data
+            
+        demos = actual_data.get('demos', [])
+        instructions = actual_data.get('signature', {}).get('instructions', '')
         print(f"  🔍 Component: {component_key}")
         print(f"    -> 'demos' count: {len(demos)}")
         print(f"    -> 'instructions' length: {len(instructions)}")
