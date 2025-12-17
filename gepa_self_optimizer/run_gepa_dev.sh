@@ -5,12 +5,18 @@
 
 set -e # Exit immediately if a command exits with a non-zero status.
 
+# --- Resolve Project Root ---
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+# Get the project root directory (one level up from the script's directory)
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
 # --- Configuration ---
-VENV_DIR="venv"
-CONFIG_DIR="gepa_self_optimizer/config"
-MODELS_FILE="models.yaml"
-DEV_MODELS_FILE="models.dev.yaml"
-BACKUP_FILE="models.yaml.backup"
+VENV_DIR="$PROJECT_ROOT/venv"
+CONFIG_DIR="$SCRIPT_DIR/config"
+MODELS_FILE="$CONFIG_DIR/models.yaml"
+DEV_MODELS_FILE="$CONFIG_DIR/models.dev.yaml"
+BACKUP_FILE="$CONFIG_DIR/models.yaml.backup"
 
 # --- Script Logic ---
 echo "🚀 Starting GEPA development run..."
@@ -35,7 +41,6 @@ fi
 
 # 4. Switch to development config
 echo "🔄 Switching to development configuration..."
-cd "$CONFIG_DIR"
 
 if [ -f "$MODELS_FILE" ]; then
     mv "$MODELS_FILE" "$BACKUP_FILE"
@@ -45,14 +50,12 @@ fi
 cp "$DEV_MODELS_FILE" "$MODELS_FILE"
 echo "🔹 Using development models from '$DEV_MODELS_FILE'."
 
-cd ../.. # Return to root directory
-
 # 5. Run the scripts
 echo "📦 Step 1: Generating synthetic data..."
-python gepa_self_optimizer/generate_data.py
+python "$PROJECT_ROOT/gepa_self_optimizer/generate_data.py"
 
 echo "🧬 Step 2: Running GEPA optimization..."
-python gepa_self_optimizer/optimize_gepa.py
+python "$PROJECT_ROOT/gepa_self_optimizer/optimize_gepa.py"
 
 # 6. Restore original config
 echo "🔄 Restoring original configuration..."
@@ -65,7 +68,6 @@ else
     rm "$MODELS_FILE"
     echo "🔹 Removed temporary development config."
 fi
-cd ../.. # Return to root directory
 
 # 7. Deactivate venv
 echo "🔧 Deactivating virtual environment..."
