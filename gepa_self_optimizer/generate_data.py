@@ -97,46 +97,46 @@ with dspy.context(lm=task_lm):
                     total_attempts += 1
                     sabotage_attempt += 1
                     
-            bug_predictor = dspy.ChainOfThought(BugInjector)
-            corrupted = bug_predictor(
-                question=base.question,
-                correct_answer=base.correct_answer,
-                last_failed_attempt=last_failure_report
-            )
-                    
-                ex = dspy.Example(
-                    question=base.question,
-                    draft_answer=corrupted.bad_draft,       
-                    gold_critique=corrupted.gold_critique,  
-                    correct_answer=base.correct_answer,     
-                ).with_inputs("question", "draft_answer")
-
-                # 4. Evaluate and provide feedback for the next loop
-                eval_result = evaluator(unoptimized_program, devset=[ex])
-                score = eval_result.score / 100.0
-                    
-                if MIN_SCORE <= score < MAX_SCORE:
-                    good_dataset.append(ex)
-                    print(f"✅ [{len(good_dataset)}/{num_examples}] KEPT. Score: {score:.2f} (after {sabotage_attempt} tries)")
-                    item_is_good = True
-                elif score >= MAX_SCORE:
-                    print(f"⚪ [Attempt {sabotage_attempt}] Too easy (Score: {score:.2f}). Demanding a much harder, more devious error...")
-                    # Build a report of the failure to give back to the model
-                    last_failure_report = (
-                        f"YOUR LAST ATTEMPT FAILED. It was scored {score:.2f} and deemed 'too easy'.\n"
-                        f"--- YOUR LAST FLAWED DRAFT ---\n{corrupted.bad_draft}\n--- END DRAFT ---\n"
-                        f"REASON FOR FAILURE: The system easily detected and corrected your error. "
-                        f"You must create something far more subtle that a top-tier AI will miss."
+                    bug_predictor = dspy.ChainOfThought(BugInjector)
+                    corrupted = bug_predictor(
+                        question=base.question,
+                        correct_answer=base.correct_answer,
+                        last_failed_attempt=last_failure_report
                     )
-                else: # score < MIN_SCORE
-                    print(f"⚫ [Attempt {sabotage_attempt}] Too hard (Score: {score:.2f}). Make the flaw more solvable but still tricky.")
-                    last_failure_report = (
-                        f"YOUR LAST ATTEMPT FAILED. It was scored {score:.2f} and deemed 'too hard'.\n"
-                        f"--- YOUR LAST FLAWED DRAFT ---\n{corrupted.bad_draft}\n--- END DRAFT ---\n"
-                        f"REASON FOR FAILURE: The error was too obscure or nonsensical. "
-                        f"You must create a flaw that is subtle but FAIR, meaning a powerful model can plausibly find and fix it."
-                    )
+                        
+                    ex = dspy.Example(
+                        question=base.question,
+                        draft_answer=corrupted.bad_draft,       
+                        gold_critique=corrupted.gold_critique,  
+                        correct_answer=base.correct_answer,     
+                    ).with_inputs("question", "draft_answer")
 
+                    # 4. Evaluate and provide feedback for the next loop
+                    eval_result = evaluator(unoptimized_program, devset=[ex])
+                    score = eval_result.score / 100.0
+                        
+                    if MIN_SCORE <= score < MAX_SCORE:
+                        good_dataset.append(ex)
+                        print(f"✅ [{len(good_dataset)}/{num_examples}] KEPT. Score: {score:.2f} (after {sabotage_attempt} tries)")
+                        item_is_good = True
+                    elif score >= MAX_SCORE:
+                        print(f"⚪ [Attempt {sabotage_attempt}] Too easy (Score: {score:.2f}). Demanding a much harder, more devious error...")
+                        # Build a report of the failure to give back to the model
+                        last_failure_report = (
+                            f"YOUR LAST ATTEMPT FAILED. It was scored {score:.2f} and deemed 'too easy'.\n"
+                            f"--- YOUR LAST FLAWED DRAFT ---\n{corrupted.bad_draft}\n--- END DRAFT ---\n"
+                            f"REASON FOR FAILURE: The system easily detected and corrected your error. "
+                            f"You must create something far more subtle that a top-tier AI will miss."
+                        )
+                    else: # score < MIN_SCORE
+                        print(f"⚫ [Attempt {sabotage_attempt}] Too hard (Score: {score:.2f}). Make the flaw more solvable but still tricky.")
+                        last_failure_report = (
+                            f"YOUR LAST ATTEMPT FAILED. It was scored {score:.2f} and deemed 'too hard'.\n"
+                            f"--- YOUR LAST FLAWED DRAFT ---\n{corrupted.bad_draft}\n--- END DRAFT ---\n"
+                            f"REASON FOR FAILURE: The error was too obscure or nonsensical. "
+                            f"You must create a flaw that is subtle but FAIR, meaning a powerful model can plausibly find and fix it."
+                        )
+                
                 if not item_is_good:
                     print(f"❌ Could not find a good error for the topic: '{topic}' after 4 attempts. Moving on.")
 
