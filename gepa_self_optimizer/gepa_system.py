@@ -85,9 +85,10 @@ class Refine(dspy.Signature):
 class GlmSelfReflect(dspy.Module):
     def __init__(self):
         super().__init__()
-        self.generator = dspy.ChainOfThought(Generate)
-        self.critic = dspy.ChainOfThought(ShepherdCritic)
-        self.refiner = dspy.ChainOfThought(Refine)
+        # TEMPORARILY change to dspy.Predict for GEPA optimization
+        self.generator = dspy.Predict(Generate)
+        self.critic = dspy.Predict(ShepherdCritic)
+        self.refiner = dspy.Predict(Refine)
 
     def predictors(self):
         return [self.generator, self.critic, self.refiner]
