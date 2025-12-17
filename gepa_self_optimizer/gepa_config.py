@@ -40,6 +40,9 @@ def _load_run_settings():
         # Return a default empty dict if the optional config file is not found
         return {}
 
+# Load run settings at module level so they can be imported
+run_settings = _load_run_settings()
+
 def _create_lm(config_name: str):
     """
     Helper function to create a dspy.LM instance from a named configuration.
