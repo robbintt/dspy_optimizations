@@ -2,9 +2,21 @@ import dspy
 from dspy.signatures import Signature
 import random
 import json
+import os
+import sys
 from gepa_config import setup_dspy, task_lm, _load_run_settings
 
-# Initialize DSPy and models first
+# --- 1. CHECK IF FILE EXISTS FIRST ---
+# This avoids expensive API calls if the data is already present.
+output_filename = "golden_set.json"
+if os.path.exists(output_filename):
+    print(f"\n📄 Golden set already exists at {output_filename}. Skipping generation.")
+    # Exit early, preventing the rest of the script from running
+    sys.exit(0)
+
+# --- 2. INITIALIZE AND GENERATE DATA ---
+# Only run this if the file was not found.
+print("🚀 Initializing DSPy and models to generate golden set...")
 setup_dspy()
 
 # Load run settings
@@ -69,21 +81,14 @@ with dspy.context(lm=task_lm):
         return dataset
 
 if __name__ == "__main__":
-    output_filename = "golden_set.json"
-    
-    # Check if golden set already exists
-    import os
-    if os.path.exists(output_filename):
-        print(f"\n📄 Golden set already exists at {output_filename}. Skipping generation.")
-    else:
-        num_examples_to_generate = 25
-        synthetic_dataset = generate_synthetic_data(num_examples=num_examples_to_generate)
+    num_examples_to_generate = 25
+    synthetic_dataset = generate_synthetic_data(num_examples=num_examples_to_generate)
 
-        # Convert dspy.Example objects to plain dictionaries for JSON serialization
-        json_ready_data = [dict(example) for example in synthetic_dataset]
+    # Convert dspy.Example objects to plain dictionaries for JSON serialization
+    json_ready_data = [dict(example) for example in synthetic_dataset]
 
-        # Save the data to the expected file
-        with open(output_filename, "w") as f:
-            json.dump(json_ready_data, f, indent=4)
+    # Save the data to the expected file
+    with open(output_filename, "w") as f:
+        json.dump(json_ready_data, f, indent=4)
 
-        print(f"\n✅ Successfully generated and saved {len(json_ready_data)} examples to {output_filename}")
+    print(f"\n✅ Successfully generated and saved {len(json_ready_data)} examples to {output_filename}")
