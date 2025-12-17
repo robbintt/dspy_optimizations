@@ -22,8 +22,13 @@ MODEL_CONFIG_PATH = CONFIG_DIR / "config" / "models.yaml"
 # Load the entire model configuration file
 # Make this lazy loading to allow for test mocking
 def _load_model_configs():
+    final_config = {}
     with open(MODEL_CONFIG_PATH, "r") as f:
-        return yaml.safe_load(f)
+        # safe_load_all creates a generator for all documents in the stream
+        for document in yaml.safe_load_all(f):
+            if isinstance(document, dict):
+                final_config.update(document)
+    return final_config
 
 def _load_run_settings():
     """Loads the run-specific settings from config/settings.yaml."""
