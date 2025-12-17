@@ -161,33 +161,29 @@ with dspy.context(lm=task_lm):
                     # 4. Evaluate
                     eval_result = evaluator(unoptimized_program, devset=[ex])
                     score = eval_result.score / 100.0
-                    
-                    # Append the result of this attempt to the history for the next loop
-                    history_entry = (
-                        f"Attempt {sabotage_attempt} scored {score:.2f}, which was too easy. "
-                        f"The system detected the error in this draft: {corrupted.bad_draft}"
-                    )
-                    attempts_history.append(history_entry)
                         
                     if MIN_SCORE <= score < MAX_SCORE:
                         good_dataset.append(ex)
                         print(f"✅ [{len(good_dataset)}/{num_examples}] KEPT. Score: {score:.2f} (after {sabotage_attempt} tries)")
                         item_is_good = True
-                    elif score >= MAX_SCORE or score > 0.99:
+                    elif score >= MAX_SCORE:
                         print(f"⚪ [Attempt {sabotage_attempt}] Too easy (Score: {score:.2f}). Trying a more devious error...")
+                        history_entry = (
+                            f"Attempt {sabotage_attempt} scored {score:.2f}, which was too easy. The system detected the error in this draft: {corrupted.bad_draft}"
+                        )
+                        attempts_history.append(history_entry)
                     else: # score < MIN_SCORE
                         print(f"⚫ [Attempt {sabotage_attempt}] Too hard (Score: {score:.2f}). Making the flaw more solvable but still tricky.")
-                        # Update the history entry to reflect 'too hard'
-                        attempts_history[-1] = (
-                            f"Attempt {sabotage_attempt} scored {score:.2f}, which was too hard. "
-                            f"The error in this draft was too obscure: {corrupted.bad_draft}"
+                        history_entry = (
+                            f"Attempt {sabotage_attempt} scored {score:.2f}, which was too hard. The error in this draft was too obscure: {corrupted.bad_draft}"
                         )
+                        attempts_history.append(history_entry)
                 
                 if not item_is_good:
-                    print(f"❌ Could not find a good error for the topic: '{topic}' after 4 attempts. Moving on.")
+                    print(f"❌ Could not find a good error for the concept: '{chosen_concept}' after 4 attempts. Moving on.")
 
             except Exception as e:
-                print(f"❌ A critical error occurred with topic '{topic}': {e}")
+                print(f"❌ A critical error occurred with concept '{chosen_concept}': {e}")
             
         print(f"\n✅ Dataset curated! Found {len(good_dataset)} good examples out of {total_attempts} total attempts.")
         return good_dataset
