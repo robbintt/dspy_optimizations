@@ -158,7 +158,8 @@ def test_gepa_compilation_bug():
         
         state_before_forward = optimized_program.dump_state()
         cot_state_before_forward = state_before_forward.get('chain_of_thought_predictor', {})
-        instruction_before_forward = cot_state_before_forward.get('predict', {}).get('signature', {}).get('instructions')
+        actual_predictor_state = cot_state_before_forward.get('predict', {})
+        instruction_before_forward = actual_predictor_state.get('signature', {}).get('instructions')
         print(f"   -> Instruction BEFORE forward call: '{instruction_before_forward}'")
 
         # --- CRITICAL TEST: Call forward() on the optimized program ---
