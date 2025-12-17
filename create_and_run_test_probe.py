@@ -3,7 +3,7 @@ import json
 
 # Define a simple signature for the test
 class TestSignature(dspy.Signature):
-    """A simple signature for testing state changes."""
+    """This is the docstring and default instruction for the signature."""
     input_str = dspy.InputField(desc="Input string.")
     output_str = dspy.OutputField(desc="Output string.")
 
@@ -14,15 +14,17 @@ def test_chain_of_thought_state_bug():
     print("--- Probing dspy.ChainOfThought for state bug ---")
 
     # Step 1: Create a ChainOfThought predictor with an initial instruction.
-    initial_instruction = "This is the initial instruction."
+    initial_instruction = "This is the EXPLICIT initial instruction."
     predictor = dspy.ChainOfThought(TestSignature, instructions=initial_instruction)
     
-    # Sanity check: Verify the initial state via its internal attribute
-    # Note: The instruction is stored inside the signature within the 'predict' attribute
+    # Verify the initial state. ChainOfThought stores the instruction in the signature of its internal predictor.
     current_instruction_after_init = predictor.predict.signature.instructions
-    print(f"1. Initial instruction set: '{initial_instruction}'")
-    print(f"   Module reports instruction after init: '{current_instruction_after_init}'")
-    print(f"   -> Match? {initial_instruction == current_instruction_after_init}\n")
+    print(f"1. Explicit instruction set: '{initial_instruction}'")
+    print(f"   Module reports after init: '{current_instruction_after_init}'")
+    print(f"   -> Explicit instruction used? {initial_instruction == current_instruction_after_init}\n")
+
+    if initial_instruction != current_instruction_after_init:
+        print("   NOTE: The explicit instruction was ignored and the docstring was used. This is a separate issue.\n")
 
 
     # Step 2: Manually mutate the instruction inside the module.
@@ -36,22 +38,25 @@ def test_chain_of_thought_state_bug():
     print("3. Calling dump_state() to inspect the saved state...")
     dumped_state = predictor.dump_state()
 
-    # Step 4: Analyze the result.
-    if 'signature' in dumped_state and 'instructions' in dumped_state['signature']:
-        instruction_from_dump_state = dumped_state['signature']['instructions']
-        print(f"   -> Instruction from dump_state(): '{instruction_from_dump_state}'")
+    # Step 4: Analyze the result. The state is nested under the 'predict' key.
+    print("   -> Raw dump_state keys:", list(dumped_state.keys()))
+    predictor_state = dumped_state.get('predict', {})
+
+    if predictor_state and 'signature' in predictor_state and 'instructions' in predictor_state['signature']:
+        instruction_from_dump_state = predictor_state['signature']['instructions']
+        print(f"   -> Instruction from dump_state()['predict']['signature']['instructions']: '{instruction_from_dump_state}'")
         
         if instruction_from_dump_state == new_instruction:
             print("\n✅ SUCCESS: dump_state() correctly reflects the mutated instruction. No bug detected here.")
             return True
         else:
-            print("\n❌ FAILURE: dump_state() shows the OLD instruction. This indicates a bug in dspy.ChainOfThought.")
+            print("\n❌ FAILURE: dump_state() shows the OLD (or default) instruction. This confirms a bug in dspy.ChainOfThought.")
             print(f"   Expected: '{new_instruction}'")
             print(f"   Got:      '{instruction_from_dump_state}'")
             return False
     else:
-        print("\n❌ ERROR: Could not find 'instructions' key in the dumped state.")
-        print("   Dumped state keys:", list(dumped_state.keys()))
+        print("\n❌ ERROR: Could not find nested 'instructions' key in the dumped state.")
+        print("   Predictor state keys:", list(predictor_state.keys()))
         return False
 
 if __name__ == "__main__":
