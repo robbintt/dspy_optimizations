@@ -29,8 +29,9 @@ num_examples_to_generate = 25
 with dspy.context(lm=task_lm):
     # --- SIGNATURES ---
     class TopicToQA(Signature):
-        """Given a topic, generate a complex reasoning question and a perfect, step-by-step answer."""
+        """Given a topic and a unique identifier, generate a complex reasoning question and a perfect, step-by-step answer."""
         topic: str = dspy.InputField(desc="The general topic for the question.")
+        unique_id: str = dspy.InputField(desc="A unique identifier to ensure a novel response is generated.")
         question: str = dspy.OutputField(desc="A complex question that requires reasoning.")
         correct_answer: str = dspy.OutputField(desc="The perfect, step-by-step correct answer to the question.")
 
@@ -86,7 +87,7 @@ with dspy.context(lm=task_lm):
             try:
                 # 1. Generate a single, high-quality base Q&A pair
                 base_predictor = dspy.ChainOfThought(TopicToQA)
-                base = base_predictor(topic=topic)
+                base = base_predictor(topic=topic, unique_id=str(overall_topic_attempts))
                 
                 # 2. Enter a feedback loop to find a suitable sabotage for this Q&A
                 sabotage_attempt = 0
