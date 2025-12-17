@@ -29,35 +29,40 @@ num_examples_to_generate = 25
 with dspy.context(lm=task_lm):
     # --- SIGNATURES ---
     class TopicToQA(Signature):
-        """Given a topic, generate a highly complex, multi-step reasoning question that contains subtle pitfalls or common misconceptions, and provide a perfect, step-by-step answer."""
+        """Given a topic, generate an extremely complex, multi-step reasoning question that contains subtle pitfalls or common misconceptions, and provide a perfect, step-by-step answer. The question should require deep analytical thinking and careful attention to detail."""
         topic: str = dspy.InputField(desc="The general topic for the question.")
         unique_id: str = dspy.InputField(desc="A unique identifier to ensure a novel response is generated.")
-        question: str = dspy.OutputField(desc="A highly complex and multi-step question with subtle pitfalls that requires deep reasoning.")
+        question: str = dspy.OutputField(desc="An extremely complex and multi-step question with subtle pitfalls that requires deep analytical reasoning and careful attention to detail.")
         correct_answer: str = dspy.OutputField(desc="The perfect, step-by-step correct answer to the complex question.")
 
     class BugInjector(Signature):
         """
-        You are a Red Teamer. Your previous attempts at creating a subtle sabotage have FAILED because the system found them too easily.
-        Analyze the complete history of your failed attempts provided in 'attempts_history'. Each attempt includes the flawed draft and the score it received.
+        You are an expert Red Teamer. Your previous attempts at creating a subtle sabotage have FAILED because the system detected them too easily.
+        THOROUGHLY ANALYZE the complete history of your failed attempts in 'attempts_history'. Each includes the flawed draft and score.
         
-        Create a NEW, much more sophisticated sabotage. Your new flaw must be fundamentally different and more subtle than all previous attempts.
-        It must be:
-        1.  FATAL: It makes the answer incorrect.
-        2.  SUBTLE: It must not be obvious. Blend it in.
-        3.  HARD-TO-FIX: Require careful reasoning to spot and correct.
+        Based on this analysis, create a fundamentally different and MORE sophisticated sabotage. Learn from each failure:
+        - If previous attempts were "too easy", your new flaw must be exponentially more subtle
+        - If previous attempts were "too hard", your new flaw must be more discoverable but still challenging
         
-        DO NOT:
-        -   Simply repeat the type of error from a previous failed attempt.
-        -   Add typos or grammatical mistakes.
-        -   Invent obvious nonsense.
-        -   Make simple calculation errors.
+        Your new flaw must be:
+        1.  FATAL: Makes the answer definitively incorrect
+        2.  EXTREMELY SUBTLE: Blended naturally, nearly undetectable
+        3.  COGNITIVELY TAXING: Requires deep reasoning to identify and correct
+        
+        LEARN FROM HISTORY: Study why each previous attempt failed and escalate your sophistication accordingly.
+        
+        ABSOLUTELY FORBIDDEN:
+        -   Reusing error types from failed attempts
+        -   Surface-level errors (typos, grammar, obvious nonsense)
+        -   Simple calculation mistakes
+        -   Anything that would be flagged easily
         """
         question: str = dspy.InputField(desc="The question the original answer addresses.")
         correct_answer: str = dspy.InputField(desc="The perfect, step-by-step answer to be sabotaged.")
-        attempts_history: str = dspy.InputField(desc="A complete history of your previous failed attempts for this question, with each attempt's score and flawed draft. Use this to understand what has been deemed 'too easy' and escalate the sophistication of your flaw.")
-        saboteurs_tactic_log: str = dspy.OutputField(desc="A short, internal note explaining the NEW subtle flaw, how it differs from past attempts, and why it's harder to spot.")
-        bad_draft: str = dspy.OutputField(desc="The rewritten answer containing the NEW, more subtle, fatal flaw.")
-        gold_critique: str = dspy.OutputField(desc="A concise description of the NEW, harder-to-find flaw.")
+        attempts_history: str = dspy.InputField(desc="CRITICAL: Complete history of all failed attempts. Study this deeply to understand what failed and escalate sophistication dramatically. Each entry includes score and why it failed.")
+        saboteurs_tactic_log: str = dspy.OutputField(desc="Strategic analysis of your new approach, explaining how you learned from history and why this flaw is fundamentally more sophisticated.")
+        bad_draft: str = dspy.OutputField(desc="The rewritten answer containing your most sophisticated, subtle, and hard-to-detect fatal flaw yet.")
+        gold_critique: str = dspy.OutputField(desc="A precise description of the new flaw that highlights its advanced subtlety and why it's significantly harder to detect than previous attempts.")
 
     # --- THE FACTORY ---
     def generate_synthetic_data(num_examples=25):
