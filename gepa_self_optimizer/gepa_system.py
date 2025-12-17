@@ -87,7 +87,7 @@ class GlmSelfReflect(dspy.Module):
         super().__init__()
         self.generator = dspy.ChainOfThought(Generate)
         self.critic = dspy.ChainOfThought(ShepherdCritic)
-        self.refiner = dspy.Predict(Refine)
+        self.refiner = dspy.ChainOfThought(Refine)
 
     def forward(self, question, draft_answer=None):
         if not draft_answer:
