@@ -58,6 +58,13 @@ else:
         valset=valset,
     )
     
+    # --- ADD THIS DEBUGGING BLOCK ---
+    print("\n🐛 [DEBUG] Inspecting demos in memory BEFORE saving...")
+    print(f"  Critic demos found: {len(optimized_program.critic.demos) if hasattr(optimized_program.critic, 'demos') else 'N/A'}")
+    if hasattr(optimized_program, 'refiner') and hasattr(optimized_program.refiner, 'demos'):
+        print(f"  Refiner demos found: {len(optimized_program.refiner.demos)}")
+    # --- END DEBUGGING BLOCK ---
+    
     # --- SAVE RESULTS ---
     optimized_program.save(output_file)
     print(f"\n🏆 GEPA EVOLUTION COMPLETE! Saved to '{output_file}'")
