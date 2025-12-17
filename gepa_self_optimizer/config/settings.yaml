@@ -14,3 +14,11 @@ optimization:
   # Use "medium" or "heavy" for more thorough optimization.
   gepa_auto_setting: "medium"
   skip_perfect_score: false
+# GEPA Execution Settings
+
+data_generation:
+  num_examples: 25
+
+optimization:
+  gepa_auto_setting: "medium"
+  skip_perfect_score: false
