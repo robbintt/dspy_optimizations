@@ -1,4 +1,6 @@
 import dspy
+import json
+from dspy.primitives.base_module import BaseModule
 from gepa_config import JUDGE_CONSTITUTION, create_gepa_optimizer
 
 def optimize_with_retries(student_module, trainset, valset, reflection_lm, metric, config, max_retries=3):
@@ -92,6 +94,34 @@ class GlmSelfReflect(dspy.Module):
 
     def predictors(self):
         return [self.generator, self.critic, self.refiner]
+
+    def dump_state(self, json_mode=True):
+        """
+        An instrumented version of dump_state to debug the saving process.
+        It prints the state of each component before saving.
+        """
+        print("\n🐛 [DEBUG] Starting instrumented dump_state...")
+        
+        state = {}
+        # Iterate through items stored in the module's __dict__
+        for name, value in self.__dict__.items():
+            # We only care about dspy modules (predictors)
+            if isinstance(value, BaseModule):
+                print(f"  🔍 Inspecting component: '{name}' of type {type(value)}")
+                
+                # Get the core state dict of the predictor (instructions, demos, etc.)
+                predictor_state = value.dump_state(json_mode=json_mode)
+                print(f"    -> 'demos' count: {len(predictor_state.get('demos', []))}")
+                print(f"    -> 'instructions' length: {len(predictor_state.get('signature', {}).get('instructions', ''))}")
+                
+                state[f"{name}.predict"] = predictor_state
+            else:
+                print(f"  ⏭️ Skipping non-module attribute: '{name}' ({type(value)})")
+
+        print("🐛 [DEBUG] Finished instrumented dump_state. Saving the following state.")
+        # print(json.dumps(state, indent=2)) # Optionally print the full state
+
+        return state
 
     def forward(self, question, draft_answer=None):
         if not draft_answer:
