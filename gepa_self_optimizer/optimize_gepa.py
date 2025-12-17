@@ -20,8 +20,8 @@ def semantic_similarity(text1, text2):
 # --- 2. DEFINE THE METRIC FOR GEPA ---
 def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred_trace=None):
     score = semantic_similarity(prediction.answer, example.correct_answer)
-    # Return boolean: True if similarity > 0.7 (good enough), False otherwise
-    return score > 0.7
+    # Return boolean: True if similarity > 0.5 (more lenient), False otherwise
+    return score > 0.5
 
 # --- 3. CONDITIONALLY LOAD OR RUN OPTIMIZATION ---
 output_file = "glm_gepa_complete.json"
@@ -60,9 +60,10 @@ else:
     
     # --- ADD THIS DEBUGGING BLOCK ---
     print("\n🐛 [DEBUG] Inspecting demos in memory BEFORE saving...")
-    print(f"  Critic demos found: {len(optimized_program.critic.demos) if hasattr(optimized_program.critic, 'demos') else 'N/A'}")
-    if hasattr(optimized_program, 'refiner') and hasattr(optimized_program.refiner, 'demos'):
-        print(f"  Refiner demos found: {len(optimized_program.refiner.demos)}")
+    critic_demos_count = len(optimized_program.critic.predict.demos) if hasattr(optimized_program.critic, 'predict') and hasattr(optimized_program.critic.predict, 'demos') else 'N/A'
+    print(f"  Critic demos found: {critic_demos_count}")
+    refiner_demos_count = len(optimized_program.refiner.demos) if hasattr(optimized_program.refiner, 'demos') else 'N/A'
+    print(f"  Refiner demos found: {refiner_demos_count}")
     # --- END DEBUGGING BLOCK ---
     
     # --- SAVE RESULTS ---
@@ -87,9 +88,13 @@ print(f"  Program type: {type(optimized_program).__name__}")
 # Inspect critic component
 if hasattr(optimized_program, 'critic'):
     print("\n📝 Evolved Critic Component:")
-    if hasattr(optimized_program.critic, 'demos') and optimized_program.critic.demos:
-        print(f"  Number of demos: {len(optimized_program.critic.demos)}")
-        for i, demo in enumerate(optimized_program.critic.demos[:3]):  # Show first 3
+    critic_demos = None
+    if hasattr(optimized_program.critic, 'predict') and hasattr(optimized_program.critic.predict, 'demos'):
+        critic_demos = optimized_program.critic.predict.demos
+
+    if critic_demos:
+        print(f"  Number of demos: {len(critic_demos)}")
+        for i, demo in enumerate(critic_demos[:3]):  # Show first 3
             print(f"  Demo {i+1}:")
             for key, value in demo.items():
                 if isinstance(value, str) and len(value) > 100:
