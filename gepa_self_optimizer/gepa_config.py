@@ -169,6 +169,9 @@ class GEPARunConfig:
     Each instance represents a complete set of parameters for one optimization job.
     """
     
+    # Profile identifier
+    gepa_profile: Optional[str] = None
+    
     # Budget configuration
     max_metric_calls: Optional[int] = None
     max_full_evals: Optional[int] = None
