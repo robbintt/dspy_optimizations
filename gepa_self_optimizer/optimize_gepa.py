@@ -90,68 +90,56 @@ if 'optimizer' in locals() and hasattr(optimizer, 'stats') and optimizer.stats:
 print("🏗️ Evolved Program Structure:")
 print(f"  Program type: {type(optimized_program).__name__}")
 
+# Helper to display instructions
+def display_component_instructions(component, component_name):
+    print(f"\n📝 Evolved {component_name} Component:")
+    instruction = ""
+    # Handle both dspy.Predict and dspy.ChainOfThought structures
+    if hasattr(component, 'predict') and hasattr(component.predict, 'signature'):
+        instruction = component.predict.signature.instructions
+    elif hasattr(component, 'signature'):
+        instruction = component.signature.instructions
+    
+    if instruction:
+        print(f"  Instructions ({len(instruction)} chars): {instruction[:200]}...")
+    else:
+        print("  No instructions found.")
+
 # Inspect critic component
 if hasattr(optimized_program, 'critic'):
-    print("\n📝 Evolved Critic Component:")
-    critic_demos = None
-    if hasattr(optimized_program.critic, 'predict') and hasattr(optimized_program.critic.predict, 'demos'):
-        critic_demos = optimized_program.critic.predict.demos
-
-    if critic_demos:
-        print(f"  Number of demos: {len(critic_demos)}")
-        for i, demo in enumerate(critic_demos[:3]):  # Show first 3
-            print(f"  Demo {i+1}:")
-            for key, value in demo.items():
-                if isinstance(value, str) and len(value) > 100:
-                    print(f"    {key}: {value[:100]}...")
-                else:
-                    print(f"    {key}: {value}")
-    else:
-        print("  No demos found in critic")
+    display_component_instructions(optimized_program.critic, "Critic")
 
 # Inspect refiner component if it exists
 if hasattr(optimized_program, 'refiner'):
-    print("\n🔧 Evolved Refiner Component:")
-    if hasattr(optimized_program.refiner, 'demos') and optimized_program.refiner.demos:
-        print(f"  Number of demos: {len(optimized_program.refiner.demos)}")
-        for i, demo in enumerate(optimized_program.refiner.demos[:3]):  # Show first 3
-            print(f"  Demo {i+1}:")
-            for key, value in demo.items():
-                if isinstance(value, str) and len(value) > 100:
-                    print(f"    {key}: {value[:100]}...")
-                else:
-                    print(f"    {key}: {value}")
-    else:
-        print("  No demos found in refiner")
+    display_component_instructions(optimized_program.refiner, "Refiner")
 
 # Show any other components
 for attr_name in dir(optimized_program):
-    if not attr_name.startswith('_') and attr_name not in ['critic', 'refiner', 'save', 'load', 'forward']:
+    if not attr_name.startswith('_') and attr_name not in ['critic', 'refiner', 'save', 'load', 'forward', 'generator']:
         attr = getattr(optimized_program, attr_name)
-        if hasattr(attr, 'demos'):
-            print(f"\n📋 Component '{attr_name}':")
-            if attr.demos:
-                print(f"  Number of demos: {len(attr.demos)}")
-            else:
-                print("  No demos found")
+        if hasattr(attr, 'signature'):
+            display_component_instructions(attr, attr_name.title())
 
 print("=" * 60)
 
 # --- 5. INSPECT RESULTS ---
-print("\n--- Inspecting Optimized Program Prompts ---")
+print("\n--- Inspecting Evolved Instructions ---")
 try:
-    print("--- Optimized Critic Prompts ---")
-    if hasattr(optimized_program.critic, 'predict') and hasattr(optimized_program.critic.predict, 'demos'):
-        print(optimized_program.critic.predict.demos)
-    else:
-        print("No critic demos found")
+    print("\n--- Evolved Critic Instructions ---")
+    critic_instruction = ""
+    if hasattr(optimized_program.critic, 'predict') and hasattr(optimized_program.critic.predict, 'signature'):
+        critic_instruction = optimized_program.critic.predict.signature.instructions
+    print(critic_instruction if critic_instruction else "No Critic instructions found.")
 
     if hasattr(optimized_program, 'refiner'):
-        print("\n--- Optimized Refiner Prompts ---")
-        print(optimized_program.refiner.demos)
+        print("\n--- Evolved Refiner Instructions ---")
+        refiner_instruction = ""
+        if hasattr(optimized_program.refiner, 'signature'):
+            refiner_instruction = optimized_program.refiner.signature.instructions
+        print(refiner_instruction if refiner_instruction else "No Refiner instructions found.")
             
 except Exception as e:
-    print(f"\n[ERROR] Could not inspect prompts due to an unexpected error: {e}")
+    print(f"\n[ERROR] Could not inspect instructions due to an unexpected error: {e}")
     print("The program object may be incomplete or structured differently than expected.")
     
 sys.stdout.flush()
