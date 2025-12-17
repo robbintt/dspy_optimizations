@@ -12,7 +12,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # --- Configuration ---
-VENV_DIR="$PROJECT_ROOT/venv"
+VENV_DIR="$HOME/virtualenvs/dspy_env"
 CONFIG_DIR="$SCRIPT_DIR/config"
 MODELS_FILE="$CONFIG_DIR/models.yaml"
 DEV_MODELS_FILE="$CONFIG_DIR/models.dev.yaml"
