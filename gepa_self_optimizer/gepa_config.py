@@ -162,9 +162,6 @@ def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred
     Returns:
         dspy.Prediction: A Prediction object with the combined score and detailed feedback.
     """
-    # --- INSTRUMENTATION ---
-    print(f"\n[METRIC] THE METRIC FUNCTION IS BEING CALLED! Scoring a new prediction...")
-    
     # Initialize scores to 0.0 to handle potential failures gracefully
     answer_score = 0.0
     critique_score = 0.0
@@ -173,23 +170,18 @@ def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred
     try:
         if hasattr(prediction, 'answer') and hasattr(example, 'correct_answer'):
             answer_score = semantic_similarity(prediction.answer, example.correct_answer)
-        else:
-            print("[METRIC] WARNING: Missing 'answer' in prediction or 'correct_answer' in example. Scoring answer as 0.0.")
-    except Exception as e:
-        print(f"[METRIC] ERROR: Failed to calculate answer similarity: {e}. Scoring as 0.0.")
+    except Exception:
+        pass
 
     # Score the quality of the critique against the gold standard critique, with error handling
     try:
         if hasattr(prediction, 'critique') and hasattr(example, 'gold_critique'):
             critique_score = semantic_similarity(prediction.critique, example.gold_critique)
-        else:
-            print("[METRIC] INFO: Missing 'critique' in prediction or 'gold_critique' in example. Scoring critique as 0.0.")
-    except Exception as e:
-        print(f"[METRIC] ERROR: Failed to calculate critique similarity: {e}. Scoring as 0.0.")
+    except Exception:
+        pass
 
     # Combine the two scores. This gives partial credit for a good critique,
     # enabling GEPA to learn from the trace even if the final answer is poor.
-    # We can weight these scores, for now let's average them.
     final_score = (answer_score + critique_score) / 2
     
     # Provide detailed feedback to the reflection model
@@ -203,11 +195,6 @@ def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred
         f"The gold standard critique was:\n---\n{getattr(example, 'gold_critique', 'N/A')}\n---"
     )
 
-    # Return the combined score and feedback. GEPA will use this to maximize its performance.
-    
-    # --- INSTRUMENTATION ---
-    print(f"[METRIC] Final Score: {final_score:.3f}. Feedback:\n{feedback}\n")
-    
     return dspy.Prediction(score=final_score, feedback=feedback, trace=trace)
 
 # --- 6. THE JUDGE'S CONSTITUTION ---
