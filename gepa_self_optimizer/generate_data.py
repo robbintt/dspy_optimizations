@@ -38,12 +38,18 @@ num_examples_to_generate = 25
 # Use the task model for data generation
 with dspy.context(lm=task_lm):
     # --- SIGNATURES ---
-    class TopicToQA(Signature):
-        """Given a topic, generate an extremely complex, multi-step reasoning question that contains subtle pitfalls or common misconceptions, and provide a perfect, step-by-step answer. The question should require deep analytical thinking and careful attention to detail."""
-        topic: str = dspy.InputField(desc="The general topic for the question.")
-        unique_id: str = dspy.InputField(desc="A unique identifier to ensure a novel response is generated.")
-        question: str = dspy.OutputField(desc="An extremely complex and multi-step question with subtle pitfalls that requires deep analytical reasoning and careful attention to detail.")
-        correct_answer: str = dspy.OutputField(desc="The perfect, step-by-step correct answer to the complex question.")
+    class WorldGenerator(Signature):
+        """Given a concept, invent a short, self-contained set of unique rules for a fictional system."""
+        concept: str = dspy.InputField(desc="A high-level concept for a fictional system, e.g., 'alchemy', 'bureaucracy', 'alien justice'.")
+        system_rules: str = dspy.OutputField(desc="A text block describing 3-5 unique, concise, and non-intuitive rules for the system.")
+        problem_premise: str = dspy.OutputField(desc="A short premise for a problem to be solved using these rules.")
+
+    class ContextualQA(Signature):
+        """Based on a provided context and premise, generate a complex question and its perfect answer."""
+        system_rules: str = dspy.InputField(desc="The unique rules of the fictional system.")
+        problem_premise: str = dspy.InputField(desc="The premise for the question.")
+        question: str = dspy.OutputField(desc="A complex multi-step question solvable only by carefully applying the provided rules.")
+        correct_answer: str = dspy.OutputField(desc="The perfect, step-by-step answer that correctly applies the system's rules.")
 
     class BugInjector(Signature):
         """
@@ -77,28 +83,26 @@ with dspy.context(lm=task_lm):
     # --- THE FACTORY ---
     def generate_synthetic_data(num_examples=25):
         """
-        Generates and curates a dataset using a feedback loop. If an example is
-        too easy or too hard, the script provides the full history of attempts to the model
-        to guide it toward a better result.
+        Generates a dataset using a synthetic world generation feedback loop.
+        This avoids reliance on real-world knowledge and increases problem perplexity.
         """
         global SEED
-        topics = [
-            "Advanced concurrency and race condition puzzles",
-            "Formal logic systems and rewrite rules",
-            "Advanced calculus and infinite series convergence",
-            "Einsteinian relativity and its paradoxes",
-            "Non-classical logic and modal philosophy",
-            "Philosophical paradoxes of vagueness and identity",
-            "Game theory and strategic mechanism design",
-            "Quantum computing foundational concepts",
-            "Complex international financial regulations",
-            "Advanced genetic inheritance models"
+        
+        # Concepts are now broad abstract ideas, not specific knowledge domains
+        concepts = [
+            "inter-dimensional travel customs",
+            "sentient fungal colony politics",
+            "alchemy based on emotional states",
+            "a galactic bureaucracy for planet approvals",
+            "the logic of dream-crafting",
+            "time-travel-based evidence law",
+            "a city built on a giant, sleeping creature"
         ]
         
         MAX_SCORE = 0.75
         MIN_SCORE = 0.30
 
-        print(f"🧠 Curating {num_examples} examples with full historical feedback...")
+        print(f"🧠 Curating {num_examples} examples using novel synthetic contexts...")
         print(f"   Target score range per item: [{MIN_SCORE:.2f}, {MAX_SCORE:.2f})\n")
         
         setup_dspy()
@@ -107,20 +111,25 @@ with dspy.context(lm=task_lm):
         
         good_dataset = []
         total_attempts = 0
-        overall_topic_attempts = 0
         
         while len(good_dataset) < num_examples:
-            topic_idx = overall_topic_attempts % len(topics)
-            topic = topics[topic_idx]
-            overall_topic_attempts += 1
+            chosen_concept = random.choice(concepts)
+            cache_busting_nonce = random.randint(0, 2**63 - 1)
+            unique_context = f"concept-{hash(chosen_concept)}-seed-{SEED}-nonce-{cache_busting_nonce}"
             
             try:
-                # 1. Generate a single, high-quality base Q&A pair
-                base_predictor = dspy.ChainOfThought(TopicToQA)
-                # Generate a large random nonce to aggressively bust the LM's cache
-                cache_busting_nonce = random.randint(0, 2**63 - 1)
-                unique_id = f"topic-{topic}-seed-{SEED}-nonce-{cache_busting_nonce}"
-                base = base_predictor(topic=topic, unique_id=unique_id)
+                print(f"--- Generating for concept: '{chosen_concept}' ---")
+
+                # 1. GENERATE A SYNTHETIC WORLD
+                world_predictor = dspy.ChainOfThought(WorldGenerator)
+                world = world_predictor(concept=chosen_concept, unique_id=unique_context)
+
+                # 2. GENERATE A Q&A PAIR BASED ON THE SYNTHETIC WORLD
+                qa_predictor = dspy.ChainOfThought(ContextualQA)
+                base = qa_predictor(
+                    system_rules=world.system_rules,
+                    problem_premise=world.problem_premise
+                )
                 
                 # 2. Enter a feedback loop to find a suitable sabotage for this Q&A
                 sabotage_attempt = 0
