@@ -90,7 +90,7 @@ with dspy.context(lm=task_lm):
                 sabotage_attempt = 0
                 feedback_instruction = ""
                 item_is_good = False
-                last_failure_report = "" # Initialize for the first run
+                last_failure_report = "" # Reset for each new topic attempt
 
                 # We will try up to 4 times to get a good error for this one Q&A pair
                 while not item_is_good and sabotage_attempt < 4:
