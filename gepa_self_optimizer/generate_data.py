@@ -129,27 +129,27 @@ with dspy.context(lm=task_lm):
                     correct_answer=base.correct_answer,     
                 ).with_inputs("question", "draft_answer")
 
-                    # 4. Evaluate and provide feedback for the next loop
-                    eval_result = evaluator(unoptimized_program, devset=[ex])
-                    score = eval_result.score / 100.0
+                # 4. Evaluate and provide feedback for the next loop
+                eval_result = evaluator(unoptimized_program, devset=[ex])
+                score = eval_result.score / 100.0
                     
-                    if MIN_SCORE <= score < MAX_SCORE:
-                        good_dataset.append(ex)
-                        print(f"✅ [{len(good_dataset)}/{num_examples}] KEPT. Score: {score:.2f} (after {sabotage_attempt} tries)")
-                        item_is_good = True
-                    elif score >= MAX_SCORE:
-                        print(f"⚪ [Attempt {sabotage_attempt}] Too easy (Score: {score:.2f}). Demanding a much harder, more devious error...")
-                        feedback_instruction = (
-                            "THE MODEL FOUND YOUR ERROR. IT WAS NOT SUBTLE ENOUGH. "
-                            "You must now create an extremely clever, contextual flaw that is almost invisible, even to an expert. "
-                            "Avoid anything that looks like a simple mistake. Think like an adversary trying to poison the model's knowledge."
-                        )
-                    else: # score < MIN_SCORE
-                        print(f"⚫ [Attempt {sabotage_attempt}] Too hard (Score: {score:.2f}). Make the flaw more solvable but still tricky.")
-                        feedback_instruction = (
-                            "The error you created was too obscure and made the answer nonsensical. "
-                            "For this next attempt, create a flaw that is subtle but FAIR, meaning a powerful reasoning model can plausibly find and fix it."
-                        )
+                if MIN_SCORE <= score < MAX_SCORE:
+                    good_dataset.append(ex)
+                    print(f"✅ [{len(good_dataset)}/{num_examples}] KEPT. Score: {score:.2f} (after {sabotage_attempt} tries)")
+                    item_is_good = True
+                elif score >= MAX_SCORE:
+                    print(f"⚪ [Attempt {sabotage_attempt}] Too easy (Score: {score:.2f}). Demanding a much harder, more devious error...")
+                    feedback_instruction = (
+                        "THE MODEL FOUND YOUR ERROR. IT WAS NOT SUBTLE ENOUGH. "
+                        "You must now create an extremely clever, contextual flaw that is almost invisible, even to an expert. "
+                        "Avoid anything that looks like a simple mistake. Think like an adversary trying to poison the model's knowledge."
+                    )
+                else: # score < MIN_SCORE
+                    print(f"⚫ [Attempt {sabotage_attempt}] Too hard (Score: {score:.2f}). Make the flaw more solvable but still tricky.")
+                    feedback_instruction = (
+                        "The error you created was too obscure and made the answer nonsensical. "
+                        "For this next attempt, create a flaw that is subtle but FAIR, meaning a powerful reasoning model can plausibly find and fix it."
+                    )
 
                 if not item_is_good:
                     print(f"❌ Could not find a good error for the topic: '{topic}' after 4 attempts. Moving on.")
