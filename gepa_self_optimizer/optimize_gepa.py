@@ -53,11 +53,23 @@ else:
         student=program_to_optimize, 
         trainset=trainset,
         valset=valset,
-    )
+    )  
+    
+    # --- WORKAROUND: Resolve potential GEPA state desynchronization ---
+    print("\n🔧 [WORKAROUND] Re-saving and reloading the optimized program to fix potential state desync...")
+    temp_file = "temp_optimized_program.json"
+    optimized_program.save(temp_file)
+    
+    print("   -> Creating new program instance and loading from saved state...")
+    cleaned_program = GlmSelfReflect()
+    cleaned_program.load(temp_file)
+    os.remove(temp_file) # Clean up the temporary file
+    print("   -> Workaround complete. Using the cleaned program for inspection.")
+    optimized_program = cleaned_program # Replace the old program with the cleaned one
     
     # --- POST-COMPILE DEBUGGING ---
     # Inspect the state of the program immediately after compilation
-    post_compile_inspection(optimized_program, program_name="GEPA Optimized Program (from optimize_gepa.py)")
+    post_compile_inspection(optimized_program, program_name="GEPA Optimized & Cleaned Program")
     
     # --- SAVE RESULTS ---
     optimized_program.save(output_file)
