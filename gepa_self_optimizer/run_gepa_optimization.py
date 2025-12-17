@@ -124,7 +124,7 @@ def save_run_results(program, valset, metric_fn, run_dir):
         else:
             print("  - Re-running evaluation with the optimized program.")
             evaluator = Evaluate(devset=valset, metric=metric_fn, num_threads=1, display_progress=False)
-            best_predictions = [program(**ex.without('correct_answer', 'gold_critique').inputs()) for ex in valset]
+            best_predictions = [program(**ex.without('correct_answer', 'gold_critique').with_inputs("question", "draft_answer").inputs()) for ex in valset]
 
 
         # Re-calculate the score for logging
