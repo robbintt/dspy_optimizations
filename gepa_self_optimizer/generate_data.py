@@ -35,12 +35,34 @@ with dspy.context(lm=task_lm):
         correct_answer: str = dspy.OutputField(desc="The perfect, step-by-step correct answer to the question.")
 
     class BugInjector(Signature):
-        """Given a correct answer, rewrite it to include a specific, fatal error and explain that error."""
-        question: str = dspy.InputField(desc="The question associated with the answer.")
-        correct_answer: str = dspy.InputField(desc="The correct answer to be sabotaged.")
-        error_type: str = dspy.InputField(desc="The type of error to inject (e.g., 'Math Calculation Error').")
-        bad_draft: str = dspy.OutputField(desc="The rewritten answer containing a fatal error.")
-        gold_critique: str = dspy.OutputField(desc="A precise description of the injected error.")
+        """
+        You are a Red Teamer tasked with sabotaging a perfect answer.
+        Your goal is to create a flawed version that is DIFFICULT for a top-tier AI to find and fix.
+
+        The flaw must be:
+        1.  FATAL: It makes the answer incorrect or unsafe.
+        2.  SUBTLE: It should not be an obvious typo or blatant hallucination. It must blend in with the rest of the text.
+        3.  PLAUSIBLE: A non-expert might not notice the error.
+        4.  HARD-TO-FIX: Fixing the error requires careful reasoning, not just a simple word swap.
+
+        Examples of good flaws:
+        -   A subtle but critical logical misstep in a multi-stage argument.
+        -   A misapplication of a scientific principle that seems correct on the surface.
+        -   A code error that only manifests under specific, non-obvious conditions.
+        -   Introducing a convincing but false "alternative fact" that fits the context.
+
+        DO NOT:
+        -   Add typos or grammatical mistakes.
+        -   Invent obvious nonsense.
+        -   Make a simple calculation error.
+        -   Change the topic.
+        """
+        question: str = dspy.InputField(desc="The question the original answer addresses.")
+        correct_answer: str = dspy.InputField(desc="The perfect, step-by-step answer to be sabotaged.")
+        sabotage_goal: str = dspy.InputField(desc="A specific, challenging instruction from the user to guide the type of sabotage.")
+        saboteurs_tactic_log: str = dspy.OutputField(desc="A short, internal note explaining the subtle flaw you decided to inject and why it's hard to spot.")
+        bad_draft: str = dspy.OutputField(desc="The rewritten answer containing the subtle, fatal flaw.")
+        gold_critique: str = dspy.OutputField(desc="A concise yet precise description of the hidden flaw that the red-teamer created.")
 
     # --- THE FACTORY ---
     def generate_synthetic_data(num_examples=25):
@@ -83,18 +105,22 @@ with dspy.context(lm=task_lm):
                     total_attempts += 1
                     sabotage_attempt += 1
                     
-                    # 3. Dynamically build the prompt for the BugInjector
-                    error_type = random.choice(["Math Error", "Logical Fallacy", "Fact Hallucination", "Code Syntax"])
-                    
-                    # This is the core of the feedback mechanism
-                    full_instruction = f"Inject a '{error_type}' into the answer. {feedback_instruction}"
-                    
-                    bug_predictor = dspy.ChainOfThought(BugInjector)
-                    corrupted = bug_predictor(
-                        question=base.question,
-                        correct_answer=base.correct_answer,
-                        error_type=full_instruction
+                # 3. Dynamically build a sophisticated sabotage goal
+                sabotage_goal = feedback_instruction
+                
+                if not sabotage_goal:
+                    # On the first try, provide a challenging but open-ended goal
+                    sabotage_goal = (
+                        "Your previous error was easily detected. Create a much more subtle and sophisticated flaw. "
+                        "Consider a subtle logical fallacy, a misapplied principle, or a plausible but incorrect detail."
                     )
+                
+                bug_predictor = dspy.ChainOfThought(BugInjector)
+                corrupted = bug_predictor(
+                    question=base.question,
+                    correct_answer=base.correct_answer,
+                    sabotage_goal=sabotage_goal
+                )
                     
                     ex = dspy.Example(
                         question=base.question,
@@ -112,16 +138,17 @@ with dspy.context(lm=task_lm):
                         print(f"✅ [{len(good_dataset)}/{num_examples}] KEPT. Score: {score:.2f} (after {sabotage_attempt} tries)")
                         item_is_good = True
                     elif score >= MAX_SCORE:
-                        print(f"⚪ [Attempt {sabotage_attempt}] Too easy (Score: {score:.2f}). Instructing model to try harder...")
+                        print(f"⚪ [Attempt {sabotage_attempt}] Too easy (Score: {score:.2f}). Demanding a much harder, more devious error...")
                         feedback_instruction = (
-                            "The previous error you created was too simple and easy for the system to find and fix. "
-                            "For this next attempt, you must create a MORE SUBTLE, complex, or well-hidden error."
+                            "THE MODEL FOUND YOUR ERROR. IT WAS NOT SUBTLE ENOUGH. "
+                            "You must now create an extremely clever, contextual flaw that is almost invisible, even to an expert. "
+                            "Avoid anything that looks like a simple mistake. Think like an adversary trying to poison the model's knowledge."
                         )
                     else: # score < MIN_SCORE
-                        print(f"⚫ [Attempt {sabotage_attempt}] Too hard (Score: {score:.2f}). Instructing model to be clearer...")
+                        print(f"⚫ [Attempt {sabotage_attempt}] Too hard (Score: {score:.2f}). Make the flaw more solvable but still tricky.")
                         feedback_instruction = (
-                            "The previous error you created made the answer nonsensical or impossible to fix. "
-                            "For this next attempt, create a CLEARER but still fatal error that is harder to spot."
+                            "The error you created was too obscure and made the answer nonsensical. "
+                            "For this next attempt, create a flaw that is subtle but FAIR, meaning a powerful reasoning model can plausibly find and fix it."
                         )
 
                 if not item_is_good:
