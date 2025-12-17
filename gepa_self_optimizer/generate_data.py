@@ -77,9 +77,10 @@ with dspy.context(lm=task_lm):
         good_dataset = []
         total_attempts = 0
 
+        overall_topic_attempts = 0
         while len(good_dataset) < num_examples:
-            topic_idx = len(good_dataset) # Use count to cycle through topics
-            topic = topics[topic_idx % len(topics)]
+            topic_idx = overall_topic_attempts % len(topics)
+            topic = topics[topic_idx]
             
             try:
                 # 1. Generate a single, high-quality base Q&A pair
@@ -147,6 +148,8 @@ with dspy.context(lm=task_lm):
 
             except Exception as e:
                 print(f"❌ A critical error occurred with topic '{topic}': {e}")
+            
+            overall_topic_attempts += 1
 
         print(f"\n✅ Dataset curated! Found {len(good_dataset)} good examples out of {total_attempts} total feedback-driven attempts.")
         return good_dataset
