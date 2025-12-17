@@ -192,7 +192,8 @@ if __name__ == "__main__":
     task_lm, reflection_lm = setup_dspy()
     
     # The function now handles generation, curation, and reporting
-    synthetic_dataset = generate_synthetic_data(num_examples=num_examples_to_generate, task_lm=task_lm, reflection_lm=reflection_lm)
+    with dspy.context(lm=task_lm):
+        synthetic_dataset = generate_synthetic_data(num_examples=num_examples_to_generate, task_lm=task_lm, reflection_lm=reflection_lm)
 
     if synthetic_dataset:
         # Convert dspy.Example objects to plain dictionaries for JSON serialization
