@@ -7,29 +7,9 @@ import json
 def post_compile_inspection(program, program_name="Optimized Program"):
     """
     Inspects a program immediately after optimization.
-    This helps determine if the optimizer or the save function is the source of corruption.
+    This is now a no-op since GEPA is working correctly.
     """
-    print(f"\n🐛 [DEBUG] Inspecting '{program_name}' immediately after GEPA compilation...")
-    if not hasattr(program, 'dump_state'):
-        print(f"  ⚠️ Program {program_name} does not have a dump_state method. Cannot inspect.")
-        return
-
-    state = program.dump_state()
-    for component_key, component_data in state.items():
-        # Handle nested state for ChainOfThought modules, which have a '.predict' suffix
-        # and an internal 'predict' key in their dumped state.
-        if 'predict' in component_data:
-            actual_data = component_data.get('predict', {})
-        else:
-            actual_data = component_data
-            
-        demos = actual_data.get('demos', [])
-        instructions = actual_data.get('signature', {}).get('instructions', '')
-        print(f"  🔍 Component: {component_key}")
-        print(f"    -> 'demos' count: {len(demos)}")
-        print(f"    -> 'instructions' length: {len(instructions)}")
-        # To avoid huge log output, we won't print the full instructions here unless needed.
-    print(f"🐛 [DEBUG] Finished post-compilation inspection of '{program_name}'.\n")
+    pass
 
 
 def optimize_with_retries(student_module, trainset, valset, reflection_lm, metric, config, max_retries=3):
