@@ -157,8 +157,8 @@ def test_gepa_compilation_bug():
         optimized_program.chain_of_thought_predictor.predict.signature.instructions = "VALUE SET AFTER GEPA"
         
         state_before_forward = optimized_program.dump_state()
-        cot_state_before_forward = state_before_forward.get('chain_of_thought_predictor', {})
-        instruction_before_forward = cot_state_before_forward.get('signature', {}).get('instructions')
+        cot_state_before_forward = state_before_forward.get('chain_of_thought_predictor.predict', {})
+        instruction_before_forward = cot_state_before_forward.get('predict', {}).get('signature', {}).get('instructions')
         print(f"   -> Instruction BEFORE forward call: '{instruction_before_forward}'")
 
         # --- CRITICAL TEST: Call forward() on the optimized program ---
@@ -174,7 +174,7 @@ def test_gepa_compilation_bug():
         print("5. Inspecting program state AFTER forward call...")
         state_after_forward = optimized_program.dump_state()
         
-        cot_state_after_forward = state_after_forward.get('chain_of_thought_predictor', {})
+        cot_state_after_forward = state_after_forward.get('chain_of_thought_predictor.predict', {})
         
         if not cot_state_after_forward:
             print("   -> ❌ FAILURE: Optimized program state is missing its 'chain_of_thought_predictor' component.")
