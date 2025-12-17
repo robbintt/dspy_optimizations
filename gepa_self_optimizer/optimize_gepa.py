@@ -44,7 +44,6 @@ else:
         student=program_to_optimize, 
         trainset=trainset,
         valset=valset,
-        skip_if_perfect_score=run_settings.get("optimization", {}).get("skip_if_perfect_score", False)
     )
     
     # --- ADD THIS DEBUGGING BLOCK ---
