@@ -235,15 +235,7 @@ def semantic_similarity(text1, text2):
     embeddings = similarity_model.encode([text1, text2], convert_to_tensor=True)
     return util.cos_sim(embeddings[0], embeddings[1]).item()
 
-# --- 2. DEFINE THE METRIC FOR GEPA ---
-# CRITICAL: GEPA metrics must return a dspy.evaluate.ScoreWithFeedback object.
-# It uses both the score and the text feedback to learn how to improve the prompt.
-def refinement_gepa_metric(gold, pred, trace=None):
-    score = semantic_similarity(pred.answer, gold.correct_answer)
-    feedback = f"Similarity score is {score:.2f}. The reference answer is '{gold.correct_answer}'."
-    return dspy.evaluate.answer_with_feedback(score, feedback)
-
-# --- 3. LOAD DATA ---
+# --- 2. LOAD DATA ---
 print("\n📂 Loading Golden Set...")
 with open("golden_set.json", "r") as f:
     raw_data = json.load(f)

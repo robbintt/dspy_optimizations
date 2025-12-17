@@ -2,7 +2,7 @@ import sys
 import dspy
 import json
 from gepa_config import setup_dspy, refinement_gepa_metric, get_default_gepa_run_config, create_gepa_optimizer
-from gepa_system import GlmSelfReflect
+from gepa_system import GlmSelfReflect, post_compile_inspection
 
 import os
 
@@ -53,13 +53,9 @@ else:
         valset=valset,
     )
     
-    # --- ADD THIS DEBUGGING BLOCK ---
-    print("\n🐛 [DEBUG] Inspecting demos in memory BEFORE saving...")
-    critic_demos_count = len(optimized_program.critic.predict.demos) if hasattr(optimized_program.critic, 'predict') and hasattr(optimized_program.critic.predict, 'demos') else 'N/A'
-    print(f"  Critic demos found: {critic_demos_count}")
-    refiner_demos_count = len(optimized_program.refiner.demos) if hasattr(optimized_program.refiner, 'demos') else 'N/A'
-    print(f"  Refiner demos found: {refiner_demos_count}")
-    # --- END DEBUGGING BLOCK ---
+    # --- POST-COMPILE DEBUGGING ---
+    # Inspect the state of the program immediately after compilation
+    post_compile_inspection(optimized_program, program_name="GEPA Optimized Program (from optimize_gepa.py)")
     
     # --- SAVE RESULTS ---
     optimized_program.save(output_file)
