@@ -125,14 +125,14 @@ def test_gepa_compilation_bug():
         
         # Sanity check: Manually mutate and verify student is OK before GEPA
         print("1. Pre-GEPA sanity check:")
-        student.complex_predictor.predict.signature.instructions = "MANUALLY MUTATED INSTRUCTION"
+        student.chain_of_thought_predictor.predict.signature.instructions = "MANUALLY MUTATED INSTRUCTION"
         state_before_gepa = student.dump_state()
         
         # The state of a module is a dict of its components. We need to access the one we care about.
-        complex_predictor_state = state_before_gepa.get('complex_predictor', {})
-        instruction_before_gepa = complex_predictor_state.get('predict', {}).get('signature', {}).get('instructions')
+        cot_state = state_before_gepa.get('chain_of_thought_predictor', {})
+        instruction_before_gepa = cot_state.get('predict', {}).get('signature', {}).get('instructions')
         
-        print(f"   -> Student instruction before GEPA: '{instruction_before_gepa}'\n")
+        print(f"   -> Student CoT instruction before GEPA: '{instruction_before_gepa}'\n")
 
         # GEPA needs a trainset, even if it's just one example
         trainset = [dspy.Example(question="Q", answer="A").with_inputs("question")]
@@ -154,19 +154,19 @@ def test_gepa_compilation_bug():
         print("3. Inspecting the program returned by GEPA:")
         
         # Reset instruction to a known value to see what GEPA did
-        optimized_program.complex_predictor.predict.signature.instructions = "VALUE SET AFTER GEPA"
+        optimized_program.chain_of_thought_predictor.predict.signature.instructions = "VALUE SET AFTER GEPA"
         
         state_after_gepa = optimized_program.dump_state()
         
         # The state of a module is a dict of its components. We need to access the one we care about.
-        complex_predictor_state_after = state_after_gepa.get('complex_predictor', {})
+        cot_state_after = state_after_gepa.get('chain_of_thought_predictor', {})
         
-        if not complex_predictor_state_after:
-            print("   -> ❌ FAILURE: Optimized program state is missing its 'complex_predictor' component.")
+        if not cot_state_after:
+            print("   -> ❌ FAILURE: Optimized program state is missing its 'chain_of_thought_predictor' component.")
             print("   -> Full state:", state_after_gepa)
             return False
 
-        instruction_after_gepa = complex_predictor_state_after.get('predict', {}).get('signature', {}).get('instructions')
+        instruction_after_gepa = cot_state_after.get('predict', {}).get('signature', {}).get('instructions')
         print(f"   -> Optimized program instruction: '{instruction_after_gepa}'")
 
         # --- 6. Analyze the result ---
