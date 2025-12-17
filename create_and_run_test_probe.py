@@ -158,7 +158,7 @@ def test_gepa_compilation_bug():
         
         state_before_forward = optimized_program.dump_state()
         cot_state_before_forward = state_before_forward.get('chain_of_thought_predictor.predict', {})
-        instruction_before_forward = cot_state_before_forward.get('predict', {}).get('signature', {}).get('instructions')
+        instruction_before_forward = cot_state_before_forward.get('signature', {}).get('instructions')
         print(f"   -> Instruction BEFORE forward call: '{instruction_before_forward}'")
 
         # --- CRITICAL TEST: Call forward() on the optimized program ---
@@ -182,7 +182,7 @@ def test_gepa_compilation_bug():
             return False
 
         # ChainOfThought modules have an extra 'predict' layer in their dumped state
-        instruction_after_forward = cot_state_after_forward.get('predict', {}).get('signature', {}).get('instructions')
+        instruction_after_forward = cot_state_after_forward.get('signature', {}).get('instructions')
         print(f"   -> Instruction AFTER forward call: '{instruction_after_forward}'")
 
         # Note: The expected failure with a dummy LM is a litellm.BadRequestError.
