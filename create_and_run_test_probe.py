@@ -186,15 +186,13 @@ def test_gepa_compilation_bug():
         print(f"   -> Instruction AFTER forward call: '{instruction_after_forward}'")
 
         # --- 6. Analyze the result ---
-        if instruction_after_forward in [None, "", "This is the docstring and default instruction for the signature."]:
-            print("\n   -> ❌ FAILURE CONFIRMED: Calling forward() corrupted the ChainOfThought instruction.")
-            print("      This bug is likely inside the dspy.ChainOfThought module itself.")
-            return False
-        elif instruction_before_forward == instruction_after_forward:
-            print("\n   -> ✅ SUCCESS: The forward pass did not corrupt the state.")
+        if instruction_before_forward == instruction_after_forward:
+            print("\n   -> ✅ SUCCESS: The failed forward pass did not corrupt the in-memory state.")
             return True
         else:
-            print("\n   -> ⚠️ UNEXPECTED: The forward pass changed the instruction to a new value.")
+            print("\n   -> ❌ FAILURE CONFIRMED: The forward pass corrupted the ChainOfThought instruction.")
+            print(f"      Expected: '{instruction_before_forward}'")
+            print(f"      Got:      '{instruction_after_forward}'")
             return False
 
 if __name__ == "__main__":
