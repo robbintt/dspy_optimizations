@@ -1,7 +1,7 @@
 import dspy
 import json
 from sentence_transformers import SentenceTransformer, util
-from gepa_config import setup_dspy, reflection_lm, run_settings
+from gepa_config import setup_dspy, task_lm, reflection_lm, run_settings
 from gepa_system import GlmSelfReflect
 
 # --- 1. PROVIDE A WORKING SEMANTIC SIMILARITY FUNCTION ---
@@ -39,7 +39,7 @@ gepa_auto_setting = run_settings.get("optimization", {}).get("gepa_auto_setting"
 optimizer = dspy.GEPA(
     metric=refinement_gepa_metric,
     auto=gepa_auto_setting,
-    reflection_lm=reflection_lm,
+    reflection_lm=task_lm,
     track_stats=True
 )
 
