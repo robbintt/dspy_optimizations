@@ -22,8 +22,8 @@ if os.path.exists(output_filename):
 print("🚀 Initializing DSPy and models to generate golden set...")
 setup_dspy()
 
-# Load run settings
-run_settings = _load_run_settings()
+# Number of examples to generate
+num_examples_to_generate = 25
 
 # Use the task model for data generation
 with dspy.context(lm=task_lm):
