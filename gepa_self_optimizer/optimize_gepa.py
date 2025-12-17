@@ -15,7 +15,7 @@ def semantic_similarity(text1, text2):
     return util.cos_sim(embeddings[0], embeddings[1]).item()
 
 # --- 2. DEFINE THE METRIC FOR GEPA ---
-def refinement_gepa_metric(example, prediction, trace=None):
+def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred_trace=None):
     score = semantic_similarity(prediction.answer, example.correct_answer)
     # Return boolean: True if similarity > 0.7 (good enough), False otherwise
     return score > 0.7
