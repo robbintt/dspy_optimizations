@@ -68,4 +68,16 @@ with dspy.context(lm=task_lm):
 
         return dataset
 
-# No change needed - code is already correct
+if __name__ == "__main__":
+    num_examples_to_generate = 25
+    synthetic_dataset = generate_synthetic_data(num_examples=num_examples_to_generate)
+
+    # Convert dspy.Example objects to plain dictionaries for JSON serialization
+    json_ready_data = [dict(example) for example in synthetic_dataset]
+
+    # Save the data to the expected file
+    output_filename = "golden_set.json"
+    with open(output_filename, "w") as f:
+        json.dump(json_ready_data, f, indent=4)
+
+    print(f"\n✅ Successfully generated and saved {len(json_ready_data)} examples to {output_filename}")
