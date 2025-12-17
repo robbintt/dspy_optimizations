@@ -82,7 +82,18 @@ with dspy.context(lm=task_lm):
         to guide it toward a better result.
         """
         global SEED
-        topics = ["Python Recursion", "Thermodynamics", "SQL Joins", "Bayesian Stats", "Game Theory", "Roman History"]
+        topics = [
+            "Advanced concurrency and race condition puzzles",
+            "Formal logic systems and rewrite rules",
+            "Advanced calculus and infinite series convergence",
+            "Einsteinian relativity and its paradoxes",
+            "Non-classical logic and modal philosophy",
+            "Philosophical paradoxes of vagueness and identity",
+            "Game theory and strategic mechanism design",
+            "Quantum computing foundational concepts",
+            "Complex international financial regulations",
+            "Advanced genetic inheritance models"
+        ]
         
         MAX_SCORE = 0.75
         MIN_SCORE = 0.30
