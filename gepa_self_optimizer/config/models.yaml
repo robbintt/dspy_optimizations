@@ -1,14 +1,17 @@
-# Configuration for the primary task model.
+---
+# Development/Test Configuration
+# This file is optimized for fast, inexpensive API calls during testing.
+# To use, temporarily rename this file to 'models.yaml' or update your
+# application's configuration loading logic.
+
 task_model:
-  name: "zai-glm-4.6"
+  name: "zai-glm-4.6"               # Use the specified model
+  provider: "cerebras"
+  temperature: 0.8
+  max_tokens: 5000
+
+reflection_model:
+  name: "zai-glm-4.6"               # Use the specified model
   provider: "cerebras"
   temperature: 0.7
-  max_tokens: 4096
-
-# Configuration for the stronger reflection model.
-# A lower temperature is used for more deterministic analysis.
-reflection_model:
-  name: "zai-glm-4.6"
-  provider: "cerebras"
-  temperature: 0.5
-  max_tokens: 4096
+  max_tokens: 5000
