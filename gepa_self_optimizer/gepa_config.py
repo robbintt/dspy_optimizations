@@ -136,7 +136,8 @@ def semantic_similarity(text1, text2):
 # --- 5. METRIC FOR GEPA ---
 def refinement_gepa_metric(example, prediction, trace=None, pred_name=None, pred_trace=None):
     score = semantic_similarity(prediction.answer, example.correct_answer)
-    return score > 0.5
+    # Increased threshold to 0.85 to force optimization
+    return score > 0.85
 
 # --- 6. THE JUDGE'S CONSTITUTION ---
 JUDGE_CONSTITUTION = """
