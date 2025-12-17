@@ -110,7 +110,11 @@ def test_gepa_compilation_bug():
         print("1. Pre-GEPA sanity check:")
         student.complex_predictor.predict.signature.instructions = "MANUALLY MUTATED INSTRUCTION"
         state_before_gepa = student.dump_state()
-        instruction_before_gepa = state_before_gepa['predict']['signature']['instructions']
+        
+        # The state of a module is a dict of its components. We need to access the one we care about.
+        complex_predictor_state = state_before_gepa.get('complex_predictor', {})
+        instruction_before_gepa = complex_predictor_state.get('predict', {}).get('signature', {}).get('instructions')
+        
         print(f"   -> Student instruction before GEPA: '{instruction_before_gepa}'\n")
 
         # GEPA needs a trainset, even if it's just one example
@@ -136,11 +140,15 @@ def test_gepa_compilation_bug():
         
         state_after_gepa = optimized_program.dump_state()
         
-        if 'predict' not in state_after_gepa:
-            print("   -> ❌ FAILURE: Optimized program state is completely missing inner predictor state.")
+        # The state of a module is a dict of its components. We need to access the one we care about.
+        complex_predictor_state_after = state_after_gepa.get('complex_predictor', {})
+        
+        if not complex_predictor_state_after:
+            print("   -> ❌ FAILURE: Optimized program state is missing its 'complex_predictor' component.")
+            print("   -> Full state:", state_after_gepa)
             return False
 
-        instruction_after_gepa = state_after_gepa['predict']['signature']['instructions']
+        instruction_after_gepa = complex_predictor_state_after.get('predict', {}).get('signature', {}).get('instructions')
         print(f"   -> Optimized program instruction: '{instruction_after_gepa}'")
 
         # --- 6. Analyze the result ---
