@@ -32,14 +32,22 @@ def _load_model_configs():
     return final_config
 
 def _load_run_settings():
-    """Loads the run-specific settings from config/settings.yaml."""
+    """Loads the run-specific settings, including the GEPA profile, from config files."""
     SETTINGS_CONFIG_PATH = CONFIG_DIR / "config" / "settings.yaml"
+    
+    # Start with model configs to find the gepa_profile
+    model_configs = _load_model_configs()
+    
+    # Load other settings from settings.yaml if it exists
     try:
         with open(SETTINGS_CONFIG_PATH, "r") as f:
-            return yaml.safe_load(f)
+            additional_settings = yaml.safe_load(f) or {}
+            model_configs.update(additional_settings)
     except FileNotFoundError:
-        # Return a default empty dict if the optional config file is not found
-        return {}
+        # Return model configs if the optional config file is not found
+        pass
+    
+    return model_configs
 
 # Load run settings at module level so they can be imported
 run_settings = _load_run_settings()
@@ -272,6 +280,19 @@ GEPA_CONFIG_PROFILES = {
     "large": HEAVY_CONFIG,
 }
 
+
+def get_default_gepa_run_config() -> GEPARunConfig:
+    """
+    Loads the GEPARunConfig specified by the 'gepa_profile' key in the
+    model configuration file.
+    """
+    profile_name = run_settings.get('gepa_profile', 'development')
+    if not profile_name:
+        raise ValueError(
+            "A 'gepa_profile' must be specified in the model configuration "
+            "or settings.yaml to get a default config."
+        )
+    return get_gepa_run_config(profile_name)
 
 def create_gepa_optimizer(metric, config: GEPARunConfig, reflection_lm: dspy.LM) -> dspy.GEPA:
     """
