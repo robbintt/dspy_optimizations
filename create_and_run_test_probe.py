@@ -124,7 +124,8 @@ def test_gepa_compilation_bug():
         trainset = [dspy.Example(question="Q", answer="A").with_inputs("question")]
         
         # Use a minimal GEPA config. A single metric call is enough for the probe.
-        optimizer = dspy.GEPA(metric=simple_metric, max_metric_calls=1, track_stats=False)
+        # GEPA requires a reflection_lm, so we provide a dummy one.
+        optimizer = dspy.GEPA(metric=simple_metric, max_metric_calls=1, track_stats=False, reflection_lm=dummy_lm)
 
         # --- 4. The critical step: Compile the program ---
         print("2. Running optimizer.compile()...")
