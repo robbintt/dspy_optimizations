@@ -270,6 +270,7 @@ DEVELOPMENT_CONFIG = GEPARunConfig(
     max_merge_invocations=2,
     track_stats=True,
     warn_on_score_mismatch=False,
+    perfect_score=0.95,
     seed=42,
 )
 
