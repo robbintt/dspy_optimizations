@@ -2,6 +2,8 @@ import argparse
 import json
 import sys
 import importlib
+import os
+from datetime import datetime
 
 import dspy
 
@@ -36,6 +38,21 @@ def print_optimization_summary(program: dspy.Module):
     print("=" * 60)
 
 
+def create_run_directory():
+    """Creates a timestamped directory for storing run results."""
+    # Create a top-level data directory if it doesn't exist
+    data_dir = "data"
+    os.makedirs(data_dir, exist_ok=True)
+    
+    # Create a unique, timestamped subdirectory for this specific run
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    # Add process ID for uniqueness when running multiple scripts concurrently
+    pid = os.getpid()
+    run_dir = os.path.join(data_dir, f"gepa_run_{timestamp}_{pid}")
+    os.makedirs(run_dir, exist_ok=True)
+    
+    return run_dir
+
 def load_data(data_file: str):
     with open(data_file, "r") as f:
         raw_data = json.load(f)
@@ -43,6 +60,63 @@ def load_data(data_file: str):
         valset = trainset[-5:] 
         trainset = trainset[:-5]
     return trainset, valset
+
+def save_run_results(program, valset, metric_fn, run_dir):
+    """Saves detailed stats and evaluation metrics to the run directory."""
+    if not hasattr(program, 'detailed_results'):
+        print("\n📊 GEPA stats were not tracked for this run.")
+        return
+
+    print(f"\n📊 Saving detailed run results to '{run_dir}'...")
+    
+    # 1. Save the detailed GEPA optimization statistics
+    detailed_results_path = os.path.join(run_dir, "gepa_detailed_results.json")
+    with open(detailed_results_path, "w") as f:
+        json.dump(program.detailed_results.to_dict(), f, indent=4)
+    print(f"  - Saved detailed GEPA stats to '{detailed_results_path}'")
+
+    # 2. Save the final evaluation metrics on the validation set
+    if valset and metric_fn:
+        print("  - Calculating final metrics on the validation set...")
+        from dspy.evaluate import Evaluate
+        
+        # The detailed_results also contains the best outputs on the valset if track_best_outputs was True
+        if program.detailed_results.best_outputs_valset:
+            print("  - Using best outputs tracked during GEPA optimization.")
+            metric_outputs = []
+            # The structure is a list of (candidate_idx, [dspy.Prediction]) for each val instance
+            # We need to find the best candidate's outputs
+            best_idx = program.detailed_results.best_idx
+            best_predictions = []
+            for val_task_outputs in program.detailed_results.best_outputs_valset:
+                for cand_idx, predictions in val_task_outputs:
+                    if cand_idx == best_idx and predictions:
+                        best_predictions.append(predictions[0])
+                        break
+        else:
+            print("  - Re-running evaluation with the optimized program.")
+            evaluator = Evaluate(devset=valset, metric=metric_fn, num_threads=1, display_progress=False)
+            best_predictions = [program(**ex.without('correct_answer', 'gold_critique').inputs()) for ex in valset]
+
+
+        # Re-calculate the score for logging
+        final_score = 0.0
+        if best_predictions:
+            scores = [metric_fn(example, pred).score for example, pred in zip(valset, best_predictions)]
+            final_score = sum(scores) / len(scores)
+        
+        metrics_to_save = {
+            "final_val_score": final_score,
+            "val_set_len": len(valset),
+            "best_gepa_candidate_idx": program.detailed_results.best_idx,
+            "per_instance_scores": [metric_fn(example, pred).score for example, pred in zip(valset, best_predictions)] if best_predictions else []
+        }
+
+        metrics_path = os.path.join(run_dir, "validation_metrics.json")
+        with open(metrics_path, "w") as f:
+            json.dump(metrics_to_save, f, indent=4)
+        print(f"  - Saved validation metrics to '{metrics_path}'")
+
 
 def main():
     parser = argparse.ArgumentParser(description="Run a GEPA optimization on a DSPy module.")
@@ -60,6 +134,11 @@ def main():
                        help="Path to save the optimized program")
 
     args = parser.parse_args()
+
+    # 1. Create a directory for this specific run's data
+    run_dir = create_run_directory()
+    print(f"--- GEPA Run Configuration ---")
+    print(f"Run Directory:      {run_dir}")
 
     gepa_run_config = get_gepa_run_config(args.profile)
     if args.override_auto:
@@ -85,7 +164,14 @@ def main():
     )
     
     post_compile_inspection(optimized_program, program_name="GEPA Optimized Program")
+    
+    # 2. Save the primary optimized program artifact
     optimized_program.save(args.output_file)
+    print(f"\n✅ Saved optimized program to '{args.output_file}'")
+    
+    # 3. Save detailed statistics and metrics for this run
+    save_run_results(optimized_program, valset, metric_fn, run_dir)
+    
     print_optimization_summary(optimized_program)
 
 
