@@ -70,9 +70,13 @@ import json
 # Use a dummy LM to avoid API calls during the probe
 dummy_lm = dspy.LM(model="dummy_model", api_key="dummy_key")
 
-# --- 1. Define a minimal task and metric ---
-class SimpleTask(dspy.Signature):
-    """A simple task for the probe."""
+class SimpleChainOfThoughtTask(dspy.Signature):
+    """Signature for the ChainOfThought predictor."""
+    question = dspy.InputField(desc="A simple question.")
+    answer = dspy.OutputField(desc="A simple answer.")
+
+class SimplePredictTask(dspy.Signature):
+    """Signature for the Predict predictor."""
     question = dspy.InputField(desc="A simple question.")
     answer = dspy.OutputField(desc="A simple answer.")
 
@@ -83,20 +87,30 @@ def simple_metric(gold, pred, trace=None, pred_name=None, pred_trace=None):
     """
     return 1.0
 
-# --- 2. Define a minimal student program ---
+# --- 2. Define a more realistic student program ---
 class SimpleProgram(dspy.Module):
     def __init__(self):
         super().__init__()
-        # This is the module we suspect gets corrupted
-        self.complex_predictor = dspy.ChainOfThought(
-            SimpleTask, 
-            instructions="This is the initial instruction for the complex predictor."
+        # Module structure resembles GlmSelfReflect
+        self.chain_of_thought_predictor = dspy.ChainOfThought(
+            SimpleChainOfThoughtTask, 
+            instructions="This is the initial instruction for the ChainOfThought predictor."
+        )
+        self.predict_predictor = dspy.Predict(
+            SimplePredictTask,
+            instructions="This is the initial instruction for the Predict predictor."
         )
     
     def forward(self, question):
-        # The forward pass doesn't matter, just the structure
-        prediction = self.complex_predictor(question=question)
-        return dspy.Prediction(answer=prediction.answer)
+        # Predictors need to be named to be found by GEPA
+        with dspy.context(predictor=self.chain_of_thought_predictor):
+            cot_output = self.chain_of_thought_predictor(question=question)
+        
+        with dspy.context(predictor=self.predict_predictor):
+            pred_output = self.predict_predictor(question=question)
+
+        # Use the output from one of the predictors
+        return dspy.Prediction(answer=cot_output.answer)
 
 def test_gepa_compilation_bug():
     """
