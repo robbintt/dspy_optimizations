@@ -156,27 +156,45 @@ def test_gepa_compilation_bug():
         # Reset instruction to a known value to see what GEPA did
         optimized_program.chain_of_thought_predictor.predict.signature.instructions = "VALUE SET AFTER GEPA"
         
-        state_after_gepa = optimized_program.dump_state()
+        state_before_forward = optimized_program.dump_state()
+        cot_state_before_forward = state_before_forward.get('chain_of_thought_predictor', {})
+        instruction_before_forward = cot_state_before_forward.get('predict', {}).get('signature', {}).get('instructions')
+        print(f"   -> Instruction BEFORE forward call: '{instruction_before_forward}'")
+
+        # --- CRITICAL TEST: Call forward() on the optimized program ---
+        print("\n4. Calling forward() on the optimized program to see if it corrupts state...")
+        try:
+            optimized_program.forward(question="A test question.")
+            print("   -> Forward call finished without errors.\n")
+        except Exception as e:
+            # This is expected to fail with the dummy LM, but we just want to trigger the internal state changes
+            print(f"   -> Forward call failed with error: {e}\n")
+
+        # --- 5. Inspect the program AFTER the forward call ---
+        print("5. Inspecting program state AFTER forward call...")
+        state_after_forward = optimized_program.dump_state()
         
-        # The state of a module is a dict of its components. We need to access the one we care about.
-        cot_state_after = state_after_gepa.get('chain_of_thought_predictor', {})
+        cot_state_after_forward = state_after_forward.get('chain_of_thought_predictor', {})
         
-        if not cot_state_after:
+        if not cot_state_after_forward:
             print("   -> ❌ FAILURE: Optimized program state is missing its 'chain_of_thought_predictor' component.")
-            print("   -> Full state:", state_after_gepa)
+            print("   -> Full state:", state_after_forward)
             return False
 
-        instruction_after_gepa = cot_state_after.get('predict', {}).get('signature', {}).get('instructions')
-        print(f"   -> Optimized program instruction: '{instruction_after_gepa}'")
+        instruction_after_forward = cot_state_after_forward.get('predict', {}).get('signature', {}).get('instructions')
+        print(f"   -> Instruction AFTER forward call: '{instruction_after_forward}'")
 
         # --- 6. Analyze the result ---
-        if instruction_after_gepa == "":
-            print("\n   -> ❌ FAILURE CONFIRMED: GEPA returned a ChainOfThought module with a corrupted, empty instruction.")
-            print("      This confirms the bug is within the GEPA optimizer itself.")
+        if instruction_after_forward in [None, "", "This is the docstring and default instruction for the signature."]:
+            print("\n   -> ❌ FAILURE CONFIRMED: Calling forward() corrupted the ChainOfThought instruction.")
+            print("      This bug is likely inside the dspy.ChainOfThought module itself.")
             return False
-        else:
-            print("\n   -> ✅ SUCCESS: The optimized program has a valid instruction. GEPA compilation did not corrupt the state.")
+        elif instruction_before_forward == instruction_after_forward:
+            print("\n   -> ✅ SUCCESS: The forward pass did not corrupt the state.")
             return True
+        else:
+            print("\n   -> ⚠️ UNEXPECTED: The forward pass changed the instruction to a new value.")
+            return False
 
 if __name__ == "__main__":
     test_gepa_compilation_bug()
