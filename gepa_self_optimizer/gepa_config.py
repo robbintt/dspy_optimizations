@@ -204,6 +204,29 @@ class GEPARunConfig:
             )
 
 
+# --- GEPA PROFILE LOADER ---
+
+def get_gepa_run_config(profile_name: str) -> GEPARunConfig:
+    """
+    Loads a predefined GEPARunConfig object by its string profile name.
+
+    Args:
+        profile_name: The string name of the profile (e.g., "development", "medium").
+    
+    Returns:
+        The corresponding GEPARunConfig instance.
+    
+    Raises:
+        ValueError: If the profile_name is not found.
+    """
+    profile = GEPA_CONFIG_PROFILES.get(profile_name.lower())
+    if not profile:
+        raise ValueError(
+            f"Unknown GEPA profile '{profile_name}'. "
+            f"Available profiles: {list(GEPA_CONFIG_PROFILES.keys())}"
+        )
+    return profile
+
 # Pre-defined configurations for common use cases
 DEVELOPMENT_CONFIG = GEPARunConfig(
     max_metric_calls=80,
@@ -241,6 +264,13 @@ HEAVY_CONFIG = GEPARunConfig(
     track_stats=True,
     seed=42,
 )
+
+GEPA_CONFIG_PROFILES = {
+    "development": DEVELOPMENT_CONFIG,
+    "small": LIGHT_CONFIG,
+    "medium": MEDIUM_CONFIG,
+    "large": HEAVY_CONFIG,
+}
 
 
 def create_gepa_optimizer(metric, config: GEPARunConfig, reflection_lm: dspy.LM) -> dspy.GEPA:

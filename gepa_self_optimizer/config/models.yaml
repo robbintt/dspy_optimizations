@@ -4,6 +4,8 @@
 # To use, temporarily rename this file to 'models.yaml' or update your
 # application's configuration loading logic.
 
+gepa_profile: "development"
+
 task_model:
   name: "zai-glm-4.6"               # Use the specified model
   provider: "cerebras"
