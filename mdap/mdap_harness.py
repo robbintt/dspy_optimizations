@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass
 from collections import Counter
-from lib.microagent.protocols import ExecutionHarness
+from microagent.protocols import ExecutionHarness
 import msgspec
 
 # --- START: msgspec Models for Response Parsing ---
