@@ -27,7 +27,7 @@ fi
 
 # 3. Install Dependencies
 echo "📦 Installing/Updating dependencies..."
-uv sync --venv "$VENV_PATH"
+UV_PROJECT_VIRTUAL_ENV="$VENV_PATH" uv sync
 
 # 4. Run the Demo
 echo "🚀 Running demo..."
