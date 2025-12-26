@@ -233,7 +233,7 @@ next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}""",  # Sam
                 with pytest.raises(Exception, match="No valid candidates found"):
                     await harness.first_to_ahead_by_k(
                         "test prompt", 
-                        RedFlagParser.parse_move_state_flag
+                        lambda x: RedFlagParser(harness.config).parse_move_state_flag(x)
                     )
             finally:
                 # Restore original config
@@ -247,7 +247,7 @@ next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}""",  # Sam
             
             result = await harness.execute_step(
                 "test prompt",
-                RedFlagParser.parse_move_state_flag
+                lambda x: RedFlagParser(harness.config).parse_move_state_flag(x)
             )
             
             assert result['move'] == [1, 0, 1]
@@ -280,7 +280,7 @@ next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}""",  # Sam
             with pytest.raises(Exception, match="Step execution failed after 2 attempts"):
                 await harness.execute_step(
                     "test prompt",
-                    RedFlagParser.parse_move_state_flag
+                    lambda x: RedFlagParser(harness.config).parse_move_state_flag(x)
                 )
             
             assert mock_voting.call_count == 2  # max_retries = 2

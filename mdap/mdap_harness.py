@@ -28,18 +28,17 @@ import msgspec
 # We will check the config object later in the MDAPHarness constructor
 # For now, we defer adding the file handler.
 
-# Configure formatter
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-# Also add console handler to tee output to terminal
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-console_handler.setFormatter(formatter)
-logging.getLogger().addHandler(console_handler)
-
-# Don't call basicConfig here since handlers are already configured above
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+# Configure only once
+if not logger.handlers:
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
 
 class RedFlagParser:
     """Red-flagging parser to filter invalid responses before voting"""

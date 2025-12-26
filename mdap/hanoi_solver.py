@@ -344,7 +344,9 @@ class HanoiMDAP(MicroAgent):
         """Solve Towers of Hanoi using MDAP"""
         logger.info(f"Starting to solve {num_disks}-disk Towers of Hanoi problem")
         logger.info(f"Using model: {self.config.model}, k_margin: {self.config.k_margin}")
-        trace = await self.harness.execute_agent_mdap(self, num_disks)
+        from microagent_executor import MicroAgentExecutor
+        executor = MicroAgentExecutor(self, self.config)
+        trace = await executor.execute(num_disks=num_disks)
         
         # Verify the final state is actually solved
         if trace and not self.is_solved(trace[-1]):
