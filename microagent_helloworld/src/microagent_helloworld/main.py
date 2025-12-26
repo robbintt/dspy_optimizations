@@ -4,7 +4,6 @@ import os
 
 from .agent import HelloWorldAgent
 from microagent import MicroAgentExecutor
-from mdap_harness import MDAPHarness
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -23,9 +22,11 @@ async def run():
 
     agent = HelloWorldAgent()
 
-    # Create and inject the MDAP harness, which is the default execution engine.
-    harness = MDAPHarness()
-    executor = MicroAgentExecutor(agent, harness)
+    # We need to create a simple harness for the HelloWorld example.
+    # For now, we'll print a message and exit.
+    print("Cannot run demo: A suitable execution harness is missing.")
+    print("A 'HelloWorldHarness' is required to execute this agent.")
+    return
 
     print(f"Target String: '{agent.TARGET_STRING}'\n")
     print(f"Using harness: {harness.__class__.__name__}, Model: {harness.config.model}\n")
