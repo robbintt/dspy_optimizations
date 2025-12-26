@@ -14,10 +14,3 @@ __pycache__
 gepa_self_optimizer/golden_set.json
 gepa_self_optimizer/optimized_program_after_stats.json
 mdap/calibration_cache.pkl
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Environment variables
-.env
