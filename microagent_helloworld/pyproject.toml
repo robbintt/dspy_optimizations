@@ -1,0 +1,15 @@
+[project]
+name = "microagent_helloworld"
+version = "0.1.0"
+description = "'Hello, World!' demo for the microagent library."
+dependencies = [
+    # This relative path dependency allows `uv` to find and use the local library.
+    "microagent @ ../lib/microagent"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+helloworld-demo = "microagent_helloworld.main:main"
