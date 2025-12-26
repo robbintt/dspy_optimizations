@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass
 from collections import Counter
+from lib.microagent.protocols import ExecutionHarness
 import msgspec
 
 # --- START: msgspec Models for Response Parsing ---
@@ -150,7 +151,7 @@ class MDAPConfig:
         self.cost_per_input_token = model_config.get('cost_per_input_token', 0.00015)
         self.cost_per_output_token = model_config.get('cost_per_output_token', 0.0006)
 
-class MDAPHarness:
+class MDAPHarness(ExecutionHarness):
     """Main MDAP harness implementing MAKER framework"""
     
     def __init__(self, config=None, llm_client=None):
@@ -369,6 +370,7 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                           step_generator: Callable[[Any], Tuple[str, Callable[[str], Any]]],
                           termination_check: Callable[[Any], bool],
                           agent: 'MicroAgent' = None) -> List[Any]:
+        """Internal MDAP-specific execution method."""
         """
         Execute a complete MDAP process
         """
@@ -435,20 +437,59 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
         logger.info(f"MDAP execution completed in {step_count} steps")
         return execution_trace
     
-    async def execute_agent_mdap(self, agent: 'MicroAgent', *args, **kwargs) -> List[Any]:
+    async def execute_plan(self, 
+                          initial_state: Any,
+                          step_generator: Callable[[Any], Tuple[str, Callable[[str], Any]]],
+                          termination_check: Callable[[Any], bool],
+                          agent: 'MicroAgent') -> List[Any]:
         """
-        Execute MDAP using a micro agent
-        
+        Execute a plan using a micro agent (Implementation of ExecutionHarness protocol).
+
         Args:
-            agent: The micro agent to execute
-            *args, **kwargs: Arguments to pass to agent.create_initial_state()
+            initial_state: The starting state of the problem.
+            step_generator: A callable from the agent that provides (prompt, parser) for each step.
+            termination_check: A callable from the agent to check if the problem is solved.
+            agent: The micro agent instance being executed.
             
         Returns:
             List of states representing the execution trace
         """
-        initial_state = agent.create_initial_state(*args, **kwargs)
-        
+        # Delegates to the existing, robust MDAP execution logic.
         return await self.execute_mdap(
+            initial_state=initial_state,
+            step_generator=step_generator,
+            termination_check=termination_check,
+            agent=agent
+        )
+
+    async def execute_step(self,
+                          step_prompt: Tuple[str, str],
+                          response_parser: Callable[[str], Any]) -> Any:
+        """
+        Execute a single step (Implementation of ExecutionHarness protocol).
+
+        Args:
+            step_prompt: A tuple containing (system_prompt, user_prompt).
+            response_parser: A callable to parse the LLM's raw response.
+
+        Returns:
+            The parsed result of the step.
+        """
+        return await self.execute_step(step_prompt, response_parser)
+
+    # NOTE: The old execute_agent_mdap method is now redundant and can be
+    # considered deprecated. New code should use MicroAgentExecutor with this harness.
+    async def execute_agent_mdap(self, agent: 'MicroAgent', *args, **kwargs) -> List[Any]:
+        """
+        DEPRECATED: Execute MDAP using a micro agent.
+        Use MicroAgentExecutor(agent, harness).execute() instead.
+        """
+        logger.warning(
+            "MDAPHarness.execute_agent_mdap() is deprecated. "
+            "Use MicroAgentExecutor(agent, harness).execute() for new code."
+        )
+        initial_state = agent.create_initial_state(*args, **kwargs)
+        return await self.execute_plan(
             initial_state=initial_state,
             step_generator=agent.step_generator,
             termination_check=agent.is_solved,

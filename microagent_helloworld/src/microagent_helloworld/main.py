@@ -4,6 +4,7 @@ import os
 
 from .agent import HelloWorldAgent
 from microagent import MicroAgentExecutor
+from mdap_harness import MDAPHarness
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -21,9 +22,13 @@ async def run():
               "Execution will likely fail.")
 
     agent = HelloWorldAgent()
-    executor = MicroAgentExecutor(agent)
+
+    # Create and inject the MDAP harness, which is the default execution engine.
+    harness = MDAPHarness()
+    executor = MicroAgentExecutor(agent, harness)
 
     print(f"Target String: '{agent.TARGET_STRING}'\n")
+    print(f"Using harness: {harness.__class__.__name__}, Model: {harness.config.model}\n")
     try:
         trace = await executor.execute()
         final_state = trace[-1]
@@ -36,9 +41,12 @@ async def run():
             print(f"❌ Failure. The agent did not build the string correctly.")
 
         print("\n--- Execution Statistics ---")
-        stats = executor.get_statistics()
+        stats = {
+            'Total Cost': f"${harness.total_cost:.4f}",
+            'Total API Calls': harness.total_api_calls
+        }
         for key, value in stats.items():
-            print(f"{key.replace('_', ' ').title()}: {value}")
+            print(f"{key}: {value}")
 
     except Exception as e:
         print(f"\n❌ An error occurred during execution: {e}")
