@@ -7,3 +7,8 @@ data/
 __pycache__
 
 .DS_Store
+
+# temp, move to data dirs
+gepa_self_optimizer/golden_set.json
+gepa_self_optimizer/optimized_program_after_stats.json
+mdap/calibration_cache.pkl
