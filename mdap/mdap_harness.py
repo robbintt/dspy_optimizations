@@ -175,7 +175,7 @@ class MDAPHarness:
             nonlocal first_vote
             try:
                 # Check if we're in mock mode
-                if self.config.mock_mode:
+                if hasattr(self.config, 'mock_mode') and self.config.mock_mode:
                     # Return a mock valid response for testing
                     mock_response = """move = [1, 0, 2]
 next_state = {"pegs": [[2, 3], [], [1]]}"""
@@ -187,95 +187,34 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                         logger.error(f"Mock response parser failed: {e}")
                         return None
                 
-                # Use temperature=0 for first vote, 0.1 for subsequent votes (per paper)
-                temperature = self.temperature_first_vote if first_vote else self.config.temperature
-                if first_vote:
-                    logger.info(f"Using temperature={self.temperature_first_vote} for first vote to ensure best guess")
-                    first_vote = False
-                logger.info(f"Making LLM call with temperature={temperature}")
-                
-                # Build messages for chat completion
-                system_prompt, user_prompt = prompt
-                messages = [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ]
-                
-                # Build completion parameters, including optional model-specific ones
-                completion_params = {
-                    "model": self.config.model,
-                    "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": self.config.max_tokens,
-                }
-
-                # Add disable_reasoning if specified in the config and not None
-                if self.config.disable_reasoning is not None:
-                    completion_params["disable_reasoning"] = self.config.disable_reasoning
-                
-                # Add reasoning_effort if specified in the config and not None
-                if hasattr(self.config, 'reasoning_effort') and self.config.reasoning_effort is not None:
-                    completion_params["reasoning_effort"] = self.config.reasoning_effort
+                # Use temperature=0 for first vote (if config supports it)
+                temperature = getattr(self.config, 'temperature', 0.7)
                 
                 # Time the API call
                 api_start = time.time()
-                response = await acompletion(**completion_params)
+                # prompt is a tuple (system, user). For simplicity, we'll just join them.
+                # A more sophisticated LLMClient would handle structured messages.
+                full_prompt = f"{prompt[0]}\n{prompt[1]}" 
+                content = await self.llm_client.agenerate(full_prompt)
                 api_time = time.time() - api_start
                 
-                message = response.choices[0].message
-                content = message.content
-                
-                # Extract token usage
-                usage = response.usage
-                input_tokens = usage.prompt_tokens if usage else 0
-                output_tokens = usage.completion_tokens if usage else 0
-                
-                # Calculate cost
-                call_cost = (input_tokens * self.config.cost_per_input_token + 
-                           output_tokens * self.config.cost_per_output_token)
-                
-                # Update cumulative statistics
-                self.total_cost += call_cost
-                self.total_input_tokens += input_tokens
-                self.total_output_tokens += output_tokens
+                # Update API call statistics
                 self.total_api_calls += 1
                 
                 # Log API call details
                 logger.info(f"API Call: model={self.config.model}, "
-                           f"in_tokens={input_tokens}, out_tokens={output_tokens}, "
-                           f"cost=${call_cost:.6f}, temp={completion_params.get('temperature')}, "
                            f"time={api_time:.2f}s, length={len(content) if content else 0} chars, "
-                           f"cumulative: total_cost=${self.total_cost:.4f}, "
                            f"total_calls={self.total_api_calls}")
-                
-                # Check if we have reasoning content but no final content
-                if content is None and hasattr(message, 'reasoning_content') and message.reasoning_content:
-                    logger.warning(f"RED FLAG: LLM returned reasoning but no final content. This often means max_tokens was too small.")
-                    logger.warning(f"Reasoning was: {message.reasoning_content[:200]}...")
-                    return None
-                
-                if content is None:
-                    logger.warning(f"RED FLAG: LLM returned None content. Full response: {response}")
-                    return None
-                
-                # Log raw response for debugging
-                logger.info(f"RAW LLM RESPONSE (length={len(content)}):")
-                logger.info("-" * 80)
-                logger.info(content)
-                logger.info("-" * 80)
                 
                 # Check if content is empty or None
                 if not content or content.strip() == "":
                     logger.error("RED FLAG: LLM returned empty content")
                     return None
                 
-                # Apply red flagging (non-repairing extractor)
+                # Apply red-flagging (non-repairing extractor)
                 try:
-                    # Pass usage info to the parser if it accepts it
-                    if hasattr(response_parser, '__code__') and response_parser.__code__.co_argcount > 1:
-                        parsed_response = response_parser(content.strip(), usage)
-                    else:
-                        parsed_response = response_parser(content.strip())
+                    # Parse response - no longer need to pass usage since we don't have it
+                    parsed_response = response_parser(content.strip())
                     if parsed_response is None:
                         logger.warning(f"RED FLAG: Response discarded by red-flag parser")
                         return None
