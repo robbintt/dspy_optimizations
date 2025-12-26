@@ -6,6 +6,7 @@ Shows how to use the executor with different agent implementations.
 import asyncio
 import logging
 from hanoi_solver import HanoiMDAP
+from microagent import MicroAgent
 from microagent_executor import MicroAgentExecutor, execute_agent
 from mdap_harness import MDAPConfig
 
