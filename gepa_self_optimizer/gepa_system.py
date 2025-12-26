@@ -1,5 +1,79 @@
 import dspy
-from gepa_config import JUDGE_CONSTITUTION
+import json
+from dspy.primitives.base_module import BaseModule
+from gepa_config import JUDGE_CONSTITUTION, create_gepa_optimizer
+import json
+
+def post_compile_inspection(program, program_name="Optimized Program"):
+    """
+    Inspects a program immediately after optimization.
+    This is now a no-op since GEPA is working correctly.
+    """
+    pass
+
+
+def optimize_with_retries(student_module, trainset, valset, reflection_lm, metric, config, max_retries=3):
+    """
+    Wrapper function to run GEPA optimization with retries on reflection failures.
+    
+    Args:
+        student_module: The DSPy module to optimize
+        trainset: Training data for optimization
+        valset: Validation data for evaluation
+        reflection_lm: The language model to use for reflection
+        metric: The metric function for evaluation
+        config: The GEPARunConfig to use (MUST be provided)
+        max_retries: Maximum number of retry attempts on reflection failures
+        
+    Returns:
+        The optimized DSPy module
+        
+    Raises:
+        ValueError: If config is None
+    """
+    if config is None:
+        raise ValueError("Configuration must be explicitly provided. Use a config from gepa_config or create your own GEPARunConfig instance.")
+    # Create optimizer from configuration
+    gepa_optimizer = create_gepa_optimizer(
+        metric=metric,
+        config=config,
+        reflection_lm=reflection_lm
+    )
+    
+    optimized_program = None
+    
+    if config.max_metric_calls:
+        print(f"Starting GEPA optimization with budget of {config.max_metric_calls} calls")
+    else:
+        print(f"Starting GEPA optimization with up to {max_retries} retries...")
+    
+    for attempt in range(max_retries):
+        try:
+            print(f"--- Attempt {attempt + 1}/{max_retries} ---")
+            optimized_program = gepa_optimizer.compile(
+                student=student_module,
+                trainset=trainset,
+                valset=valset,
+            )
+            print("GEPA compilation successful.")
+            break  # Exit the retry loop on success
+            
+        except Exception as e:
+            if "No valid predictions found for any module." in str(e):
+                print(f"Attempt {attempt + 1} failed with a reflection error. Will retry.")
+            else:
+                print(f"Attempt {attempt + 1} failed with an unexpected error: {e}")
+                raise
+    
+    if optimized_program is None:
+        raise RuntimeError(f"GEPA compilation failed after {max_retries} retries.")
+    
+    print("GEPA optimization finished successfully.")
+    
+    # Inspect the program returned by the optimizer *before* passing it to the caller
+    post_compile_inspection(optimized_program, program_name="GEPA Optimized Program")
+    
+    return optimized_program
 
 # --- SIGNATURES ---
 class Generate(dspy.Signature):
@@ -26,9 +100,11 @@ class Refine(dspy.Signature):
 class GlmSelfReflect(dspy.Module):
     def __init__(self):
         super().__init__()
-        self.generator = dspy.ChainOfThought(Generate)
-        self.critic = dspy.ChainOfThought(ShepherdCritic)
+        # CHANGING TO ALL PREDICT MODULES TO ISOLATE THE GEPA+ChainOfThought BUG
+        self.generator = dspy.Predict(Generate)
+        self.critic = dspy.Predict(ShepherdCritic) # Changed from ChainOfThought
         self.refiner = dspy.Predict(Refine)
+
 
     def forward(self, question, draft_answer=None):
         if not draft_answer:

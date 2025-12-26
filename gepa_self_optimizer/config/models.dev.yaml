@@ -4,31 +4,16 @@
 # To use, temporarily rename this file to 'models.yaml' or update your
 # application's configuration loading logic.
 
-task_model:
-  name: "llama3.1-8b-instruct"      # Use a smaller, faster model
-  provider: "cerebras"
-  temperature: 0.7
-  max_tokens: 800                     # Reduce max_tokens for speed
-
-reflection_model:
-  name: "llama3.1-8b-instruct"      # Use the same smaller model
-  provider: "cerebras"
-  temperature: 0.5
-  max_tokens: 600                     # Reduce max_tokens for speed
----
-# Development/Test Configuration
-# This file is optimized for fast, inexpensive API calls during testing.
-# To use, temporarily rename this file to 'models.yaml' or update your
-# application's configuration loading logic.
+gepa_profile: "development"
 
 task_model:
-  name: "llama3.1-8b-instruct"      # Use a smaller, faster model
+  name: "zai-glm-4.6"               # Use the specified model
   provider: "cerebras"
-  temperature: 0.7
-  max_tokens: 800                     # Reduce max_tokens for speed
+  temperature: 0.8
+  max_tokens: 32000
 
 reflection_model:
-  name: "llama3.1-8b-instruct"      # Use the same smaller model
+  name: "zai-glm-4.6"               # Use the specified model
   provider: "cerebras"
-  temperature: 0.5
-  max_tokens: 600                     # Reduce max_tokens for speed
+  temperature: 0.7
+  max_tokens: 32000

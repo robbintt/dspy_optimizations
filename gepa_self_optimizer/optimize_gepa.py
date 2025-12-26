@@ -1,61 +1,57 @@
-import dspy
+"""
+Legacy script for GEPA optimization.
+This script is kept for backward compatibility but is deprecated.
+Use run_gepa.sh for new optimizations.
+"""
+
+import sys
+import os
 import json
-from sentence_transformers import SentenceTransformer, util
-# No change needed - imports and initialization are already correct
+import dspy
+from gepa_config import setup_dspy, refinement_gepa_metric, get_default_gepa_run_config, create_gepa_optimizer
+from gepa_system import GlmSelfReflect
 
-# --- 1. PROVIDE A WORKING SEMANTIC SIMILARITY FUNCTION ---
-# The original 'dspy.evaluate.semantic_similarity' does not exist.
-print("🔍 Loading semantic similarity model...")
-similarity_model = SentenceTransformer('all-MiniLM-L6-v2')
+def main():
+    """Run GEPA optimization with default settings."""
+    output_file = "glm_gepa_complete.json"
+    data_file = "golden_set.json"
+    
+    if not os.path.exists(data_file):
+        print(f"Error: Data file '{data_file}' not found. Please run generate_data.py first.")
+        sys.exit(1)
+    
+    if os.path.exists(output_file):
+        print(f"Optimized program already exists at '{output_file}'. Use run_gepa.sh for new optimizations.")
+        return
+    
+    print("Loading data...")
+    with open(data_file, "r") as f:
+        raw_data = json.load(f)
+        trainset = [dspy.Example(**d).with_inputs("question", "draft_answer") for d in raw_data]
+        valset = trainset[-5:] 
+        trainset = trainset[:-5]
+    
+    print("Setting up models...")
+    task_lm, reflection_lm = setup_dspy()
+    
+    print("Starting GEPA optimization...")
+    gepa_run_config = get_default_gepa_run_config()
+    optimizer = create_gepa_optimizer(
+        metric=refinement_gepa_metric,
+        config=gepa_run_config,
+        reflection_lm=reflection_lm
+    )
+    
+    program_to_optimize = GlmSelfReflect()
+    optimized_program = optimizer.compile(
+        student=program_to_optimize, 
+        trainset=trainset,
+        valset=valset,
+    )
+    
+    print(f"Saving optimized program to '{output_file}'")
+    optimized_program.save(output_file)
+    print("GEPA optimization complete!")
 
-def semantic_similarity(text1, text2):
-    """Computes cosine similarity between two texts."""
-    embeddings = similarity_model.encode([text1, text2], convert_to_tensor=True)
-    return util.cos_sim(embeddings[0], embeddings[1]).item()
-
-# --- 2. DEFINE THE METRIC FOR GEPA ---
-def refinement_gepa_metric(gold, pred, trace=None):
-    score = semantic_similarity(pred.answer, gold.correct_answer)
-    feedback = f"Similarity score is {score:.2f}. The reference answer is '{gold.correct_answer}'."
-    # In v3.0.4, metrics should return a float or bool directly
-    # The answer_with_feedback pattern is deprecated
-    return score
-
-# --- 3. LOAD DATA ---
-print("\n📂 Loading Golden Set...")
-with open("golden_set.json", "r") as f:
-    raw_data = json.load(f)
-    trainset = [dspy.Example(**d).with_inputs("question", "draft_answer") for d in raw_data]
-    valset = trainset[-5:] 
-    trainset = trainset[:-5]
-
-# ---------------------------------------------------------
-# PHASE: EVOLVE THE ENTIRE SYSTEM WITH GEPA
-# ---------------------------------------------------------
-print("\n🧬 [SINGLE PHASE] Evolving the GlmSelfReflect system with GEPA...")
-
-# Get the GEPA auto setting from settings, with a default of "medium"
-gepa_auto_setting = run_settings.get("optimization", {}).get("gepa_auto_setting", "medium")
-
-optimizer = dspy.GEPA(
-    metric=refinement_gepa_metric,
-    auto=gepa_auto_setting,
-    reflection_lm=reflection_lm,
-    track_stats=True
-)
-
-program_to_optimize = GlmSelfReflect()
-
-optimized_program = optimizer.compile(
-    student=program_to_optimize, 
-    trainset=trainset,
-    valset=valset,
-)
-
-# --- 4. SAVE AND INSPECT RESULTS ---
-optimized_program.save("glm_gepa_complete.json")
-print("\n🏆 GEPA EVOLUTION COMPLETE! Saved to 'glm_gepa_complete.json'")
-print("\n--- What changed? ---")
-print("Inspect your optimized program's prompts:")
-optimized_program.critic.display()
-optimized_program.refiner.display()
+if __name__ == "__main__":
+    main()

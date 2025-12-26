@@ -1,4 +1,4 @@
-# GEPA Self-Reflection Optimizer: End-to-End Guide
+# GEPA Self-Reflection Optimizer: User Guide
 
 This guide demonstrates how to use GEPA (Genetic Evolutionary Prompt Algorithm) to optimize a self-reflection architecture. GEPA uses a strong **Reflection LM** to analyze failures and evolve prompt instructions to achieve better performance.
 
@@ -70,20 +70,15 @@ Generate synthetic training data with embedded errors for GEPA to learn from:
 python -m gepa_self_optimizer.generate_data
 ```
 
-This creates `golden_set.json` with question-answer pairs containing subtle errors and corresponding gold-standard critiques. The data generation process:
-- Creates fictional worlds with unique rules
-- Generates complex questions based on these rules
-- Injects sophisticated, hard-to-detect errors into answers
-- Curies data to ensure the right difficulty level for optimization
+This creates `golden_set.json` with question-answer pairs containing subtle errors and corresponding gold-standard critiques.
 
 ## Step 3: Run Optimization
 
-Use the `run_gepa.sh` script to run the optimization with your preferred configuration:
+Use the `run_gepa.sh` script to run the optimization:
 
 ### Basic Usage
 
 ```bash
-# Use development profile (default) - quick testing
 ./gepa_self_optimizer/run_gepa.sh \
   -s gepa_system.GlmSelfReflect \
   -m gepa_config.refinement_gepa_metric \
@@ -109,15 +104,6 @@ Use the `run_gepa.sh` script to run the optimization with your preferred configu
   -m gepa_config.refinement_gepa_metric \
   -d golden_set.json \
   -o optimized_program.json
-
-# Use custom profile with budget override
-./gepa_self_optimizer/run_gepa.sh \
-  -p small \
-  -a heavy \
-  -s gepa_system.GlmSelfReflect \
-  -m gepa_config.refinement_gepa_metric \
-  -d golden_set.json \
-  -o optimized_program.json
 ```
 
 ### Script Parameters
@@ -133,10 +119,8 @@ Use the `run_gepa.sh` script to run the optimization with your preferred configu
 ## Step 4: Inspect Results
 
 After optimization completes:
-1. The optimized program is saved to your specified output file (e.g., `optimized_program.json`)
-2. A summary of evolved instructions is automatically printed to the console, showing:
-   - The length of each component's evolved instructions
-   - A preview of the first 200 characters of each instruction
+1. The optimized program is saved to your specified output file
+2. A summary of evolved instructions is printed to the console
 3. You can manually load and inspect the program in Python:
 
 ```python
@@ -146,7 +130,7 @@ from gepa_system import GlmSelfReflect
 program = GlmSelfReflect()
 program.load("optimized_program.json")
 
-# Display full evolved instructions
+# Display evolved instructions
 print("Generator instructions:", program.generator.signature.instructions)
 print("Critic instructions:", program.critic.signature.instructions)
 print("Refiner instructions:", program.refiner.signature.instructions)
@@ -154,7 +138,7 @@ print("Refiner instructions:", program.refiner.signature.instructions)
 
 ## Understanding the Optimization
 
-GEPA (Genetic Evolutionary Prompt Algorithm) optimizes your program by evolving the prompt instructions:
+GEPA optimizes your program by evolving the prompt instructions:
 
 1. **Evaluation**: Runs your program on the training set and scores each example
 2. **Reflection**: Uses a strong Reflection LM to analyze failures and generate feedback
@@ -162,23 +146,16 @@ GEPA (Genetic Evolutionary Prompt Algorithm) optimizes your program by evolving 
 4. **Selection**: Evaluates new candidates and keeps the best performers
 5. **Iteration**: Repeats the process to evolve increasingly effective prompts
 
-The optimized program contains evolved instructions that typically:
-- Are more detailed and specific than the originals
-- Include better guidance for handling edge cases
-- Are tailored to your specific task and metric
-- Show improved performance on validation data
-
 ## Core System Components
 
 ### Configuration (`gepa_config.py`)
 - Manages model loading and API keys from environment variables
 - Implements the semantic similarity metric for evaluation
 - Provides pre-configured GEPA optimization profiles
-- Handles optimizer creation with proper error handling
 
 ### System Architecture (`gepa_system.py`)
 
-The core self-reflection module consists of three components in a figure-8 architecture:
+The core self-reflection module consists of three components:
 
 ```python
 import dspy
@@ -232,4 +209,4 @@ class GlmSelfReflect(dspy.Module):
             return dspy.Prediction(answer=draft_answer, critique=critique_pkg.critique, severity=critique_pkg.severity)
 ```
 
-This clean, modular architecture makes it easy to adapt GEPA optimization to your own tasks and use cases. GEPA will evolve the instructions in each of the three components to improve overall system performance.
+This modular architecture makes it easy to adapt GEPA optimization to your own tasks.
