@@ -8,6 +8,7 @@ import asyncio
 import json
 import logging
 import math
+import os
 import time
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
@@ -41,7 +42,7 @@ logger.setLevel(logging.INFO)
 class RedFlagParser:
     """Red-flagging parser to filter invalid responses before voting"""
     
-    def __init__(self, config: MDAPConfig):
+    def __init__(self, config):
         self.config = config
 
     def _extract_content_blocks(self, response: str) -> Tuple[Optional[str], Optional[str]]:
