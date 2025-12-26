@@ -37,8 +37,6 @@ echo "  - Installing base microagent library..."
 # Install the local microagent library in editable mode into the venv
 UV_PROJECT_VIRTUAL_ENV="$VENV_PATH" uv pip install -e "$(dirname "$SCRIPT_DIR")/lib/microagent"
 
-echo "  - Installing helloworld demo dependencies..."
-UV_PROJECT_VIRTUAL_ENV="$VENV_PATH" uv sync
 
 # 4. Run the Demo
 echo "🚀 Running demo..."
