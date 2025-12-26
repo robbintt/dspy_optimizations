@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from typing import Any, List, Callable, Tuple, Dict
+import os
+from typing import Any, List, Callable, Tuple, Dict, Optional
 from .protocols import ExecutionHarness
 from . import MicroAgent
 
@@ -8,6 +9,45 @@ try:
     import litellm
 except ImportError:
     raise ImportError("The 'litellm' package is required. Please install it with 'pip install litellm'.")
+
+try:
+    import yaml
+except ImportError:
+    raise ImportError("The 'pyyaml' package is required. Please install it with 'pip install pyyaml'.")
+
+class LiteLLMConfig:
+    """
+    Configuration for the LiteLLMHarness, loaded from a YAML file.
+    """
+    def __init__(self, config_file: Optional[str] = None, **kwargs):
+        if config_file is None:
+            # Default to a config file relative to this file's location
+            base_dir = os.path.dirname(__file__)
+            config_file = os.path.join(base_dir, "..", "config", "models.yaml")
+        
+        if not os.path.exists(config_file):
+            raise FileNotFoundError(f"Configuration file not found: {config_file}")
+
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        model_config = config.get('model', {})
+        defaults = config.get('litellm_defaults', {})
+        
+        # Allow override via kwargs
+        self.model = kwargs.get('model', model_config.get('name'))
+        if self.model is None:
+            raise ValueError("Model name must be specified in config or passed as a keyword argument.")
+            
+        self.temperature = kwargs.get('temperature', model_config.get('temperature', defaults.get('temperature', 0.7)))
+        self.max_tokens = kwargs.get('max_tokens', model_config.get('max_tokens', defaults.get('max_tokens', 2048)))
+        self.top_p = kwargs.get('top_p', model_config.get('top_p', defaults.get('top_p', 1.0)))
+        self.frequency_penalty = kwargs.get('frequency_penalty', model_config.get('frequency_penalty', defaults.get('frequency_penalty', 0.0)))
+        self.presence_penalty = kwargs.get('presence_penalty', model_config.get('presence_penalty', defaults.get('presence_penalty', 0.0)))
+
+        # Cost tracking (per million tokens)
+        self.cost_per_input_token = model_config.get('cost_per_input_token', 0.00015)
+        self.cost_per_output_token = model_config.get('cost_per_output_token', 0.0006)
 
 logger = logging.getLogger(__name__)
 
@@ -17,19 +57,28 @@ class LiteLLMHarness(ExecutionHarness):
     with various LLM providers.
     """
 
-    def __init__(self, model: str, **llm_kwargs):
+    def __init__(self, config: LiteLLMConfig):
         """
-        Initialize the harness with a model name and options.
+        Initialize the harness with a configuration object.
 
         Args:
-            model: The model identifier for litellm (e.g., "gpt-3.5-turbo", "anthropic/claude-3").
-            **llm_kwargs: Additional keyword arguments to pass to litellm.completion().
+            config: A LiteLLMConfig instance with model and parameter settings.
         """
-        self.model = model
-        self.llm_kwargs = llm_kwargs
+        if not isinstance(config, LiteLLMConfig):
+            raise TypeError("config must be an instance of LiteLLMConfig")
+            
+        self.config = config
+        self.model = config.model
+        self.llm_kwargs = {
+            "temperature": config.temperature,
+            "max_tokens": config.max_tokens,
+            "top_p": config.top_p,
+            "frequency_penalty": config.frequency_penalty,
+            "presence_penalty": config.presence_penalty,
+        }
         self.total_cost = 0.0
         self.total_api_calls = 0
-        logger.info(f"Initialized {self.__class__.__name__} with model: {model}")
+        logger.info(f"Initialized {self.__class__.__name__} with model: {self.model}")
 
     async def execute_step(self,
                           step_prompt: Tuple[str, str],

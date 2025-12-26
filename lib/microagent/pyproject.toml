@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "microagent"
 version = "0.1.0"
 description = "A library for building micro agents using the MDAP framework."
-dependencies = ["litellm"]
+dependencies = ["litellm", "pyyaml"]
 requires-python = ">=3.10"
 
 [tool.hatch.build.targets.wheel]
