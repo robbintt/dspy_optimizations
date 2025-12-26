@@ -2,9 +2,7 @@
 name = "microagent_helloworld"
 version = "0.1.0"
 description = "'Hello, World!' demo for the microagent library."
-dependencies = [
-    "microagent @ ../lib/microagent"
-]
+dependencies = []
 
 [build-system]
 requires = ["hatchling"]
