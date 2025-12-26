@@ -21,15 +21,14 @@ async def run():
               "Execution will likely fail.")
 
     agent = HelloWorldAgent()
-
-    # We need to create a simple harness for the HelloWorld example.
-    # For now, we'll print a message and exit.
-    print("Cannot run demo: A suitable execution harness is missing.")
-    print("A 'HelloWorldHarness' is required to execute this agent.")
-    return
+    
+    # Create and use the local HelloWorldHarness
+    from .harness import HelloWorldHarness
+    harness = HelloWorldHarness(agent=agent)
+    executor = MicroAgentExecutor(agent, harness)
 
     print(f"Target String: '{agent.TARGET_STRING}'\n")
-    print(f"Using harness: {harness.__class__.__name__}, Model: {harness.config.model}\n")
+    print(f"Using harness: {harness.__class__.__name__}\n")
     try:
         trace = await executor.execute()
         final_state = trace[-1]
@@ -59,3 +58,55 @@ def main():
 
 if __name__ == "__main__":
     main()
+import logging
+from typing import Any, List, Callable, Tuple
+from .agent import HelloWorldAgent
+from microagent.protocols import ExecutionHarness
+from microagent import MicroAgent
+
+logger = logging.getLogger(__name__)
+
+class HelloWorldHarness(ExecutionHarness):
+    """
+    A simple execution harness for the HelloWorldAgent.
+    This harness simulates an LLM call by providing the correct next
+    character in the target string to demonstrate the framework's logic.
+    """
+
+    def __init__(self, agent: HelloWorldAgent):
+        self.agent = agent
+        self.total_cost = 0.0
+        self.total_api_calls = 0
+        logger.info(f"Initialized {self.__class__.__name__}")
+
+    async def execute_step(self,
+                           step_prompt: Tuple[str, str],
+                           response_parser: Callable[[str], Any]) -> Any:
+        """Simulates an LLM call. Returns the correct next character."""
+        self.total_api_calls += 1
+        
+        current_state = step_prompt[1]
+        expected_next_char = self.agent.TARGET_STRING[len(current_state)]
+
+        logger.info(f"Simulated LLM response: '{expected_next_char}'")
+        return response_parser(expected_next_char)
+
+    async def execute_plan(self,
+                          initial_state: Any,
+                          step_generator: Callable[[Any], Tuple[Tuple[str, str], Callable]],
+                          termination_check: Callable[[Any], bool],
+                          agent: MicroAgent) -> List[Any]:
+        """Executes the plan step-by-step until terminated."""
+        trace = [initial_state]
+        current_state = initial_state
+
+        while not termination_check(current_state):
+            prompt, parser = step_generator(current_state)
+            result = await self.execute_step(prompt, parser)
+            
+            current_state = agent.update_state(current_state, result)
+            trace.append(current_state)
+            logger.info(f"State updated to: '{current_state}'")
+
+        self.total_cost = self.total_api_calls * 0.0001
+        return trace
