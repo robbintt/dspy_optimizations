@@ -73,6 +73,7 @@ def install_dependencies():
     else:
         print_warning(f"requirements.txt not found at {req_file}. Skipping dependency installation.")
 
+
 def activate_venv():
     """Activate virtual environment"""
     print_status("Activating virtual environment...")
