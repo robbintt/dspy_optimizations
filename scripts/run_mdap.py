@@ -49,35 +49,29 @@ def check_venv():
         print_error("Virtual environment not found!")
         print("Please run './setup_mdap.sh' first to set up the environment.")
         sys.exit(1)
-
-    # Create a .pth file in the venv to make the lib directory available
-    site_packages_dir = os.path.join(
-        VENV_PATH,
-        "lib",
-        f"python{sys.version_info.major}.{sys.version_info.minor}",
-        "site-packages"
-    )
-    pth_file = os.path.join(site_packages_dir, "mdap_project_lib.pth")
-    lib_path = os.path.join(PROJECT_DIR, "lib")
-
-    print_status(f"Site packages directory: {site_packages_dir}")
-    print_status(f".pth file location: {pth_file}")
-    print_status(f"Library path to add: {lib_path}")
-
-    # Create the .pth file if it doesn't exist or if the path is incorrect
-    pth_content = ""
-    if os.path.exists(pth_file):
-        with open(pth_file, "r") as f:
-            pth_content = f.read().strip()
     
-    if not os.path.exists(pth_file) or pth_content != lib_path:
-        print_status(f"Configuring venv library path at {pth_file}...")
-        os.makedirs(site_packages_dir, exist_ok=True)
-        with open(pth_file, "w") as f:
-            f.write(lib_path + "\n")
-        print_success(f"Created .pth file with content: {lib_path}")
+    install_dependencies()
+
+
+def install_dependencies():
+    """Install project dependencies from requirements.txt"""
+    req_file = os.path.join(PROJECT_DIR, "requirements.txt")
+    if os.path.exists(req_file):
+        print_status("Installing/updating project dependencies...")
+        # Use --verbose to see the installation details
+        run_command([sys.executable, "-m", "pip", "install", "--verbose", "-r", "requirements.txt"])
+        
+        # Verify installation worked
+        print_status("Verifying 'microagent' package installation...")
+        check_cmd = [sys.executable, "-c", "import microagent; print(f'Successfully imported microagent from: {microagent.__file__}')"]
+        try:
+            run_command(check_cmd)
+        except SystemExit as e:
+            print_error("Verification failed: 'microagent' package was not installed correctly.")
+            print_error("Please check the pip install output above for errors.")
+            raise e
     else:
-        print_status(".pth file already configured correctly")
+        print_warning(f"requirements.txt not found at {req_file}. Skipping dependency installation.")
 
 def activate_venv():
     """Activate virtual environment"""
