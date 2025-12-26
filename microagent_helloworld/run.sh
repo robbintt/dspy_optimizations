@@ -32,14 +32,7 @@ else
 fi
 
 # 3. Install Dependencies
-echo "📦 Installing/Updating dependencies..."
-# Step 1: Install the base microagent library into the venv.
-echo "  - Installing base microagent library..."
-# Use uv to install the library from its project directory
-UV_PROJECT_VIRTUAL_ENV="$VENV_PATH" uv sync --project "$(dirname "$SCRIPT_DIR")/lib/microagent"
-
-# Step 2: Install this demo's dependencies into the same venv.
-echo "  - Installing helloworld demo dependencies..."
+echo "📦 Installing dependencies..."
 UV_PROJECT_VIRTUAL_ENV="$VENV_PATH" uv sync
 
 # 4. Run the Demo

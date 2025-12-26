@@ -3,8 +3,7 @@ name = "microagent_helloworld"
 version = "0.1.0"
 description = "'Hello, World!' demo for the microagent library."
 dependencies = [
-    # Assumes the `microagent` library is installed in the environment first.
-    "microagent"
+    "microagent @ ../lib/microagent"
 ]
 
 [build-system]
