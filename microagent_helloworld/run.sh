@@ -45,7 +45,7 @@ UV_PROJECT_VIRTUAL_ENV="$VENV_PATH" uv sync
 # 4. Run the Demo
 echo "🚀 Running demo..."
 echo "---"
-uv run --venv "$VENV_PATH" helloworld-demo
+UV_PROJECT_VIRTUAL_ENV="$VENV_PATH" uv run helloworld-demo
 echo "---"
 
 echo "✅ Demo complete!"
