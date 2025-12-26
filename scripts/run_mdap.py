@@ -172,7 +172,7 @@ def run_example(disks: int = 2):
 def run_tests(disks: int = 3):
     """Run Hanoi test suite"""
     print_status("Running MDAP test suite...")
-    run_command(["python", "-m", "mdap.test_hanoi"])
+    run_command(["python", "-m", "pytest", "mdap/test_hanoi.py", "-v"])
 
 def run_benchmark(disks: int = 3):
     """Run performance benchmark"""
