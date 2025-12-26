@@ -343,7 +343,7 @@ class TestMDAPCalibration:
 
     @pytest.mark.asyncio
     async def test_estimate_per_step_success_rate(self, harness):
-        """Test the per-step success rate estimation"""
+        """Test the per-step success rate estimation (MDAP-Harness specific)"""
         class MockAgent(MicroAgent):
             def create_initial_state(self, *args, **kwargs):
                 return {'step': 0, 'max_steps': 100}
