@@ -19,12 +19,13 @@ class LiteLLMConfig:
     """
     Configuration for the LiteLLMHarness, loaded from a YAML file.
     """
-    def __init__(self, config_file: Optional[str] = None, **kwargs):
-        if config_file is None:
-            # Default to a config file relative to this file's location
-            base_dir = os.path.dirname(__file__)
-            config_file = os.path.join(base_dir, "..", "config", "models.yaml")
+    def __init__(self, config_file: str, **kwargs):
+        """
+        Initializes configuration from a specified YAML file.
         
+        Args:
+            config_file: The absolute or relative path to the YAML config file.
+        """
         if not os.path.exists(config_file):
             raise FileNotFoundError(f"Configuration file not found: {config_file}")
 
