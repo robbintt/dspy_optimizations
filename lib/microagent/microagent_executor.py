@@ -4,9 +4,55 @@ Provides a clean, reusable interface for executing any MicroAgent-based solver.
 """
 
 import logging
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Callable
+import os
+import yaml
+import litellm
+from pathlib import Path
 from micro_agent import MicroAgent
-from mdap_harness import MDAPHarness, MDAPConfig
+from mdap_harness import MDAPHarness
+
+litellm.set_verbose = os.getenv("LITELLM_LOG", "INFO").upper() == "DEBUG"
+litellm.drop_params = True
+
+class LLMClient:
+    """A simple client wrapper for litellm."""
+    def __init__(self, model: str, temperature: float = 0.7, max_tokens: int = 2048):
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+
+    async def agenerate(self, prompt: str) -> str:
+        """Generate a single response from the LLM."""
+        response = await litellm.acompletion(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=self.temperature,
+            max_tokens=self.max_tokens
+        )
+        return response.choices[0].message.content
+
+class MicroAgentConfig:
+    """Configuration loaded from microagent's own config file."""
+    def __init__(self, **kwargs):
+        config_file = Path(__file__).parent / "config" / "models.yaml"
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        model_config = config['model']
+        defaults = config['mdap_defaults']
+        
+        # Allow override via kwargs
+        self.model = kwargs.get('model', f"{model_config['provider']}/{model_config['name']}")
+        self.temperature = kwargs.get('temperature', model_config.get('temperature', 0.7))
+        self.max_tokens = kwargs.get('max_tokens', model_config.get('max_tokens', 2048))
+        self.k_margin = kwargs.get('k_margin', defaults['k_margin'])
+        self.max_candidates = kwargs.get('max_candidates', defaults['max_candidates'])
+        self.max_retries = defaults['max_retries']
+        
+        # Cost tracking (per million tokens)
+        self.cost_per_input_token = model_config.get('cost_per_input_token', 0.00015)
+        self.cost_per_output_token = model_config.get('cost_per_output_token', 0.0006)
 
 logger = logging.getLogger(__name__)
 
@@ -31,26 +77,29 @@ class MicroAgentExecutor:
         print(f"API calls: {executor.total_api_calls}")
     """
 
-    def __init__(self, agent: MicroAgent, config: Optional[MDAPConfig] = None):
+    def __init__(self, agent: MicroAgent, config: Optional[MicroAgentConfig] = None):
         """
         Initialize the executor with a MicroAgent implementation.
 
         Args:
             agent: The MicroAgent instance to execute
-            config: Optional MDAPConfig. If None, uses agent's config or creates default
+            config: Optional MicroAgentConfig. If None, creates default
         """
         self.agent = agent
 
-        # Use provided config, or agent's config, or create default
+        # Use provided config, or create default
         if config is not None:
             self.config = config
-        elif hasattr(agent, 'config') and agent.config is not None:
-            self.config = agent.config
         else:
-            self.config = MDAPConfig()
+            self.config = MicroAgentConfig()
 
         # Create harness for execution
-        self.harness = MDAPHarness(self.config)
+        llm_client = LLMClient(
+            model=self.config.model,
+            temperature=self.config.temperature,
+            max_tokens=self.config.max_tokens
+        )
+        self.harness = MDAPHarness(config=self.config, llm_client=llm_client)
 
         logger.info(f"Initialized MicroAgentExecutor with agent: {agent.__class__.__name__}")
         logger.info(f"Configuration: model={self.config.model}, k_margin={self.config.k_margin}, "

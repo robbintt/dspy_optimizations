@@ -7,17 +7,12 @@ first-to-ahead-by-K Error correction, and Red-flagging
 import asyncio
 import json
 import logging
-import os
 import math
 import time
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass
 from collections import Counter
-from pathlib import Path
-import yaml
-import litellm
-from litellm import completion, acompletion
 import msgspec
 
 # --- START: msgspec Models for Response Parsing ---
@@ -39,64 +34,9 @@ console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(formatter)
 logging.getLogger().addHandler(console_handler)
 
-# Load environment variables
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    # Fallback if python-dotenv not installed
-    pass
-
-# Configure LiteLLM logging from environment
-litellm.set_verbose = os.getenv("LITELLM_LOG", "INFO").upper() == "DEBUG"
-
-# Drop unsupported OpenAI params from LLM calls
-litellm.drop_params = True
-
 # Don't call basicConfig here since handlers are already configured above
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-class MDAPConfig:
-    """Configuration for MDAP execution"""
-    
-    def __init__(self, **kwargs):
-        # Load configuration from YAML
-        config_file = Path(__file__).parent / "config" / "models.yaml"
-        
-        with open(config_file, 'r') as f:
-            config = yaml.safe_load(f)
-        
-        model_config = config['model']
-        mdap_defaults = config['mdap_defaults']
-        
-        # Model settings (allow override via kwargs)
-        # If model doesn't include provider, add it from config
-        model = kwargs.get('model', model_config['name'])
-        if '/' not in model:
-            self.model = f"{model_config['provider']}/{model}"
-        else:
-            self.model = model
-        self.temperature = kwargs.get('temperature', model_config.get('temperature', 0.6))
-        self.max_tokens = kwargs.get('max_tokens', model_config.get('max_tokens', 2048))
-        self.cost_per_input_token = model_config.get('cost_per_input_token', 0.00015)
-        self.cost_per_output_token = model_config.get('cost_per_output_token', 0.0006)
-        self.max_response_length = model_config.get('max_response_length', 750)
-        
-        # Cerebras-specific options
-        self.disable_reasoning = model_config.get('disable_reasoning', None)
-        self.reasoning_effort = model_config.get('reasoning_effort', None)
-        self.thinking_budget = model_config.get('thinking_budget', 200)
-        
-        # MDAP framework settings (allow override via kwargs, then env vars)
-        self.k_margin = kwargs.get('k_margin', int(os.getenv("MDAP_K_MARGIN", str(mdap_defaults['k_margin']))))
-        self.max_candidates = kwargs.get('max_candidates', int(os.getenv("MDAP_MAX_CANDIDATES", str(mdap_defaults['max_candidates']))))
-        self.max_retries = mdap_defaults['max_retries']
-        self.cost_threshold = mdap_defaults['cost_threshold']
-        
-        # Other settings
-        self.mock_mode = os.getenv("MDAP_MOCK_MODE", "false").lower() == "true"
-        self.enable_harness_logging = kwargs.get('enable_harness_logging', True)
 
 class RedFlagParser:
     """Red-flagging parser to filter invalid responses before voting"""
@@ -162,22 +102,17 @@ class RedFlagParser:
             "predicted_state": {"pegs": state}
         }
 
-    def parse_move_state_flag(self, response: str, usage: Optional[Any] = None) -> Optional[Dict[str, Any]]:
+    def parse_move_state_flag(self, response: str) -> Optional[Dict[str, Any]]:
         """
         Parse and validate a move and next_state response.
         Returns None if response is flagged (invalid).
         """
         try:
-            # Red flag 1: Check token limit
-            if usage and hasattr(usage, 'completion_tokens'):
-                token_count = usage.completion_tokens
-                if token_count > self.config.max_response_length:
-                    logger.warning(f"RED FLAG: Response too long: {token_count} tokens > {self.config.max_response_length}")
-                    return None
-            else:
-                if len(response) > self.config.max_response_length * 4:
-                    logger.warning(f"RED FLAG: Response too long (fallback): {len(response)} chars")
-                    return None
+            # Red flag 1: Check response length
+            max_length = getattr(self.config, 'max_response_length', 750) * 4
+            if len(response) > max_length:
+                logger.warning(f"RED FLAG: Response too long: {len(response)} chars")
+                return None
 
             move_line, state_line = self._extract_content_blocks(response)
 
@@ -194,8 +129,9 @@ class RedFlagParser:
 class MDAPHarness:
     """Main MDAP harness implementing MAKER framework"""
     
-    def __init__(self, config: MDAPConfig):
+    def __init__(self, config, llm_client):
         self.config = config
+        self.llm_client = llm_client
         self.red_flag_parser = RedFlagParser(config)
         self.total_cost = 0.0
         self.total_input_tokens = 0
@@ -204,7 +140,7 @@ class MDAPHarness:
         self.temperature_first_vote = 0.6
         
         # Add file handler for harness logging if enabled
-        if self.config.enable_harness_logging:
+        if hasattr(self.config, 'enable_harness_logging') and self.config.enable_harness_logging:
             LOGS_DIR = os.path.join(os.path.dirname(__file__), "logs")
             os.makedirs(LOGS_DIR, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
