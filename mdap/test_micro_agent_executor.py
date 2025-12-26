@@ -5,7 +5,7 @@ Unit tests for the generic MicroAgentExecutor
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
-from micro_agent_executor import MicroAgentExecutor, execute_agent
+from microagent_executor import MicroAgentExecutor, execute_agent
 from hanoi_solver import HanoiMDAP
 from mdap_harness import MDAPConfig
 

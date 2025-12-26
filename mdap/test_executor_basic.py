@@ -3,7 +3,7 @@
 Basic test script for MicroAgentExecutor to verify installation and imports.
 """
 
-from micro_agent_executor import MicroAgentExecutor
+from microagent_executor import MicroAgentExecutor
 from hanoi_solver import HanoiMDAP
 
 def main():
