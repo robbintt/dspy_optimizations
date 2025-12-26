@@ -28,7 +28,7 @@ python test_executor_basic.py
 
 echo ""
 echo -e "\033[0;34m[Test]\033[0m Running unit tests..."
-python -m pytest test_micro_agent_executor.py -v
+python -m pytest test_microagent_executor.py -v
 
 echo ""
 echo -e "\033[0;32m[Test]\033[0m All executor tests passed!"
