@@ -1,3 +1,9 @@
 
+## GLM 4.6 ##
+model: "cerebras/zai-glm-4.6"
+architect: true # gemini 3 recommends trying 2025.12.15, its working really well 2025.12.18
+map-tokens: 1024 # been using this since 2025.12.15 and I think it helps, might try 2048, can do more as I get used to it
+weak-model: "cerebras/zai-glm-4.6"
+
 read:
   - CONVENTIONS.md
