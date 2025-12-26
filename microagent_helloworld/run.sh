@@ -8,6 +8,12 @@ VENV_PATH="$HOME/virtualenvs/$PROJECT_NAME"
 # --- Script Logic ---
 echo "--- MicroAgent HelloWorld Demo Runner ---"
 
+# Get the directory the script is located in
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Change to the script's directory so `uv` can find pyproject.toml
+cd "$SCRIPT_DIR"
+
 # 1. Check for LLM API Key
 if [ -z "$OPENAI_API_KEY" ]; then
     echo "❌ ERROR: The 'OPENAI_API_KEY' environment variable is not set."
