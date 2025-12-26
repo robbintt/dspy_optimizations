@@ -76,18 +76,16 @@ class HelloWorldHarness(ExecutionHarness):
 
     def __init__(self, agent: HelloWorldAgent):
         self.agent = agent
-        self.total_cost = 0.0
-        self.total_api_calls = 0
         
+        # Define the default path to the configuration file
         config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'model.yml')
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
 
-        model_name = config['model']['name']
-        llm_params = config.get('parameters', {})
+        # Create the configuration object from the file
+        llm_config = LiteLLMConfig(config_file=config_path)
 
-        self._harness = LiteLLMHarness(model=model_name, **llm_params)
-        logger.info(f"Initialized {self.__class__.__name__} with model: {model_name}")
+        # Instantiate the underlying LiteLLMHarness with the config object
+        self._harness = LiteLLMHarness(config=llm_config)
+        logger.info(f"Initialized {self.__class__.__name__} with model: {llm_config.model}")
 
     @property
     def total_cost(self):
