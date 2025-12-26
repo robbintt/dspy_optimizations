@@ -291,8 +291,8 @@ next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}""",  # Sam
             harness.update_state({}, {})
     
     @pytest.mark.asyncio
-    async def test_execute_agent_mdap(self, harness):
-        """Test executing MDAP with a micro agent"""
+    async def test_execute_plan(self, harness):
+        """Test the new execute_plan method from the ExecutionHarness protocol"""
         class TestAgent(MicroAgent):
             def create_initial_state(self, max_steps):
                 return {"step": 0, "max_steps": max_steps}
@@ -305,6 +305,11 @@ next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}""",  # Sam
             
             def is_solved(self, state):
                 return state["step"] >= state["max_steps"]
+            
+            def step_generator(self, state):
+                prompt = self.generate_step_prompt(state)
+                parser = lambda x: {"increment": 1} if x == "increment" else None
+                return (prompt, parser)
         
         agent = TestAgent()
         
@@ -316,7 +321,7 @@ next_state = {"pegs": [[], [1], []], "num_disks": 1, "move_count": 1}""",  # Sam
             mock_response.choices[0].message.content = "step completed"
             mock_acompletion.return_value = mock_response
             
-            trace = await harness.execute_agent_mdap(agent, 3)
+            trace = await harness.execute_plan({"step": 0, "max_steps": 3}, agent.step_generator, agent.is_solved, agent)
             
             assert len(trace) == 4  # Initial + 3 steps
             assert trace[0]["step"] == 0
