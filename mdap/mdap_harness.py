@@ -127,12 +127,43 @@ class RedFlagParser:
             logger.warning(f"Validation error: {e}")
             return None
 
+class MDAPConfig:
+    """Configuration for MDAP execution"""
+    
+    def __init__(self, **kwargs):
+        config_file = os.path.join(os.path.dirname(__file__), "config", "models.yaml")
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        model_config = config['model']
+        defaults = config['mdap_defaults']
+        
+        # Allow override via kwargs
+        self.model = kwargs.get('model', f"{model_config['provider']}/{model_config['name']}")
+        self.temperature = kwargs.get('temperature', model_config.get('temperature', 0.7))
+        self.max_tokens = kwargs.get('max_tokens', model_config.get('max_tokens', 2048))
+        self.k_margin = kwargs.get('k_margin', defaults['k_margin'])
+        self.max_candidates = kwargs.get('max_candidates', defaults['max_candidates'])
+        self.max_retries = defaults['max_retries']
+        
+        # Cost tracking (per million tokens)
+        self.cost_per_input_token = model_config.get('cost_per_input_token', 0.00015)
+        self.cost_per_output_token = model_config.get('cost_per_output_token', 0.0006)
+
 class MDAPHarness:
     """Main MDAP harness implementing MAKER framework"""
     
-    def __init__(self, config, llm_client):
-        self.config = config
-        self.llm_client = llm_client
+    def __init__(self, config=None, llm_client=None):
+        # Accept injected dependencies, but create own defaults if not provided.
+        if config is None:
+            self.config = MDAPConfig()
+        else:
+            self.config = config
+        
+        if llm_client is None:
+            self.llm_client = None
+        else:
+            self.llm_client = llm_client
         self.red_flag_parser = RedFlagParser(config)
         self.total_cost = 0.0
         self.total_input_tokens = 0
@@ -196,7 +227,18 @@ next_state = {"pegs": [[2, 3], [], [1]]}"""
                 # prompt is a tuple (system, user). For simplicity, we'll just join them.
                 # A more sophisticated LLMClient would handle structured messages.
                 full_prompt = f"{prompt[0]}\n{prompt[1]}" 
-                content = await self.llm_client.agenerate(full_prompt)
+                
+                if self.llm_client:
+                    content = await self.llm_client.agenerate(full_prompt)
+                else:
+                    import litellm
+                    response = await litellm.acompletion(
+                        model=self.config.model,
+                        messages=[{"role": "user", "content": full_prompt}],
+                        temperature=self.config.temperature,
+                        max_tokens=self.config.max_tokens
+                    )
+                    content = response.choices[0].message.content
                 api_time = time.time() - api_start
                 
                 # Update API call statistics
