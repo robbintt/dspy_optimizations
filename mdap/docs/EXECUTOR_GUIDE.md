@@ -55,7 +55,7 @@ Benefits:
 ### 1. Simple Execution
 
 ```python
-from mdap.micro_agent_executor import MicroAgentExecutor
+from mdap.microagent_executor import MicroAgentExecutor
 from mdap.hanoi_solver import HanoiMDAP
 
 # Create agent
@@ -75,7 +75,7 @@ print(f"Total cost: ${executor.total_cost:.4f}")
 ### 2. One-Line Convenience Function
 
 ```python
-from mdap.micro_agent_executor import execute_agent
+from mdap.microagent_executor import execute_agent
 from mdap.hanoi_solver import HanoiMDAP
 
 trace = await execute_agent(HanoiMDAP(), num_disks=5)
@@ -179,7 +179,7 @@ trace2 = await executor.execute(num_disks=4)
 To create a new agent type that works with the executor:
 
 ```python
-from mdap.micro_agent import MicroAgent
+from mdap.microagent import MicroAgent
 from dataclasses import dataclass
 
 @dataclass
@@ -303,5 +303,5 @@ See `example_executor.py` for complete working examples of all patterns describe
 Run the executor tests:
 
 ```bash
-pytest test_micro_agent_executor.py -v
+pytest test_microagent_executor.py -v
 ```
