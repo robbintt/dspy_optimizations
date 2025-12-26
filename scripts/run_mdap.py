@@ -37,11 +37,28 @@ def print_error(message: str):
     print(f"{RED}[ERROR]{NC} {message}")
 
 def check_venv():
-    """Check if virtual environment exists"""
+    """Check if virtual environment exists and is configured"""
     if not os.path.exists(VENV_PATH):
         print_error("Virtual environment not found!")
         print("Please run './setup_mdap.sh' first to set up the environment.")
         sys.exit(1)
+
+    # Create a .pth file in the venv to make the lib directory available
+    # This makes `from lib.microagent...` work as an absolute import.
+    site_packages_dir = os.path.join(
+        VENV_PATH,
+        "lib",
+        f"python{sys.version_info.major}.{sys.version_info.minor}",
+        "site-packages"
+    )
+    pth_file = os.path.join(site_packages_dir, "mdap_project_lib.pth")
+    lib_path = os.path.join(PROJECT_DIR, "lib")
+
+    # Create the .pth file if it doesn't exist or if the path is incorrect
+    if not os.path.exists(pth_file) or open(pth_file).read().strip() != lib_path:
+        print_status(f"Configuring venv library path at {pth_file}...")
+        with open(pth_file, "w") as f:
+            f.write(lib_path + "\n")
 
 def activate_venv():
     """Activate virtual environment"""
@@ -74,12 +91,8 @@ def run_command(cmd: list, cwd: Optional[str] = None):
         if cwd:
             print_status(f"Working directory: {cwd}")
         
-        # Ensure PYTHONPATH includes the project directory
+        # Don't manipulate PYTHONPATH - virtual environment has .pth file configured
         env = os.environ.copy()
-        if 'PYTHONPATH' in env:
-            env['PYTHONPATH'] = f"{PROJECT_DIR}:{env['PYTHONPATH']}"
-        else:
-            env['PYTHONPATH'] = PROJECT_DIR
         
         result = subprocess.run(
             cmd,
