@@ -126,7 +126,7 @@ def run_command(cmd: list, cwd: Optional[str] = None):
         if cwd:
             print_status(f"Working directory: {cwd}")
         
-        # Use virtual environment Python and set PYTHONPATH
+        # Always use virtual environment Python and set PYTHONPATH
         if VENV_PYTHON and cmd[0] == sys.executable:
             cmd = [VENV_PYTHON] + cmd[1:]
         
@@ -151,28 +151,28 @@ def run_command(cmd: list, cwd: Optional[str] = None):
 def run_unit_tests():
     """Run unit tests"""
     print_status("Running MDAP unit tests...")
-    run_command([sys.executable, "-m", "pytest", "mdap/test_mdap_harness.py", "-v"])
+    run_command(["python", "-m", "pytest", "mdap/test_mdap_harness.py", "-v"])
 
 def run_integration_tests():
     """Run integration tests"""
     print_status("Running MDAP integration tests...")
-    run_command([sys.executable, "-m", "pytest", "mdap/test_hanoi_integration.py", "-v"])
+    run_command(["python", "-m", "pytest", "mdap/test_hanoi_integration.py", "-v"])
 
 def run_all_tests():
     """Run all tests"""
     print_status("Running all MDAP tests...")
-    run_command([sys.executable, "mdap/test_runner.py"])
+    run_command(["python", "mdap/test_runner.py"])
 
 def run_example(disks: int = 2):
     """Run Hanoi example"""
     print_status(f"Running Hanoi example with {disks} disks...")
     # Change to mdap directory to run the example with proper logging
-    run_command([sys.executable, "example_hanoi.py"], cwd=os.path.join(PROJECT_DIR, "mdap"))
+    run_command(["python", "example_hanoi.py"], cwd=os.path.join(PROJECT_DIR, "mdap"))
 
 def run_tests(disks: int = 3):
     """Run Hanoi test suite"""
     print_status("Running MDAP test suite...")
-    run_command([sys.executable, "-m", "mdap.test_hanoi"])
+    run_command(["python", "-m", "mdap.test_hanoi"])
 
 def run_benchmark(disks: int = 3):
     """Run performance benchmark"""
@@ -205,7 +205,7 @@ async def benchmark():
 
 asyncio.run(benchmark())
 """
-    run_command([sys.executable, "-c", benchmark_code])
+    run_command(["python", "-c", benchmark_code])
 
 def solve_hanoi(disks: int = 3):
     """Solve Hanoi with specified disk count"""
@@ -286,7 +286,7 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 """
-    run_command([sys.executable, "-c", solve_code])
+    run_command(["python", "-c", solve_code])
 
 def start_interactive():
     """Start interactive Python session"""
@@ -305,7 +305,7 @@ print('Type help() for available functions or exit() to quit.')
 import code
 code.interact(local=dict(globals(), **locals()))
 """
-    run_command([sys.executable, "-c", interactive_code])
+    run_command(["python", "-c", interactive_code])
 
 def show_help():
     """Show help message"""
