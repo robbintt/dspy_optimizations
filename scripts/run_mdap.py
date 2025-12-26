@@ -24,6 +24,11 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 VENV_PATH = os.path.expanduser("~/virtualenvs/mdap_harness_venv")
 
+# Add project lib directory to path
+LIB_DIR = os.path.join(PROJECT_DIR, "lib")
+if LIB_DIR not in sys.path:
+    sys.path.insert(0, LIB_DIR)
+
 def print_status(message: str):
     print(f"{BLUE}[MDAP]{NC} {message}")
 
@@ -38,6 +43,8 @@ def print_error(message: str):
 
 def check_venv():
     """Check if virtual environment exists and is configured"""
+    print_status(f"Checking virtual environment at {VENV_PATH}...")
+    
     if not os.path.exists(VENV_PATH):
         print_error("Virtual environment not found!")
         print("Please run './setup_mdap.sh' first to set up the environment.")
@@ -53,23 +60,53 @@ def check_venv():
     pth_file = os.path.join(site_packages_dir, "mdap_project_lib.pth")
     lib_path = os.path.join(PROJECT_DIR, "lib")
 
+    print_status(f"Site packages directory: {site_packages_dir}")
+    print_status(f".pth file location: {pth_file}")
+    print_status(f"Library path to add: {lib_path}")
+
     # Create the .pth file if it doesn't exist or if the path is incorrect
-    if not os.path.exists(pth_file) or open(pth_file).read().strip() != lib_path:
+    pth_content = ""
+    if os.path.exists(pth_file):
+        with open(pth_file, "r") as f:
+            pth_content = f.read().strip()
+    
+    if not os.path.exists(pth_file) or pth_content != lib_path:
         print_status(f"Configuring venv library path at {pth_file}...")
+        os.makedirs(site_packages_dir, exist_ok=True)
         with open(pth_file, "w") as f:
             f.write(lib_path + "\n")
+        print_success(f"Created .pth file with content: {lib_path}")
+    else:
+        print_status(".pth file already configured correctly")
 
 def activate_venv():
     """Activate virtual environment"""
     print_status("Activating virtual environment...")
+    print_status(f"Virtual environment path: {VENV_PATH}")
+    
     activate_script = os.path.join(VENV_PATH, "bin", "activate")
-    if os.path.exists(activate_script):
+    python_executable = os.path.join(VENV_PATH, "bin", "python")
+    
+    if os.path.exists(activate_script) and os.path.exists(python_executable):
         # In Python, we can't actually source the script, so we'll modify PATH
         venv_bin = os.path.join(VENV_PATH, "bin")
         os.environ["PATH"] = f"{venv_bin}:{os.environ.get('PATH', '')}"
         os.environ["VIRTUAL_ENV"] = VENV_PATH
+        
+        # Update sys.path to include venv site-packages
+        import site
+        site_packages = os.path.join(VENV_PATH, "lib", f"python{sys.version_info.major}.{sys.version_info.minor}", "site-packages")
+        if site_packages not in sys.path:
+            sys.path.insert(0, site_packages)
+        
+        print_status(f"Using Python executable: {python_executable}")
+        print_status(f"Updated PATH: {os.environ['PATH']}")
+        
+        # Verify we're using the right Python
+        print_status(f"Current sys.executable: {sys.executable}")
     else:
-        print_error(f"Virtual environment activation script not found at {activate_script}")
+        print_error(f"Virtual environment not properly set up at {VENV_PATH}")
+        print_error(f"Missing: {activate_script} or {python_executable}")
         sys.exit(1)
 
 def check_env():
@@ -293,10 +330,20 @@ def show_help():
 
 def main():
     """Main entry point"""
+    print_status("MDAP Harness Run Script Starting...")
+    print_status(f"Script directory: {SCRIPT_DIR}")
+    print_status(f"Project directory: {PROJECT_DIR}")
+    print_status(f"Library directory: {LIB_DIR}")
+    print_status(f"Current Python: {sys.executable}")
+    print_status(f"Current Python path: {sys.path[:3]}...")  # Show first 3 entries
+    
     # Check prerequisites
     check_venv()
     activate_venv()
     check_env()
+    
+    # Install dependencies AFTER activating venv
+    install_dependencies()
     
     # Parse command
     command = sys.argv[1] if len(sys.argv) > 1 else "help"
