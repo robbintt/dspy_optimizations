@@ -29,6 +29,9 @@ LIB_DIR = os.path.join(PROJECT_DIR, "lib")
 if LIB_DIR not in sys.path:
     sys.path.insert(0, LIB_DIR)
 
+# Global variable to store venv python executable
+VENV_PYTHON = None
+
 def print_status(message: str):
     print(f"{BLUE}[MDAP]{NC} {message}")
 
@@ -79,10 +82,11 @@ def activate_venv():
     print_status("Activating virtual environment...")
     print_status(f"Virtual environment path: {VENV_PATH}")
     
+    global VENV_PYTHON
     activate_script = os.path.join(VENV_PATH, "bin", "activate")
-    python_executable = os.path.join(VENV_PATH, "bin", "python")
+    VENV_PYTHON = os.path.join(VENV_PATH, "bin", "python")
     
-    if os.path.exists(activate_script) and os.path.exists(python_executable):
+    if os.path.exists(activate_script) and os.path.exists(VENV_PYTHON):
         # In Python, we can't actually source the script, so we'll modify PATH
         venv_bin = os.path.join(VENV_PATH, "bin")
         os.environ["PATH"] = f"{venv_bin}:{os.environ.get('PATH', '')}"
@@ -94,14 +98,14 @@ def activate_venv():
         if site_packages not in sys.path:
             sys.path.insert(0, site_packages)
         
-        print_status(f"Using Python executable: {python_executable}")
+        print_status(f"Using Python executable: {VENV_PYTHON}")
         print_status(f"Updated PATH: {os.environ['PATH']}")
         
         # Verify we're using the right Python
         print_status(f"Current sys.executable: {sys.executable}")
     else:
         print_error(f"Virtual environment not properly set up at {VENV_PATH}")
-        print_error(f"Missing: {activate_script} or {python_executable}")
+        print_error(f"Missing: {activate_script} or {VENV_PYTHON}")
         sys.exit(1)
 
 def check_env():
@@ -122,8 +126,14 @@ def run_command(cmd: list, cwd: Optional[str] = None):
         if cwd:
             print_status(f"Working directory: {cwd}")
         
-        # Don't manipulate PYTHONPATH - virtual environment has .pth file configured
+        # Use virtual environment Python and set PYTHONPATH
+        if VENV_PYTHON and cmd[0] == sys.executable:
+            cmd = [VENV_PYTHON] + cmd[1:]
+        
         env = os.environ.copy()
+        # Add LIB_DIR to PYTHONPATH for the subprocess
+        if LIB_DIR not in env.get('PYTHONPATH', '').split(':'):
+            env['PYTHONPATH'] = f"{LIB_DIR}:{env.get('PYTHONPATH', '')}"
         
         result = subprocess.run(
             cmd,
