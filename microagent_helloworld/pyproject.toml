@@ -2,7 +2,7 @@
 name = "microagent_helloworld"
 version = "0.1.0"
 description = "'Hello, World!' demo for the microagent library."
-dependencies = []
+dependencies = ["pyyaml"]
 requires-python = ">=3.10"
 
 [build-system]

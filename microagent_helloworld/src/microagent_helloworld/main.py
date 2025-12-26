@@ -59,54 +59,70 @@ def main():
 if __name__ == "__main__":
     main()
 import logging
+import yaml
+import os
 from typing import Any, List, Callable, Tuple
 from .agent import HelloWorldAgent
 from microagent.protocols import ExecutionHarness
-from microagent import MicroAgent
+from microagent import MicroAgent, LiteLLMHarness
 
 logger = logging.getLogger(__name__)
 
 class HelloWorldHarness(ExecutionHarness):
     """
-    A simple execution harness for the HelloWorldAgent.
-    This harness simulates an LLM call by providing the correct next
-    character in the target string to demonstrate the framework's logic.
+    An execution harness for the HelloWorldAgent that uses the LiteLLMHarness.
+    It loads model configuration from a local YAML file.
     """
 
     def __init__(self, agent: HelloWorldAgent):
         self.agent = agent
         self.total_cost = 0.0
         self.total_api_calls = 0
-        logger.info(f"Initialized {self.__class__.__name__}")
+        
+        config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'model.yml')
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
 
+        model_name = config['model']['name']
+        llm_params = config.get('parameters', {})
+
+        self._harness = LiteLLMHarness(model=model_name, **llm_params)
+        logger.info(f"Initialized {self.__class__.__name__} with model: {model_name}")
+
+    @property
+    def total_cost(self):
+        return self._harness.total_cost
+
+    @property
+    def total_api_calls(self):
+        return self._harness.total_api_calls
+    
     async def execute_step(self,
                            step_prompt: Tuple[str, str],
                            response_parser: Callable[[str], Any]) -> Any:
-        """Simulates an LLM call. Returns the correct next character."""
-        self.total_api_calls += 1
-        
-        current_state = step_prompt[1]
-        expected_next_char = self.agent.TARGET_STRING[len(current_state)]
-
-        logger.info(f"Simulated LLM response: '{expected_next_char}'")
-        return response_parser(expected_next_char)
+        """Delegate step execution to the internal LiteLLMHarness."""
+        return await self._harness.execute_step(step_prompt, response_parser)
 
     async def execute_plan(self,
                           initial_state: Any,
-                          step_generator: Callable[[Any], Tuple[Tuple[str, str], Callable]],
+                          step_generator: Callable[[Any], Tuple[str, Callable]],
                           termination_check: Callable[[Any], bool],
                           agent: MicroAgent) -> List[Any]:
-        """Executes the plan step-by-step until terminated."""
-        trace = [initial_state]
-        current_state = initial_state
-
-        while not termination_check(current_state):
-            prompt, parser = step_generator(current_state)
-            result = await self.execute_step(prompt, parser)
+        """
+        Adapt the agent's simple prompt to a (system, user) tuple for LiteLLM,
+        then delegate execution to the internal LiteLLMHarness.
+        """
+        def adapted_step_generator(state):
+            prompt, parser = agent.step_generator(state)
             
-            current_state = agent.update_state(current_state, result)
-            trace.append(current_state)
-            logger.info(f"State updated to: '{current_state}'")
+            system_prompt = "You are an assistant that follows instructions perfectly and responds with only the requested content."
+            user_prompt = prompt
 
-        self.total_cost = self.total_api_calls * 0.0001
-        return trace
+            return (system_prompt, user_prompt), parser
+
+        return await self._harness.execute_plan(
+            initial_state=initial_state,
+            step_generator=adapted_step_generator,
+            termination_check=termination_check,
+            agent=agent
+        )
