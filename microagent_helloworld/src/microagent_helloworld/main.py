@@ -61,6 +61,7 @@ if __name__ == "__main__":
 import logging
 import yaml
 import os
+from pathlib import Path
 from typing import Any, List, Callable, Tuple
 from .agent import HelloWorldAgent
 from microagent.protocols import ExecutionHarness
@@ -78,7 +79,7 @@ class HelloWorldHarness(ExecutionHarness):
         self.agent = agent
         
         # Define the default path to the configuration file at the project root
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        project_root = Path(__file__).parent.parent.parent
         config_path = os.path.join(project_root, 'config', 'model.yml')
 
         # Create the configuration object from the file
