@@ -3,7 +3,7 @@ import logging
 import os
 
 from .agent import HelloWorldAgent
-from microagent import MicroAgentExecutor
+from microagent import MicroAgentExecutor, LiteLLMConfig
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
