@@ -28,7 +28,8 @@ class HelloWorldAgent(MicroAgent):
     def get_response_parser(self):
         """Parse the LLM's response to extract a single character."""
         def parser(response: str) -> str:
-            match = re.search(r"\S", response)
+            # Match any single character, including whitespace.
+            match = re.search(r".", response)
             return match.group(0) if match else ""
         return parser
 
