@@ -17,28 +17,48 @@ except ImportError:
 
 class LiteLLMConfig:
     """
-    Configuration for the LiteLLMHarness, loaded from a YAML file.
+    Configuration for the LiteLLMHarness, loaded from a YAML file or config dict.
     """
-    def __init__(self, config_file: str, **kwargs):
+    def __init__(self, config_file: Optional[str] = None, config_dict: Optional[Dict] = None, **kwargs):
         """
-        Initializes configuration from a specified YAML file.
+        Initializes configuration from a specified YAML file or config dict.
         
         Args:
             config_file: The absolute or relative path to the YAML config file.
+            config_dict: A dictionary containing the configuration.
         """
-        if not os.path.exists(config_file):
-            raise FileNotFoundError(f"Configuration file not found: {config_file}")
+        if config_file is not None and config_dict is not None:
+            raise ValueError("Cannot provide both config_file and config_dict.")
+        if config_file is None and config_dict is None:
+            raise ValueError("Must provide either a config_file or a config_dict.")
+            
+        if config_file is not None:
+            if not os.path.exists(config_file):
+                raise FileNotFoundError(f"Configuration file not found: {config_file}")
+            with open(config_file, 'r') as f:
+                config = yaml.safe_load(f)
+        else:
+            config = config_dict
 
-        with open(config_file, 'r') as f:
-            config = yaml.safe_load(f)
-        
+        self._process_config(config, **kwargs)
+
+    def _process_config(self, config: Dict, **kwargs):
         model_config = config.get('model', {})
         defaults = config.get('litellm_defaults', {})
-        
-        # Allow override via kwargs
-        self.model = kwargs.get('model', model_config.get('name'))
+
+        provider = model_config.get('provider')
+        model_name = model_config.get('name')
+
+        # Construct the full model name for LiteLLM (e.g., 'cerebras/zai-glm-4.6')
+        if provider and model_name and '/' not in model_name:
+            full_model_name = f"{provider}/{model_name}"
+        else:
+            # Fallback to the name in config if provider prefix seems unnecessary/already present
+            full_model_name = model_name
+
+        self.model = kwargs.get('model', full_model_name)
         if self.model is None:
-            raise ValueError("Model name must be specified in config or passed as a keyword argument.")
+            raise ValueError("Model name could not be determined.")
             
         self.temperature = kwargs.get('temperature', model_config.get('temperature', defaults.get('temperature', 0.7)))
         self.max_tokens = kwargs.get('max_tokens', model_config.get('max_tokens', defaults.get('max_tokens', 2048)))
