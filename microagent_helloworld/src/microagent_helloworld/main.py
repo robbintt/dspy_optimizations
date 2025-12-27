@@ -82,8 +82,25 @@ class HelloWorldHarness(ExecutionHarness):
         project_root = Path(__file__).parent.parent.parent
         config_path = os.path.join(project_root, 'config', 'model.yml')
 
-        # Create the configuration object from the file
-        llm_config = LiteLLMConfig(config_file=config_path)
+        # Load the raw YAML config to get the provider name
+        import yaml
+        with open(config_path, 'r') as f:
+            raw_config = yaml.safe_load(f)
+        
+        provider = raw_config['model']['provider']
+        model_name = raw_config['model']['name']
+        
+        # LiteLLM requires the model name to include the provider prefix
+        litellm_model_name = f"{provider}/{model_name}"
+        
+        # Manually create the configuration object with the corrected model name
+        llm_config = LiteLLMConfig(
+            model=litellm_model_name,
+            temperature=raw_config['model']['temperature'],
+            max_tokens=raw_config['model']['max_tokens'],
+            top_p=raw_config['model']['top_p'],
+            # Add other parameters as needed by LiteLLMConfig or if they are present
+        )
 
         # Instantiate the underlying LiteLLMHarness with the config object
         self._harness = LiteLLMHarness(config=llm_config)
