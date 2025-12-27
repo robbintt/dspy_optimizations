@@ -158,7 +158,7 @@ class LiteLLMHarness(ExecutionHarness):
             except Exception as e:
                 logger.warning(f"LLM call failed on attempt {attempt + 1}: {e}")
                 if attempt < len(self.config.retry_delays) - 1:
-                    # Add jitter: a random float in the range [0.0, 1.0) seconds
+                    # Add jitter (helps for many parallel agents to avoid retry storms)
                     jittered_delay = delay + random.random()
                     logger.info(f"Retrying in {jittered_delay:.2f} seconds...")
                     await asyncio.sleep(jittered_delay)
