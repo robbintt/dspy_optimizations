@@ -69,6 +69,9 @@ class LiteLLMConfig:
         # Cost tracking (per million tokens)
         self.cost_per_input_token = model_config.get('cost_per_input_token', 0.00015)
         self.cost_per_output_token = model_config.get('cost_per_output_token', 0.0006)
+        
+        # Retry configuration
+        self.retry_delays = model_config.get('retry_delays', [])
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +108,8 @@ class LiteLLMHarness(ExecutionHarness):
                           step_prompt: Tuple[str, str],
                           response_parser: Callable[[str], Any]) -> Any:
         """
-        Execute a single step by calling the LLM via litellm.
+        Execute a single step by calling the LLM via litellm with
+        configurable exponential backoff retries.
 
         Args:
             step_prompt: A tuple of (system_prompt, user_prompt).
@@ -114,35 +118,50 @@ class LiteLLMHarness(ExecutionHarness):
         Returns:
             The parsed result from the LLM.
         """
-        self.total_api_calls += 1
-        system_prompt, user_prompt = step_prompt
-        
-        logger.info(f"Calling LLM...")
-        
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ]
-        
-        try:
-            response = await litellm.acompletion(
-                model=self.model,
-                messages=messages,
-                **self.llm_kwargs
-            )
-            
-            raw_result = response.choices[0].message.content
-            logger.info(f"LLM response received: '{raw_result[:100]}...'")
-            
-            # Update cost tracking
-            if hasattr(response, '_hidden_params') and 'response_cost' in response._hidden_params:
-                self.total_cost += response._hidden_params['response_cost']
-            
-            return response_parser(raw_result)
-            
-        except Exception as e:
-            logger.error(f"LLM call failed: {e}")
-            raise
+        for attempt, delay in enumerate(self.config.retry_delays):
+            try:
+                self.total_api_calls += 1
+                system_prompt, user_prompt = step_prompt
+                
+                logger.info(f"Calling LLM (Attempt {attempt + 1})...")
+                
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ]
+                
+                response = await litellm.acompletion(
+                    model=self.model,
+                    messages=messages,
+                    **self.llm_kwargs
+                )
+                
+                # A safeguard against empty or malformed responses
+                if response is None or response.choices is None or len(response.choices) == 0:
+                    raise ValueError("Received an empty or invalid response from the LLM.")
+                
+                raw_result = response.choices[0].message.content
+
+                # Another safeguard for cases where the content itself is None
+                if raw_result is None:
+                    raise ValueError("The LLM response content was empty.")
+                
+                logger.info(f"LLM response received: '{raw_result[:100]}...'")
+                
+                # Update cost tracking
+                if hasattr(response, '_hidden_params') and 'response_cost' in response._hidden_params:
+                    self.total_cost += response._hidden_params['response_cost']
+
+                return response_parser(raw_result)
+
+            except Exception as e:
+                logger.warning(f"LLM call failed on attempt {attempt + 1}: {e}")
+                if attempt < len(self.config.retry_delays) - 1:
+                    logger.info(f"Retrying in {delay} seconds...")
+                    await asyncio.sleep(delay)
+                else:
+                    logger.error("All retry attempts failed.")
+                    raise
 
     async def execute_plan(self,
                           initial_state: Any,
