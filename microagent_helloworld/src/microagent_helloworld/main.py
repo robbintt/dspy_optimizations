@@ -78,7 +78,7 @@ class HelloWorldHarness(ExecutionHarness):
         self.agent = agent
         
         # Define the default path to the configuration file
-        config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'model.yml')
+        config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'config', 'model.yml')
 
         # Create the configuration object from the file
         llm_config = LiteLLMConfig(config_file=config_path)
