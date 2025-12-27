@@ -23,7 +23,6 @@ async def run():
     agent = HelloWorldAgent()
     
     # Create and use the local HelloWorldHarness
-    from microagent_helloworld.harness import HelloWorldHarness
     harness = HelloWorldHarness(agent=agent)
     executor = MicroAgentExecutor(agent, harness)
 
