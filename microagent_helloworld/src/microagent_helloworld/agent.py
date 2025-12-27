@@ -22,15 +22,16 @@ class HelloWorldAgent(MicroAgent):
             f"The goal is to build the exact string: '{self.TARGET_STRING}'.\n"
             f"The current string is: '{state}'.\n"
             "Provide the single next character to append. "
-            "Respond with only that character and nothing else."
+            "Wrap the character in double quotes (e.g., \"a\" or \" \"). "
+            "Respond with only the quoted character and nothing else."
         )
 
     def get_response_parser(self):
         """Parse the LLM's response to extract a single character."""
         def parser(response: str) -> str:
-            # Match any single character, including whitespace.
-            match = re.search(r".", response)
-            return match.group(0) if match else ""
+            # Search for a character wrapped in double quotes.
+            match = re.search(r'"([^"])"', response)
+            return match.group(1) if match else ""
         return parser
 
     def validate_step_result(self, step_result: str) -> bool:
