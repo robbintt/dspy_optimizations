@@ -1,13 +1,40 @@
 import logging
 import re
+from pathlib import Path
+from typing import Dict, Optional
 from microagent import MicroAgent
 
 logger = logging.getLogger(__name__)
+
 
 class HelloWorldAgent(MicroAgent):
     """A simple agent that builds a target string character by character."""
 
     TARGET_STRING = "Hello, World!"
+
+    # Custom system prompt for this agent
+    DEFAULT_SYSTEM_PROMPT = (
+        "You are an assistant that follows instructions perfectly "
+        "and responds with only the requested content."
+    )
+
+    def __init__(
+        self,
+        config_file: Optional[str] = None,
+        config_dict: Optional[Dict] = None,
+        **kwargs
+    ):
+        """
+        Initialize the HelloWorldAgent.
+
+        If no config is provided, loads from the default config/model.yml location.
+        """
+        # Default to project's config file if nothing provided
+        if config_file is None and config_dict is None and 'model' not in kwargs:
+            project_root = Path(__file__).parent.parent.parent
+            config_file = str(project_root / 'config' / 'model.yml')
+
+        super().__init__(config_file=config_file, config_dict=config_dict, **kwargs)
 
     def create_initial_state(self) -> str:
         """Start with an empty string."""
