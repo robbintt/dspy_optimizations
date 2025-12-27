@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import random
 from typing import Any, List, Callable, Tuple, Dict, Optional
 from .protocols import ExecutionHarness
 from . import MicroAgent
@@ -157,8 +158,10 @@ class LiteLLMHarness(ExecutionHarness):
             except Exception as e:
                 logger.warning(f"LLM call failed on attempt {attempt + 1}: {e}")
                 if attempt < len(self.config.retry_delays) - 1:
-                    logger.info(f"Retrying in {delay} seconds...")
-                    await asyncio.sleep(delay)
+                    # Add jitter: a random float in the range [0.0, 1.0) seconds
+                    jittered_delay = delay + random.random()
+                    logger.info(f"Retrying in {jittered_delay:.2f} seconds...")
+                    await asyncio.sleep(jittered_delay)
                 else:
                     logger.error("All retry attempts failed.")
                     raise
